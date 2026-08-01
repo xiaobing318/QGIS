@@ -8,16 +8,19 @@
 
 from __future__ import annotations
 
+import concurrent.futures
+import inspect
 import ipaddress
 import json
 import re
-import socket
+import secrets
+import threading
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote
 
-from qgis.PyQt.QtCore import QCoreApplication, QObject, QSize, QThread, QTimer, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QCoreApplication, QObject, QSize, QThread, QTimer, Qt, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QColor, QIcon, QPainter
 from qgis.PyQt.QtWidgets import (
     QAction,
@@ -38,8 +41,8 @@ from qcopilots_common.bridge import QgisBridgeController
 from qcopilots_common.constants import (
     BRIDGE_URL_ENV,
     DEFAULT_BRIDGE_PORT,
-    DEFAULT_CORS_ORIGINS,
     DEFAULT_HOST,
+    QGIS_BRIDGE_AUTH_TOKEN_ENV,
 )
 from qcopilots_common.discovery import discover_service_manifests
 from qcopilots_common.logging import configure_logger, qgis_log, service_log_file
@@ -48,8 +51,21 @@ from qcopilots_common.menu import add_qcopilots_menu_action, remove_qcopilots_me
 from qcopilots_common.process_controller import ProcessController
 from qcopilots_common.service_id import is_safe_service_id
 
+from .config_store import ConfigSaveResult, ManagerConfigStore
 
-TOGGLE_THREAD_WAIT_TIMEOUT_MS = 10000
+
+TOGGLE_THREAD_WAIT_TIMEOUT_MS = 35000
+TOGGLE_THREAD_FINAL_WAIT_SLICE_MS = 1000
+STARTUP_THREAD_WAIT_TIMEOUT_MS = 35000
+STARTUP_THREAD_FINAL_WAIT_SLICE_MS = 1000
+SERVICE_STARTUP_TIMEOUT_SECONDS = 30.0
+RUNTIME_CATALOG_PROPERTY = "qcopilotsMcpRuntimeCatalog"
+RUNTIME_CATALOG_SCHEMA_VERSION = 1
+RUNTIME_CATALOG_MAX_SERVICES = 128
+RUNTIME_CATALOG_SERVICE_ID_PATTERN = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+)
+RUNTIME_CATALOG_STATES = frozenset(("failed", "running", "starting", "stopped"))
 
 DEFAULT_STARTUP_SERVICE_IDS = [
     "qcopilots.mcp_server_builtin_tools",
@@ -60,15 +76,15 @@ DEFAULT_STARTUP_SERVICE_IDS = [
 ]
 DEFAULT_SERVICE_NETWORK = {
     "enabled": True,
-    "host": "0.0.0.0",
-    "advertised_host": "",
-    "cors_origins": ["*"],
+    "host": DEFAULT_HOST,
+    "advertised_host": DEFAULT_HOST,
+    "cors_origins": [],
 }
 FALLBACK_SERVICE_NETWORK = {
     "enabled": False,
     "host": DEFAULT_HOST,
-    "advertised_host": "",
-    "cors_origins": list(DEFAULT_CORS_ORIGINS),
+    "advertised_host": DEFAULT_HOST,
+    "cors_origins": [],
 }
 DEFAULT_MANAGER_CONFIG = {
     "default_startup": {
@@ -79,6 +95,175 @@ DEFAULT_MANAGER_CONFIG = {
 }
 
 
+class _ManagerEventRelay(QObject):
+    service_starting = pyqtSignal(object)
+    service_start_finished = pyqtSignal(object, object, str)
+    service_start_failed = pyqtSignal(object, str)
+    service_stop_finished = pyqtSignal(object, object)
+    service_stop_failed = pyqtSignal(object, str)
+
+    def __init__(self, manager: "QCopilotsMCPServersManagerPlugin"):
+        super().__init__()
+        self.manager = manager
+        self.service_starting.connect(self._handle_service_starting)
+        self.service_start_finished.connect(self._handle_service_start_finished)
+        self.service_start_failed.connect(self._handle_service_start_failed)
+        self.service_stop_finished.connect(self._handle_service_stop_finished)
+        self.service_stop_failed.connect(self._handle_service_stop_failed)
+
+    @pyqtSlot(object)
+    def _handle_service_starting(self, manifest):
+        self.manager._handle_service_starting(manifest)
+
+    @pyqtSlot(object, object, str)
+    def _handle_service_start_finished(self, manifest, status, auth_token):
+        self.manager._handle_service_start_finished(manifest, status, auth_token)
+
+    @pyqtSlot(object, str)
+    def _handle_service_start_failed(self, manifest, detail):
+        self.manager._handle_service_start_failed(manifest, detail)
+
+    @pyqtSlot(object, object)
+    def _handle_service_stop_finished(self, manifest, status):
+        self.manager._handle_service_stop_finished(manifest, status)
+
+    @pyqtSlot(object, str)
+    def _handle_service_stop_failed(self, manifest, detail):
+        self.manager._handle_service_stop_failed(manifest, detail)
+
+    @pyqtSlot(object)
+    def handle_default_start_result(self, result):
+        self.manager._handle_default_start_result(result)
+
+    @pyqtSlot(bool)
+    def handle_default_start_finished(self, cancelled):
+        self.manager._handle_default_start_finished(cancelled)
+
+
+class _DefaultStartupWorker(QObject):
+    service_finished = pyqtSignal(object)
+    finished = pyqtSignal(bool)
+
+    def __init__(self, controller: ProcessController, jobs: list[dict[str, Any]]):
+        super().__init__()
+        self.controller = controller
+        self.jobs = list(jobs)
+        self._cancelled = threading.Event()
+
+    def cancel(self):
+        self._cancelled.set()
+
+    def run(self):
+        if not self.jobs:
+            self.finished.emit(self._cancelled.is_set())
+            return
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(self.jobs),
+            thread_name_prefix="qcopilots-startup",
+        ) as executor:
+            futures = {
+                executor.submit(self._start_one, job): job
+                for job in self.jobs
+                if not self._cancelled.is_set()
+            }
+            for future in concurrent.futures.as_completed(futures):
+                job = futures[future]
+                try:
+                    result = future.result()
+                except Exception as err:
+                    status, _stop_error = _stop_after_failed_start(
+                        self.controller,
+                        job["manifest"],
+                        cancel_event=self._cancelled,
+                    )
+                    result = {
+                        "manifest": job["manifest"],
+                        "status": status,
+                        "auth_token": job["auth_token"],
+                        "succeeded": False,
+                        "detail": str(err),
+                    }
+                self.service_finished.emit(result)
+
+        if self._cancelled.is_set():
+            self._stop_cancelled_jobs()
+        self.finished.emit(self._cancelled.is_set())
+
+    def _start_one(self, job: dict[str, Any]) -> dict[str, Any]:
+        manifest = job["manifest"]
+        if self._cancelled.is_set():
+            return {
+                "manifest": manifest,
+                "status": None,
+                "auth_token": job["auth_token"],
+                "succeeded": False,
+                "detail": "Startup cancelled",
+            }
+        try:
+            status = _controller_start(
+                self.controller,
+                manifest,
+                bridge_url=job["bridge_url"],
+                extra_env=job["extra_env"],
+                startup_timeout_seconds=SERVICE_STARTUP_TIMEOUT_SECONDS,
+                auth_token=job["auth_token"],
+                cancel_event=self._cancelled,
+            )
+        except Exception as err:
+            status, _stop_error = _stop_after_failed_start(
+                self.controller,
+                manifest,
+                cancel_event=self._cancelled,
+            )
+            return {
+                "manifest": manifest,
+                "status": status,
+                "auth_token": job["auth_token"],
+                "succeeded": False,
+                "detail": str(err),
+            }
+
+        current_token = _controller_auth_token(self.controller, manifest.service_id)
+        if current_token is None and not hasattr(self.controller, "current_auth_token"):
+            current_token = job["auth_token"]
+        succeeded = _service_start_succeeded(status) and bool(current_token)
+        detail = "" if succeeded else _service_start_failure_detail(status)
+        if (
+            (self._cancelled.is_set() or not succeeded)
+            and _status_is_owned_and_running(status)
+        ):
+            stopped_status, _stop_error = _stop_after_failed_start(
+                self.controller,
+                manifest,
+                cancel_event=self._cancelled,
+            )
+            if stopped_status is not None:
+                status = stopped_status
+        return {
+            "manifest": manifest,
+            "status": status,
+            "auth_token": current_token or "",
+            "succeeded": succeeded and not self._cancelled.is_set(),
+            "detail": detail,
+        }
+
+    def _stop_cancelled_jobs(self) -> None:
+        manifests = {}
+        for job in self.jobs:
+            manifest = job["manifest"]
+            manifests.setdefault(manifest.service_id, manifest)
+        for manifest in manifests.values():
+            status = _safe_controller_status(self.controller, manifest)
+            if not _status_is_owned_and_running(status):
+                continue
+            _stop_after_failed_start(
+                self.controller,
+                manifest,
+                cancel_event=self._cancelled,
+            )
+
+
 class QCopilotsMCPServersManagerPlugin:
     def __init__(self, iface):
         self.iface = iface
@@ -87,50 +272,91 @@ class QCopilotsMCPServersManagerPlugin:
         self.icon_path = Path(__file__).with_name("icon.svg")
         self.plugins_root = Path(__file__).resolve().parents[1]
         self.controller = ProcessController(qgis_executable=QCoreApplication.applicationFilePath())
+        self._bridge_auth_token = secrets.token_urlsafe(32)
         self.bridge = QgisBridgeController(
             iface,
             port=DEFAULT_BRIDGE_PORT,
+            auth_token=self._bridge_auth_token,
         )
+        self._initialized = False
         self._shutdown_started = False
         self._shutdown_completed = False
+        self._shutdown_event = threading.Event()
+        self._shutdown_lock = threading.RLock()
         self._about_to_quit_connected = False
-        self._default_startup_applied = False
+        self._startup_thread = None
+        self._startup_worker = None
+        self._state_lock = threading.RLock()
+        self._starting_service_ids: set[str] = set()
+        self._owned_manifests: dict[str, ServiceManifest] = {}
+        self._service_auth_tokens: dict[str, str] = {}
+        self._catalog_manifests: dict[str, ServiceManifest] = {}
+        self._catalog_states: dict[str, str] = {}
+        self._catalog_statuses: dict[str, Any] = {}
+        self._catalog_generation = 0
+        self._catalog_startup_complete = True
         self.logger = configure_logger(
             "qcopilots.manager",
             service_log_file("qcopilots.manager"),
         )
-        self._manager_config = _load_manager_config(
+        self._config_store = ManagerConfigStore(
             Path(__file__).with_name("qcopilots_manager_config.json"),
             self.logger,
         )
+        self._manager_config = self._config_store.snapshot()
+        self._event_relay = _ManagerEventRelay(self)
 
     def initGui(self):
+        if self._initialized:
+            return
         self._shutdown_started = False
         self._shutdown_completed = False
+        self._shutdown_event.clear()
+        if not self._bridge_auth_token:
+            self._bridge_auth_token = secrets.token_urlsafe(32)
+            set_auth_token = getattr(self.bridge, "set_auth_token", None)
+            if set_auth_token:
+                set_auth_token(self._bridge_auth_token)
+            else:
+                self.bridge = QgisBridgeController(
+                    self.iface,
+                    port=DEFAULT_BRIDGE_PORT,
+                    auth_token=self._bridge_auth_token,
+                )
         self._connect_about_to_quit()
         self.bridge.start()
         qgis_log(f"QCopilots QGIS bridge listening at {self.bridge.url}")
+        self._initialized = True
 
-        self.action = QAction(
-            QIcon(str(self.icon_path)),
-            self.tr("QCopilots MCP Servers Manager"),
-            self.iface.mainWindow(),
-        )
-        self.action.setObjectName("qcopilots_mcp_servers_manager")
-        self.action.setToolTip(self.tr("QCopilots MCP Servers Manager"))
-        self.action.setIconVisibleInMenu(True)
-        self.action.triggered.connect(self.run)
-        add_qcopilots_menu_action(self.iface, self.action)
-        self.iface.addToolBarIcon(self.action)
+        if not self.action:
+            self.action = QAction(
+                QIcon(str(self.icon_path)),
+                self.tr("QCopilots MCP Servers Manager"),
+                self.iface.mainWindow(),
+            )
+            self.action.setObjectName("qcopilots_mcp_servers_manager")
+            self.action.setToolTip(self.tr("QCopilots MCP Servers Manager"))
+            self.action.setIconVisibleInMenu(True)
+            self.action.triggered.connect(self.run)
+            add_qcopilots_menu_action(self.iface, self.action)
+            self.iface.addToolBarIcon(self.action)
+        self._discover_and_start_default_services()
 
     def unload(self):
+        if not self._shutdown_services():
+            message = "QCopilots MCP shutdown remains incomplete after plugin unload"
+            self.logger.warning(message)
+            raise RuntimeError(message)
+        if not self._close_dialog(wait=True):
+            message = "QCopilots MCP dialog cleanup remains incomplete after plugin unload"
+            self.logger.warning(message)
+            raise RuntimeError(message)
         self._disconnect_about_to_quit()
-        self._close_dialog(wait=True)
         if self.action:
             remove_qcopilots_menu_action(self.iface, self.action)
             self.iface.removeToolBarIcon(self.action)
             self.action = None
-        self._shutdown_services()
+        self._initialized = False
 
     def _connect_about_to_quit(self):
         if getattr(self, "_about_to_quit_connected", False):
@@ -168,39 +394,158 @@ class QCopilotsMCPServersManagerPlugin:
         return False
 
     def _shutdown_services(self):
+        shutdown_lock = getattr(self, "_shutdown_lock", None)
+        if shutdown_lock is None:
+            shutdown_lock = threading.RLock()
+            self._shutdown_lock = shutdown_lock
+        with shutdown_lock:
+            return self._shutdown_services_locked()
+
+    def _shutdown_services_locked(self):
         if getattr(self, "_shutdown_completed", False):
-            return
+            return True
         self._shutdown_started = True
-        if self.dialog and not self.dialog.prepare_close(wait=True):
+        action = getattr(self, "action", None)
+        if action and hasattr(action, "setEnabled"):
+            action.setEnabled(False)
+        shutdown_event = getattr(self, "_shutdown_event", None)
+        if shutdown_event is not None:
+            shutdown_event.set()
+
+        self._revoke_runtime_access()
+        self._request_shutdown_cancellation()
+
+        # Stop everything already owned before waiting for workers. This also
+        # releases health checks which are waiting on a child process.
+        self._stop_shutdown_services(final_sweep=False)
+
+        startup_stopped = self._cleanup_startup_thread(wait=True)
+        dialog = getattr(self, "dialog", None)
+        dialog_stopped = not dialog or dialog.prepare_close(wait=True)
+        if not dialog_stopped:
             self.logger.warning("QCopilots MCP server action is still running during QGIS shutdown")
             self.logger.warning("Continuing QCopilots MCP shutdown cleanup with a running service action")
 
-        for manifest in self._shutdown_manifests():
-            try:
-                self.controller.stop(manifest)
-            except Exception as err:
-                self.logger.warning("Failed to stop %s: %s", manifest.service_id, err)
+        # A start may have completed while cancellation was being delivered.
+        # The final ownership sweep is authoritative for shutdown success.
+        services_stopped = self._stop_shutdown_services(final_sweep=True)
+
+        bridge_stopped = True
         try:
-            self.bridge.stop()
+            bridge_result = self.bridge.stop()
+            if bridge_result is False:
+                bridge_stopped = False
+                self.logger.warning("QCopilots QGIS bridge thread did not stop")
         except Exception as err:
             self.logger.warning("Failed to stop QCopilots QGIS bridge: %s", err)
-            return
-        self._shutdown_completed = True
+            bridge_stopped = False
+
+        cleanup_complete = (
+            startup_stopped
+            and dialog_stopped
+            and services_stopped
+            and bridge_stopped
+        )
+
+        if cleanup_complete:
+            with self._state_lock:
+                self._starting_service_ids.clear()
+                self._owned_manifests.clear()
+                self._service_auth_tokens.clear()
+                self._catalog_manifests.clear()
+                self._catalog_states.clear()
+                self._catalog_statuses.clear()
+                self._catalog_startup_complete = True
+            self._shutdown_completed = True
+        else:
+            self._shutdown_completed = False
+        self._publish_runtime_catalog()
+        return cleanup_complete
+
+    def _revoke_runtime_access(self):
+        self._bridge_auth_token = ""
+        with self._state_lock:
+            self._service_auth_tokens.clear()
+            self._catalog_statuses.clear()
+            for service_id in self._catalog_manifests:
+                self._catalog_states[service_id] = "stopped"
+            self._catalog_startup_complete = True
+        self._publish_runtime_catalog()
+
+        clear_auth_token = getattr(self.bridge, "clear_auth_token", None)
+        if clear_auth_token:
+            try:
+                clear_auth_token()
+            except Exception as err:
+                self.logger.warning("Failed to revoke QCopilots QGIS bridge token: %s", err)
+
+    def _request_shutdown_cancellation(self):
+        worker = getattr(self, "_startup_worker", None)
+        if worker and hasattr(worker, "cancel"):
+            worker.cancel()
+        dialog = getattr(self, "dialog", None)
+        cancel_actions = getattr(dialog, "cancel_service_actions", None) if dialog else None
+        if cancel_actions:
+            cancel_actions()
+
+    def _stop_shutdown_services(self, *, final_sweep: bool) -> bool:
+        services_stopped = True
+        shutdown_event = getattr(self, "_shutdown_event", None)
+        for manifest in self._shutdown_manifest_snapshot():
+            with self._state_lock:
+                explicitly_owned = manifest.service_id in self._owned_manifests
+            if not explicitly_owned:
+                current = _safe_controller_status(self.controller, manifest)
+                if not _status_is_owned_and_running(current):
+                    continue
+                with self._state_lock:
+                    self._owned_manifests[manifest.service_id] = manifest
+                    self._shutdown_completed = False
+            status = None
+            try:
+                status = _controller_stop(
+                    self.controller,
+                    manifest,
+                    cancel_event=shutdown_event,
+                )
+            except Exception as err:
+                if final_sweep:
+                    self.logger.warning(
+                        "Failed to stop %s during final shutdown sweep: %s",
+                        manifest.service_id,
+                        err,
+                    )
+                else:
+                    self.logger.warning("Failed to stop %s: %s", manifest.service_id, err)
+                status = _safe_controller_status(self.controller, manifest)
+            if status is None or _status_is_owned_and_running(status):
+                services_stopped = False
+                continue
+            with self._state_lock:
+                self._starting_service_ids.discard(manifest.service_id)
+                self._owned_manifests.pop(manifest.service_id, None)
+                self._service_auth_tokens.pop(manifest.service_id, None)
+                if manifest.service_id in self._catalog_manifests:
+                    self._catalog_states[manifest.service_id] = "stopped"
+                    self._catalog_statuses.pop(manifest.service_id, None)
+        return services_stopped
 
     def is_shutting_down(self) -> bool:
         return getattr(self, "_shutdown_started", False)
 
-    def _shutdown_manifests(self) -> list[ServiceManifest]:
-        manifests: dict[str, ServiceManifest] = {}
-        for manifest in self._discover_services(include_disabled=True):
-            manifests[manifest.service_id] = manifest
-        stored_manifests = getattr(self.controller, "stored_manifests", None)
-        if stored_manifests:
-            for manifest in stored_manifests():
-                manifests.setdefault(manifest.service_id, manifest)
-        return sorted(manifests.values(), key=lambda manifest: manifest.service_id)
+    def _owned_manifest_snapshot(self) -> list[ServiceManifest]:
+        with self._state_lock:
+            return sorted(self._owned_manifests.values(), key=lambda manifest: manifest.service_id)
+
+    def _shutdown_manifest_snapshot(self) -> list[ServiceManifest]:
+        with self._state_lock:
+            manifests = dict(self._catalog_manifests)
+            manifests.update(self._owned_manifests)
+            return sorted(manifests.values(), key=lambda manifest: manifest.service_id)
 
     def run(self):
+        if self.is_shutting_down():
+            return
         if not self.dialog:
             self.dialog = ManagerDialog(self.iface.mainWindow(), self)
         self.dialog.populate_services()
@@ -208,23 +553,132 @@ class QCopilotsMCPServersManagerPlugin:
         self.dialog.raise_()
         self.dialog.activateWindow()
 
-    def start_service(self, manifest: ServiceManifest):
-        extra_env = self._service_env(manifest)
-        status = self.controller.start(
-            manifest,
-            bridge_url=extra_env.get(BRIDGE_URL_ENV),
-            extra_env=extra_env,
+    def prepare_service_start(self, manifest: ServiceManifest) -> str | None:
+        if self.is_shutting_down():
+            return None
+        with self._state_lock:
+            if manifest.service_id in self._starting_service_ids:
+                return None
+            auth_token = secrets.token_urlsafe(32)
+            self._starting_service_ids.add(manifest.service_id)
+            self._catalog_states[manifest.service_id] = "starting"
+            self._catalog_statuses.pop(manifest.service_id, None)
+        self._publish_runtime_catalog()
+        return auth_token
+
+    def start_service(
+        self,
+        manifest: ServiceManifest,
+        auth_token: str | None = None,
+        cancel_event: threading.Event | None = None,
+    ):
+        if self.is_shutting_down():
+            return self.service_status(manifest, deep=False)
+        operation_cancel_event = (
+            cancel_event
+            if cancel_event is not None
+            else getattr(self, "_shutdown_event", None)
         )
-        qgis_log(f"Started {manifest.plugin_name}: {status.url}")
+        if operation_cancel_event is not None and operation_cancel_event.is_set():
+            return self.service_status(manifest, deep=False)
+        try:
+            current = self.service_status(manifest, deep=False)
+            current_token = _controller_auth_token(self.controller, manifest.service_id)
+        except Exception as err:
+            self._emit_manager_event("service_start_failed", manifest, str(err))
+            raise
+        if current.running:
+            current = self.service_status(manifest, deep=True)
+            if current_token:
+                self._emit_manager_event(
+                    "service_start_finished",
+                    manifest,
+                    current,
+                    current_token,
+                )
+            else:
+                self._emit_manager_event(
+                    "service_start_failed",
+                    manifest,
+                    "Running service is not owned by this manager session",
+                )
+            return current
+
+        if auth_token is None:
+            auth_token = secrets.token_urlsafe(32)
+            self._emit_manager_event("service_starting", manifest)
+
+        extra_env = self._service_env(manifest)
+        try:
+            status = _controller_start(
+                self.controller,
+                manifest,
+                bridge_url=extra_env.get(BRIDGE_URL_ENV),
+                extra_env=extra_env,
+                startup_timeout_seconds=SERVICE_STARTUP_TIMEOUT_SECONDS,
+                auth_token=auth_token,
+                cancel_event=operation_cancel_event,
+            )
+        except Exception as err:
+            cleanup_status, cleanup_error = _stop_after_failed_start(
+                self.controller,
+                manifest,
+                cancel_event=operation_cancel_event,
+            )
+            if _status_is_owned_and_running(cleanup_status):
+                with self._state_lock:
+                    self._owned_manifests[manifest.service_id] = manifest
+                    self._shutdown_completed = False
+            if cleanup_error is not None and (
+                cleanup_status is None or getattr(cleanup_status, "running", False)
+            ):
+                self.logger.warning(
+                    "Failed to clean up %s after its start raised an exception: %s",
+                    manifest.service_id,
+                    cleanup_error,
+                )
+            self._emit_manager_event("service_start_failed", manifest, str(err))
+            raise
+        actual_token = _controller_auth_token(self.controller, manifest.service_id)
+        if actual_token is None and not hasattr(self.controller, "current_auth_token"):
+            actual_token = auth_token
+        self._emit_manager_event("service_start_finished", manifest, status, actual_token or "")
+        if _service_start_succeeded(status) and actual_token:
+            qgis_log(f"Started {manifest.plugin_name}: {status.url}")
         return status
 
-    def stop_service(self, manifest: ServiceManifest):
-        status = self.controller.stop(manifest)
-        qgis_log(f"Stopped {manifest.plugin_name}")
+    def stop_service(
+        self,
+        manifest: ServiceManifest,
+        cancel_event: threading.Event | None = None,
+    ):
+        operation_cancel_event = (
+            cancel_event
+            if cancel_event is not None
+            else getattr(self, "_shutdown_event", None)
+        )
+        try:
+            status = _controller_stop(
+                self.controller,
+                manifest,
+                cancel_event=operation_cancel_event,
+            )
+        except Exception as err:
+            self._emit_manager_event("service_stop_failed", manifest, str(err))
+            raise
+        self._emit_manager_event("service_stop_finished", manifest, status)
+        if status and not status.running:
+            qgis_log(f"Stopped {manifest.plugin_name}")
         return status
 
     def service_status(self, manifest: ServiceManifest, deep: bool = True):
         return self.controller.status(manifest, deep=deep)
+
+    def service_status_snapshot(self, manifest: ServiceManifest):
+        snapshot = getattr(self.controller, "status_snapshot", None)
+        if snapshot:
+            return snapshot(manifest)
+        return self.controller.status(manifest, deep=False)
 
     def _discover_services(self, include_disabled: bool = False) -> list[ServiceManifest]:
         manifests = discover_service_manifests(self.plugins_root, include_disabled=include_disabled)
@@ -234,6 +688,25 @@ class QCopilotsMCPServersManagerPlugin:
     def manager_config(self) -> dict[str, Any]:
         return _copy_manager_config(self._manager_config)
 
+    def remember_service_startup(
+        self,
+        service_id: str,
+        enabled: bool,
+    ) -> ConfigSaveResult | None:
+        """Persist one successful explicit UI service state transition."""
+
+        if self.is_shutting_down():
+            return None
+        result = self._config_store.set_startup_service_enabled(service_id, enabled)
+        self._manager_config = self._config_store.snapshot()
+        if not result.saved:
+            self.logger.warning(
+                "QCopilots %s changed state, but its startup preference was not saved: %s",
+                service_id,
+                result.error,
+            )
+        return result
+
     def _service_network_config(self) -> dict[str, Any]:
         return self._manager_config.get("service_network", _fallback_service_network_config())
 
@@ -241,10 +714,298 @@ class QCopilotsMCPServersManagerPlugin:
         env = {}
         if _uses_qgis_bridge(manifest):
             env[BRIDGE_URL_ENV] = self.bridge.url
+            env[QGIS_BRIDGE_AUTH_TOKEN_ENV] = self._bridge_auth_token
         return env
 
     def _bridge_url(self, manifest: ServiceManifest) -> str | None:
         return self.bridge.url if _uses_qgis_bridge(manifest) else None
+
+    def _discover_and_start_default_services(self):
+        try:
+            manifests = _order_service_manifests(
+                self._discover_services(),
+                _startup_service_ids(self._manager_config),
+            )
+            manifests = _runtime_catalog_compatible_manifests(
+                manifests,
+                self.logger,
+            )
+        except Exception as err:
+            self.logger.warning("Could not discover QCopilots MCP services: %s", err)
+            manifests = []
+
+        with self._state_lock:
+            self._catalog_manifests = {manifest.service_id: manifest for manifest in manifests}
+            self._catalog_states = {manifest.service_id: "stopped" for manifest in manifests}
+            self._catalog_statuses.clear()
+            self._catalog_startup_complete = False
+
+        startup = self._manager_config.get("default_startup", {})
+        startup_ids = set(_startup_service_ids(self._manager_config)) if startup.get("enabled", True) else set()
+        jobs = []
+        for manifest in manifests:
+            if manifest.service_id not in startup_ids:
+                continue
+            auth_token = secrets.token_urlsafe(32)
+            try:
+                extra_env = self._service_env(manifest)
+            except Exception as err:
+                self._apply_service_start_failure(manifest, str(err))
+                continue
+            with self._state_lock:
+                self._starting_service_ids.add(manifest.service_id)
+                self._catalog_states[manifest.service_id] = "starting"
+            jobs.append(
+                {
+                    "manifest": manifest,
+                    "auth_token": auth_token,
+                    "bridge_url": extra_env.get(BRIDGE_URL_ENV),
+                    "extra_env": extra_env,
+                }
+            )
+
+        self._publish_runtime_catalog()
+        if not jobs:
+            with self._state_lock:
+                self._catalog_startup_complete = True
+            self._publish_runtime_catalog()
+            return
+
+        thread = QThread()
+        worker = _DefaultStartupWorker(self.controller, jobs)
+        self._startup_thread = thread
+        self._startup_worker = worker
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.service_finished.connect(self._event_relay.handle_default_start_result)
+        worker.finished.connect(self._event_relay.handle_default_start_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(lambda: self._clear_startup_thread(thread, worker))
+        thread.start()
+
+    def _handle_default_start_result(self, result: dict[str, Any]):
+        if self.is_shutting_down():
+            status = result.get("status")
+            if _status_is_owned_and_running(status):
+                manifest = result["manifest"]
+                with self._state_lock:
+                    self._owned_manifests[manifest.service_id] = manifest
+                    self._shutdown_completed = False
+                    auth_token = result.get("auth_token")
+                    if auth_token:
+                        self._service_auth_tokens[manifest.service_id] = auth_token
+            return
+        manifest = result["manifest"]
+        if result["succeeded"]:
+            self._apply_service_start_result(
+                manifest,
+                result["status"],
+                result["auth_token"],
+            )
+            return
+        self._apply_service_start_failure(manifest, result["detail"], result["status"])
+
+    def _handle_default_start_finished(self, cancelled: bool):
+        if self.is_shutting_down() or cancelled:
+            return
+        with self._state_lock:
+            self._catalog_startup_complete = True
+        self._publish_runtime_catalog()
+
+    def _clear_startup_thread(self, thread, worker):
+        if self._startup_thread is thread:
+            self._startup_thread = None
+        if self._startup_worker is worker:
+            self._startup_worker = None
+
+    def _cleanup_startup_thread(self, wait: bool = False) -> bool:
+        worker = getattr(self, "_startup_worker", None)
+        thread = getattr(self, "_startup_thread", None)
+        if not thread:
+            return True
+        if worker and hasattr(worker, "cancel"):
+            worker.cancel()
+        if not hasattr(thread, "isRunning") or not thread.isRunning():
+            self._startup_thread = None
+            self._startup_worker = None
+            return True
+        if not wait:
+            return False
+        thread.quit()
+        if not thread.wait(STARTUP_THREAD_WAIT_TIMEOUT_MS):
+            self.logger.warning(
+                "QCopilots default startup cancellation exceeded the normal wait; "
+                "performing one final bounded wait"
+            )
+            if worker and hasattr(worker, "cancel"):
+                worker.cancel()
+            thread.quit()
+            if not thread.wait(STARTUP_THREAD_FINAL_WAIT_SLICE_MS):
+                self.logger.warning(
+                    "QCopilots default startup worker is still running after cancellation"
+                )
+                return False
+        if hasattr(QApplication, "processEvents"):
+            QApplication.processEvents()
+        self._startup_thread = None
+        self._startup_worker = None
+        return True
+
+    def _emit_manager_event(self, event_name: str, *args):
+        relay = getattr(self, "_event_relay", None)
+        signal = getattr(relay, event_name, None) if relay else None
+        if signal:
+            signal.emit(*args)
+            return
+        handler = getattr(self, f"_handle_{event_name}")
+        handler(*args)
+
+    def _handle_service_starting(self, manifest: ServiceManifest):
+        if self.is_shutting_down():
+            return
+        with self._state_lock:
+            self._starting_service_ids.add(manifest.service_id)
+            self._catalog_states[manifest.service_id] = "starting"
+            self._catalog_statuses.pop(manifest.service_id, None)
+        self._publish_runtime_catalog()
+
+    def _handle_service_start_finished(self, manifest: ServiceManifest, status, auth_token: str):
+        if self.is_shutting_down():
+            if _status_is_owned_and_running(status):
+                stopped_status, stop_error = _stop_after_failed_start(
+                    self.controller,
+                    manifest,
+                    cancel_event=getattr(self, "_shutdown_event", None),
+                )
+                if _status_is_owned_and_running(stopped_status):
+                    with self._state_lock:
+                        self._owned_manifests[manifest.service_id] = manifest
+                        self._shutdown_completed = False
+                        if auth_token:
+                            self._service_auth_tokens[manifest.service_id] = auth_token
+                if stop_error is not None:
+                    self.logger.warning(
+                        "Failed to stop %s after shutdown was requested: %s",
+                        manifest.service_id,
+                        stop_error,
+                    )
+            return
+        if _service_start_succeeded(status) and auth_token:
+            self._apply_service_start_result(manifest, status, auth_token)
+        else:
+            self._apply_service_start_failure(manifest, _service_start_failure_detail(status), status)
+
+    def _handle_service_start_failed(self, manifest: ServiceManifest, detail: str):
+        if not self.is_shutting_down():
+            self._apply_service_start_failure(manifest, detail)
+
+    def _handle_service_stop_finished(self, manifest: ServiceManifest, status):
+        if self.is_shutting_down():
+            return
+        with self._state_lock:
+            self._starting_service_ids.discard(manifest.service_id)
+            if status and status.running:
+                auth_token = self._service_auth_tokens.get(manifest.service_id)
+                if auth_token:
+                    self._catalog_states[manifest.service_id] = "running"
+                    self._catalog_statuses[manifest.service_id] = status
+                else:
+                    self._catalog_states[manifest.service_id] = "failed"
+                    self._catalog_statuses.pop(manifest.service_id, None)
+            else:
+                self._owned_manifests.pop(manifest.service_id, None)
+                self._service_auth_tokens.pop(manifest.service_id, None)
+                self._catalog_states[manifest.service_id] = "stopped"
+                self._catalog_statuses.pop(manifest.service_id, None)
+        self._publish_runtime_catalog()
+        self._refresh_dialog_service(manifest, status)
+
+    def _handle_service_stop_failed(self, manifest: ServiceManifest, detail: str):
+        if self.is_shutting_down():
+            return
+        self.logger.warning("Failed to stop %s: %s", manifest.service_id, detail)
+        try:
+            status = self.service_status(manifest, deep=False)
+        except Exception:
+            status = None
+        self._handle_service_stop_finished(manifest, status)
+
+    def _apply_service_start_result(self, manifest: ServiceManifest, status, auth_token: str):
+        with self._state_lock:
+            self._starting_service_ids.discard(manifest.service_id)
+            self._owned_manifests[manifest.service_id] = manifest
+            self._service_auth_tokens[manifest.service_id] = auth_token
+            self._catalog_states[manifest.service_id] = "running"
+            self._catalog_statuses[manifest.service_id] = status
+        self._publish_runtime_catalog()
+        self._refresh_dialog_service(manifest, status)
+
+    def _apply_service_start_failure(self, manifest: ServiceManifest, detail: str, status=None):
+        self.logger.warning("Failed to start %s: %s", manifest.service_id, detail)
+        with self._state_lock:
+            self._starting_service_ids.discard(manifest.service_id)
+            if status and status.running and getattr(status, "owner_match", True):
+                self._owned_manifests[manifest.service_id] = manifest
+            self._service_auth_tokens.pop(manifest.service_id, None)
+            self._catalog_states[manifest.service_id] = "failed"
+            self._catalog_statuses.pop(manifest.service_id, None)
+        self._publish_runtime_catalog()
+        self._refresh_dialog_service(manifest, status)
+
+    def _refresh_dialog_service(self, manifest: ServiceManifest, status):
+        dialog = getattr(self, "dialog", None)
+        if dialog and status and hasattr(dialog, "update_service_status"):
+            dialog.update_service_status(manifest.service_id, status)
+
+    def _publish_runtime_catalog(self):
+        instance = getattr(QCoreApplication, "instance", None)
+        app = instance() if instance else None
+        with self._state_lock:
+            existing_generation = _runtime_catalog_generation(app)
+            self._catalog_generation = max(self._catalog_generation, existing_generation) + 1
+            services = []
+            for service_id, manifest in self._catalog_manifests.items():
+                if len(services) >= RUNTIME_CATALOG_MAX_SERVICES:
+                    break
+                if service_id != getattr(manifest, "service_id", None):
+                    continue
+                if _runtime_catalog_manifest_error(manifest):
+                    continue
+                state = self._catalog_states.get(service_id, "stopped")
+                if state not in RUNTIME_CATALOG_STATES:
+                    state = "failed"
+                status = self._catalog_statuses.get(service_id)
+                auth_token = self._service_auth_tokens.get(service_id)
+                if state == "running" and not _runtime_catalog_credentials_are_valid(
+                    status,
+                    auth_token,
+                ):
+                    state = "failed"
+                item = {
+                    "id": service_id,
+                    "displayName": manifest.display_name,
+                    "state": state,
+                    "virtualUrl": f"https://qcopilots.localmachine/mcp/{quote(service_id, safe='')}",
+                    "targetUrl": "",
+                    "authToken": "",
+                }
+                if state == "running":
+                    item["targetUrl"] = _runtime_target_url(manifest, status)
+                    item["authToken"] = auth_token
+                services.append(item)
+            payload = {
+                "schemaVersion": RUNTIME_CATALOG_SCHEMA_VERSION,
+                "generation": self._catalog_generation,
+                "startupComplete": self._catalog_startup_complete,
+                "services": services,
+            }
+        if app and hasattr(app, "setProperty"):
+            app.setProperty(
+                RUNTIME_CATALOG_PROPERTY,
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            )
 
     def tr(self, message):
         return QCoreApplication.translate("QCopilotsMCPServersManager", message)
@@ -252,6 +1013,236 @@ class QCopilotsMCPServersManagerPlugin:
 
 def _uses_qgis_bridge(manifest: ServiceManifest) -> bool:
     return "qgis-bridge" in manifest.capabilities or "processing" in manifest.capabilities
+
+
+def _service_start_succeeded(status) -> bool:
+    return bool(
+        status
+        and status.running
+        and status.health == "ok"
+        and getattr(status, "owner_match", True)
+    )
+
+
+def _status_is_owned_and_running(status) -> bool:
+    return bool(
+        status
+        and getattr(status, "running", False)
+        and getattr(status, "owner_match", False)
+    )
+
+
+def _safe_controller_status(controller: ProcessController, manifest: ServiceManifest):
+    try:
+        return controller.status(manifest, deep=False)
+    except Exception:
+        return None
+
+
+def _callable_accepts_keyword(callback, keyword: str) -> bool:
+    try:
+        parameters = inspect.signature(callback).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        or (
+            parameter.name == keyword
+            and parameter.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        )
+        for parameter in parameters
+    )
+
+
+def _controller_start(
+    controller: ProcessController,
+    manifest: ServiceManifest,
+    *,
+    cancel_event: threading.Event | None = None,
+    **kwargs,
+):
+    if cancel_event is not None and _callable_accepts_keyword(
+        controller.start,
+        "cancel_event",
+    ):
+        kwargs["cancel_event"] = cancel_event
+    return controller.start(manifest, **kwargs)
+
+
+def _controller_stop(
+    controller: ProcessController,
+    manifest: ServiceManifest,
+    *,
+    cancel_event: threading.Event | None = None,
+):
+    if cancel_event is not None and _callable_accepts_keyword(
+        controller.stop,
+        "cancel_event",
+    ):
+        return controller.stop(manifest, cancel_event=cancel_event)
+    return controller.stop(manifest)
+
+
+def _stop_after_failed_start(
+    controller: ProcessController,
+    manifest: ServiceManifest,
+    *,
+    cancel_event: threading.Event | None = None,
+):
+    try:
+        return (
+            _controller_stop(
+                controller,
+                manifest,
+                cancel_event=cancel_event,
+            ),
+            None,
+        )
+    except Exception as err:
+        return _safe_controller_status(controller, manifest), err
+
+
+def _manager_status_snapshot(manager, manifest: ServiceManifest):
+    snapshot = getattr(manager, "service_status_snapshot", None)
+    if snapshot:
+        return snapshot(manifest)
+    return manager.service_status(manifest, deep=False)
+
+
+def _manager_start_service(
+    manager,
+    manifest: ServiceManifest,
+    auth_token: str | None,
+    cancel_event: threading.Event,
+):
+    kwargs = {"auth_token": auth_token}
+    if _callable_accepts_keyword(manager.start_service, "cancel_event"):
+        kwargs["cancel_event"] = cancel_event
+    return manager.start_service(manifest, **kwargs)
+
+
+def _manager_stop_service(
+    manager,
+    manifest: ServiceManifest,
+    cancel_event: threading.Event,
+):
+    if _callable_accepts_keyword(manager.stop_service, "cancel_event"):
+        return manager.stop_service(manifest, cancel_event=cancel_event)
+    return manager.stop_service(manifest)
+
+
+def _runtime_catalog_compatible_manifests(
+    manifests: list[ServiceManifest],
+    logger,
+) -> list[ServiceManifest]:
+    compatible = []
+    service_ids = set()
+    for manifest in manifests:
+        reason = _runtime_catalog_manifest_error(manifest)
+        service_id = getattr(manifest, "service_id", "")
+        if reason:
+            logger.warning(
+                "Ignoring MCP service %r in the native runtime catalog: %s",
+                service_id,
+                reason,
+            )
+            continue
+        if service_id in service_ids:
+            logger.warning(
+                "Ignoring duplicate MCP service %r in the native runtime catalog",
+                service_id,
+            )
+            continue
+        if len(compatible) >= RUNTIME_CATALOG_MAX_SERVICES:
+            logger.warning(
+                "Ignoring MCP service %r because the native runtime catalog is full",
+                service_id,
+            )
+            continue
+        compatible.append(manifest)
+        service_ids.add(service_id)
+    return compatible
+
+
+def _runtime_catalog_manifest_error(manifest: ServiceManifest) -> str:
+    service_id = getattr(manifest, "service_id", None)
+    if not isinstance(service_id, str) or not RUNTIME_CATALOG_SERVICE_ID_PATTERN.fullmatch(
+        service_id
+    ):
+        return "service id does not match the native catalog contract"
+
+    display_name = getattr(manifest, "display_name", None)
+    if (
+        not isinstance(display_name, str)
+        or not display_name
+        or display_name != display_name.strip()
+        or _qt_utf16_length(display_name) > 256
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in display_name)
+    ):
+        return "display name does not match the native catalog contract"
+
+    if getattr(manifest, "mcp_path", None) != "/mcp":
+        return "MCP path must be exactly /mcp for the native catalog"
+    return ""
+
+
+def _runtime_catalog_credentials_are_valid(status, auth_token) -> bool:
+    port = getattr(status, "port", None)
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+        return False
+    if not isinstance(auth_token, str):
+        return False
+    if not 16 <= _qt_utf16_length(auth_token) <= 4096:
+        return False
+    return not any(
+        character.isspace() or ord(character) < 0x21 or ord(character) == 0x7F
+        for character in auth_token
+    )
+
+
+def _qt_utf16_length(value: str) -> int:
+    return len(value.encode("utf-16-le", errors="surrogatepass")) // 2
+
+
+def _service_start_failure_detail(status) -> str:
+    if not status:
+        return "Unknown service state"
+    diagnostic = str(getattr(status, "diagnostic", "") or "").strip()
+    if diagnostic:
+        return diagnostic
+    health = str(getattr(status, "health", "") or "").strip()
+    return health or "Service did not become healthy"
+
+
+def _controller_auth_token(controller: ProcessController, service_id: str) -> str | None:
+    getter = getattr(controller, "current_auth_token", None)
+    if not getter:
+        return None
+    try:
+        token = getter(service_id)
+    except Exception:
+        return None
+    return token if isinstance(token, str) and token else None
+
+
+def _runtime_target_url(manifest: ServiceManifest, status) -> str:
+    del manifest
+    return f"http://127.0.0.1:{int(status.port)}/mcp"
+
+
+def _runtime_catalog_generation(app) -> int:
+    if not app or not hasattr(app, "property"):
+        return 0
+    try:
+        value = app.property(RUNTIME_CATALOG_PROPERTY)
+        if not value:
+            return 0
+        payload = json.loads(str(value))
+        generation = payload.get("generation", 0)
+        return generation if isinstance(generation, int) and generation >= 0 else 0
+    except (AttributeError, TypeError, ValueError, json.JSONDecodeError):
+        return 0
 
 
 def _load_manager_config(config_path: Path, logger) -> dict[str, Any]:
@@ -450,23 +1441,16 @@ def _service_network_host(value: Any, fallback: str, logger=None) -> str:
     if not host:
         _warn_manager_config(logger, "Ignoring blank QCopilots manager service_network.host")
         return fallback
-    if host.lower() == "localhost":
-        return host
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
         _warn_manager_config(logger, "Ignoring invalid QCopilots manager service_network.host: %s", host)
         return fallback
-    if address.version == 4 and (
-        address.is_loopback
-        or address.is_private
-        or address.is_link_local
-        or host == "0.0.0.0"
-    ):
-        return host
+    if address.version == 4 and str(address) == DEFAULT_HOST:
+        return DEFAULT_HOST
     _warn_manager_config(
         logger,
-        "Ignoring QCopilots manager service_network.host outside loopback or LAN/private IPv4: %s",
+        "Ignoring non-loopback QCopilots manager service_network.host: %s",
         host,
     )
     return fallback
@@ -494,36 +1478,30 @@ def _service_network_string(
 def _service_network_advertised_host(value: Any, logger=None) -> str:
     if value is None:
         return DEFAULT_SERVICE_NETWORK["advertised_host"]
-    host = _service_network_string(
-        value,
-        FALLBACK_SERVICE_NETWORK["advertised_host"],
-        logger,
-        "advertised_host",
-        allow_empty=True,
-    )
-    if not host:
-        return ""
-    if _service_network_advertised_host_is_valid(host):
-        return host
-    _warn_manager_config(logger, "Ignoring invalid QCopilots manager service_network.advertised_host: %s", host)
-    return FALLBACK_SERVICE_NETWORK["advertised_host"]
-
-
-def _service_network_advertised_host_is_valid(host: str) -> bool:
-    if any(ord(character) < 32 or character.isspace() for character in host):
-        return False
-    if any(character in host for character in "/\\?#@:"):
-        return False
+    if not isinstance(value, str):
+        _warn_manager_config(
+            logger,
+            "Ignoring QCopilots manager service_network.advertised_host because it is not a string",
+        )
+        return FALLBACK_SERVICE_NETWORK["advertised_host"]
+    host = value.strip()
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
-        return bool(
-            re.fullmatch(
-                r"(?!-)(?!.*\.\.)(?!.*-$)[A-Za-z0-9](?:[A-Za-z0-9_.-]*[A-Za-z0-9])?",
-                host,
-            )
+        _warn_manager_config(
+            logger,
+            "Ignoring invalid QCopilots manager service_network.advertised_host: %s",
+            host,
         )
-    return address.version == 4
+        return FALLBACK_SERVICE_NETWORK["advertised_host"]
+    if address.version == 4 and str(address) == DEFAULT_HOST:
+        return DEFAULT_HOST
+    _warn_manager_config(
+        logger,
+        "Ignoring non-loopback QCopilots manager service_network.advertised_host: %s",
+        host,
+    )
+    return FALLBACK_SERVICE_NETWORK["advertised_host"]
 
 
 def _service_network_cors_origins(value: Any, fallback: list[str] | tuple[str, ...], logger=None) -> list[str]:
@@ -535,51 +1513,21 @@ def _service_network_cors_origins(value: Any, fallback: list[str] | tuple[str, .
             "Ignoring QCopilots manager service_network.cors_origins because it is not a list",
         )
         return list(fallback)
-    origins = []
-    for origin in value:
-        if not isinstance(origin, str):
-            _warn_manager_config(
-                logger,
-                "Ignoring QCopilots manager service_network.cors_origins item because it is not a string",
-            )
-            continue
-        origin = origin.strip()
-        if not _service_network_origin_is_valid(origin):
-            _warn_manager_config(
-                logger,
-                "Ignoring invalid QCopilots manager service_network.cors_origins item: %s",
-                origin,
-            )
-            continue
-        if origin and origin not in origins:
-            origins.append(origin)
-    return origins or list(fallback)
-
-
-def _service_network_origin_is_valid(origin: str) -> bool:
-    if origin == "*":
-        return True
-    parsed = urlparse(origin)
-    return (
-        parsed.scheme in ("http", "https")
-        and bool(parsed.netloc)
-        and parsed.path in ("", "/")
-        and not parsed.params
-        and not parsed.query
-        and not parsed.fragment
-    )
+    if value:
+        _warn_manager_config(
+            logger,
+            "Ignoring QCopilots manager service_network.cors_origins because only an empty list is allowed",
+        )
+    return []
 
 
 def _network_overrides_manifest(
     manifest: ServiceManifest,
     service_network: dict[str, Any],
 ) -> ServiceManifest:
-    if not service_network.get("enabled", FALLBACK_SERVICE_NETWORK["enabled"]):
-        return manifest
-
-    host = service_network.get("host") or manifest.host
-    advertised_host = service_network.get("advertised_host") or _default_advertised_host(host)
-    cors_origins = service_network.get("cors_origins") or manifest.cors_origins
+    host = DEFAULT_HOST
+    advertised_host = DEFAULT_HOST
+    cors_origins = []
     return replace(
         manifest,
         transport=replace(
@@ -589,64 +1537,6 @@ def _network_overrides_manifest(
         ),
         cors_origins=list(cors_origins),
     )
-
-
-def _default_advertised_host(host: str) -> str:
-    if host != "0.0.0.0":
-        return host
-    advertised_host = _local_lan_ipv4_host()
-    if advertised_host:
-        return advertised_host
-    try:
-        return socket.gethostname() or "127.0.0.1"
-    except OSError:
-        return "127.0.0.1"
-
-
-def _local_lan_ipv4_host() -> str:
-    candidates = []
-    for probe_host in ("192.168.1.1", "10.0.0.1", "172.16.0.1"):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.connect((probe_host, 9))
-                _append_lan_candidate(candidates, sock.getsockname()[0])
-        except OSError:
-            continue
-    try:
-        hostname = socket.gethostname()
-        for address in socket.gethostbyname_ex(hostname)[2]:
-            _append_lan_candidate(candidates, address)
-        for address in (
-            address[4][0]
-            for address in socket.getaddrinfo(hostname, None, socket.AF_INET, socket.SOCK_DGRAM)
-        ):
-            _append_lan_candidate(candidates, address)
-    except OSError:
-        pass
-
-    private_candidates = []
-    link_local_candidates = []
-    for candidate in candidates:
-        try:
-            address = ipaddress.ip_address(candidate)
-        except ValueError:
-            continue
-        if address.version != 4 or address.is_loopback:
-            continue
-        if address.is_link_local:
-            link_local_candidates.append(candidate)
-        elif address.is_private:
-            private_candidates.append(candidate)
-    if private_candidates:
-        return private_candidates[0]
-    if link_local_candidates:
-        return link_local_candidates[0]
-    return ""
-
-
-def _append_lan_candidate(candidates: list[str], candidate: str) -> None:
-    if candidate and candidate not in candidates:
-        candidates.append(candidate)
 
 
 def _order_service_manifests(
@@ -741,34 +1631,19 @@ class ManagerDialog(QDialog):
             cards.append(card)
             self.content_layout.addWidget(card)
         self.content_layout.addStretch(1)
-        self._apply_default_startup(cards, manager_config)
         self.footer_label.setText(
             self.plugin.tr("{0} of {1} MCP servers").format(len(manifests), len(manifests))
         )
 
-    def _apply_default_startup(self, cards: list["ServiceCard"], manager_config: dict[str, Any]):
-        if self.plugin._default_startup_applied:
-            return
-        self.plugin._default_startup_applied = True
-        startup = manager_config.get("default_startup", {})
-        if not startup.get("enabled", True):
-            return
-        startup_service_ids = set(_startup_service_ids(manager_config))
-        if not startup_service_ids:
-            return
-        for card in cards:
-            if card.manifest.service_id not in startup_service_ids:
+    def update_service_status(self, service_id: str, status):
+        for index in range(self.content_layout.count()):
+            card = self.content_layout.itemAt(index).widget()
+            manifest = getattr(card, "manifest", None)
+            if not manifest or manifest.service_id != service_id:
                 continue
-            if card.status.running:
-                try:
-                    card.status = self.plugin.service_status(card.manifest, deep=True)
-                    if hasattr(card, "update_status_widgets"):
-                        card.update_status_widgets()
-                except Exception as err:
-                    self.plugin.logger.warning("Could not refresh %s status: %s", card.manifest.service_id, err)
-            if card.status.running:
-                continue
-            card.toggle_service(True)
+            card.status = status
+            card.update_status_widgets()
+            return
 
     def prepare_close(self, wait: bool = False) -> bool:
         for index in range(self.content_layout.count()):
@@ -776,6 +1651,13 @@ class ManagerDialog(QDialog):
             if hasattr(widget, "cleanup_toggle_thread") and not widget.cleanup_toggle_thread(wait=wait):
                 return False
         return True
+
+    def cancel_service_actions(self):
+        for index in range(self.content_layout.count()):
+            widget = self.content_layout.itemAt(index).widget()
+            worker = getattr(widget, "toggle_worker", None)
+            if worker and hasattr(worker, "cancel"):
+                worker.cancel()
 
     def closeEvent(self, event):
         if not self.prepare_close():
@@ -821,28 +1703,30 @@ class ServiceToggleWorker(QObject):
 
     def __init__(
         self,
-        controller: ProcessController,
-        logger,
+        manager: QCopilotsMCPServersManagerPlugin,
         manifest: ServiceManifest,
         enabled: bool,
         was_running: bool,
-        bridge_url: str | None,
-        extra_env: dict[str, str] | None,
+        auth_token: str | None,
         unhealthy_message: str,
         unknown_state_message: str,
         shutdown_requested=None,
     ):
         super().__init__()
-        self.controller = controller
-        self.logger = logger
+        self.manager = manager
+        self.controller = manager.controller
+        self.logger = manager.logger
         self.manifest = manifest
         self.enabled = enabled
         self.was_running = was_running
-        self.bridge_url = bridge_url
-        self.extra_env = extra_env or {}
+        self.auth_token = auth_token
         self.unhealthy_message = unhealthy_message
         self.unknown_state_message = unknown_state_message
         self.shutdown_requested = shutdown_requested or (lambda: False)
+        self._cancelled = threading.Event()
+
+    def cancel(self):
+        self._cancelled.set()
 
     def run(self):
         try:
@@ -851,7 +1735,12 @@ class ServiceToggleWorker(QObject):
             self.failed.emit(str(err), self._safe_service_status())
             return
 
-        if self.enabled and status and status.running and self.shutdown_requested():
+        if (
+            self.enabled
+            and status
+            and status.running
+            and (self.shutdown_requested() or self._cancelled.is_set())
+        ):
             self.finished.emit(self._safe_stop_service(status))
             return
 
@@ -868,25 +1757,32 @@ class ServiceToggleWorker(QObject):
 
     def _toggle_service(self):
         if self.enabled and not self.was_running:
-            return self.controller.start(
+            if self._cancelled.is_set():
+                return self._safe_service_status()
+            return _manager_start_service(
+                self.manager,
                 self.manifest,
-                bridge_url=self.bridge_url,
-                extra_env=self.extra_env,
+                self.auth_token,
+                self._cancelled,
             )
         if not self.enabled and self.was_running:
-            return self.controller.stop(self.manifest)
-        return self.controller.status(self.manifest)
+            return _manager_stop_service(
+                self.manager,
+                self.manifest,
+                self._cancelled,
+            )
+        return self.manager.service_status(self.manifest)
 
     def _reached_target(self, status) -> bool:
         if not status:
             return False
         if self.enabled:
-            return status.running and status.health == "ok"
+            return _service_start_succeeded(status)
         return not status.running
 
     def _safe_service_status(self):
         try:
-            return self.controller.status(self.manifest)
+            return self.manager.service_status(self.manifest)
         except Exception:
             return None
 
@@ -903,7 +1799,11 @@ class ServiceToggleWorker(QObject):
 
     def _safe_stop_service(self, fallback_status):
         try:
-            return self.controller.stop(self.manifest)
+            return _manager_stop_service(
+                self.manager,
+                self.manifest,
+                self._cancelled,
+            )
         except Exception as err:
             self.logger.warning("Failed to stop unhealthy %s: %s", self.manifest.service_id, err)
             return fallback_status
@@ -920,7 +1820,7 @@ class ServiceCard(QWidget):
         super().__init__(parent)
         self.plugin = plugin
         self.manifest = manifest
-        self.status = plugin.service_status(manifest, deep=False)
+        self.status = _manager_status_snapshot(plugin, manifest)
         self.expanded = expanded
         self.copy_button = None
         self._copy_restore_text = ""
@@ -1045,12 +1945,12 @@ class ServiceCard(QWidget):
         self._start_toggle_worker(enabled, previous_status.running, failure_text)
 
     def _start_toggle_worker(self, enabled: bool, was_running: bool, failure_text: str):
-        extra_env = {}
-        bridge_url = None
+        auth_token = None
         if enabled and not was_running:
             try:
-                extra_env = self.plugin._service_env(self.manifest)
-                bridge_url = extra_env.get(BRIDGE_URL_ENV)
+                auth_token = self.plugin.prepare_service_start(self.manifest)
+                if not auth_token:
+                    raise RuntimeError(self.plugin.tr("Service is already starting"))
             except Exception as err:
                 self._fail_toggle_service(
                     failure_text,
@@ -1062,13 +1962,11 @@ class ServiceCard(QWidget):
         self.toggle_failure_text = failure_text
         thread = QThread(self)
         worker = ServiceToggleWorker(
-            self.plugin.controller,
-            self.plugin.logger,
+            self.plugin,
             self.manifest,
             enabled,
             was_running,
-            bridge_url,
-            extra_env,
+            auth_token,
             self.plugin.tr("Service did not become healthy"),
             self.plugin.tr("Unknown service state"),
             self._plugin_is_shutting_down,
@@ -1089,18 +1987,30 @@ class ServiceCard(QWidget):
 
     def cleanup_toggle_thread(self, wait: bool = False) -> bool:
         thread = self.toggle_thread
+        worker = self.toggle_worker
         if not thread:
             return True
+        if wait and worker and hasattr(worker, "cancel"):
+            worker.cancel()
         if hasattr(thread, "isRunning") and thread.isRunning():
             if not wait:
                 return False
             thread.quit()
             if not thread.wait(TOGGLE_THREAD_WAIT_TIMEOUT_MS):
                 self.plugin.logger.warning(
-                    "Timed out waiting for %s MCP server action to finish",
+                    "QCopilots %s MCP server action cancellation exceeded the normal wait; "
+                    "performing one final bounded wait",
                     self.manifest.service_id,
                 )
-                return False
+                if worker and hasattr(worker, "cancel"):
+                    worker.cancel()
+                thread.quit()
+                if not thread.wait(TOGGLE_THREAD_FINAL_WAIT_SLICE_MS):
+                    self.plugin.logger.warning(
+                        "QCopilots %s MCP server action is still running after cancellation",
+                        self.manifest.service_id,
+                    )
+                    return False
             if hasattr(QApplication, "processEvents"):
                 QApplication.processEvents()
         self.toggle_thread = None
@@ -1115,7 +2025,11 @@ class ServiceCard(QWidget):
 
     def _finish_toggle_service(self, enabled: bool, failure_text: str, status):
         self.status = status
-        if enabled and self._stop_started_service_during_shutdown():
+        if self._plugin_is_shutting_down():
+            if enabled and self._stop_started_service_during_shutdown():
+                return
+            self.switch.setEnabled(True)
+            self.update_status_widgets()
             return
         self.switch.setEnabled(True)
         if not self._status_reached_target(enabled):
@@ -1123,6 +2037,28 @@ class ServiceCard(QWidget):
             self._show_temporary_status(failure_text, self.status.health)
             return
         self.update_status_widgets()
+        remember = getattr(self.plugin, "remember_service_startup", None)
+        if not remember:
+            return
+        try:
+            result = remember(self.manifest.service_id, enabled)
+        except Exception as err:
+            self.plugin.logger.warning(
+                "Could not update the startup preference for %s: %s",
+                self.manifest.service_id,
+                err,
+            )
+            self._show_temporary_status(
+                self.plugin.tr("Preference not saved"),
+                str(err),
+            )
+            return
+        if result is not None and not result.saved:
+            self._show_temporary_status(
+                self.plugin.tr("Preference not saved"),
+                result.error
+                or self.plugin.tr("The service changed state, but its startup preference was not saved."),
+            )
 
     def _fail_toggle_service(self, failure_text: str, detail: str, status):
         self.plugin.logger.warning("Failed to toggle %s: %s", self.manifest.service_id, detail)

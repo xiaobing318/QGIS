@@ -29,12 +29,31 @@ from urllib.request import Request, urlopen
 
 
 class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
-    def _raw_post_response(self, port, path, content_type, content_length):
+    HTTP_AUTH_TOKEN = "qcopilots-unit-test-service-token"
+
+    def _http_headers(self, headers=None):
+        return {
+            "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
+            **(headers or {}),
+        }
+
+    def _raw_post_response(
+        self,
+        port,
+        path,
+        content_type,
+        content_length,
+        extra_headers=None,
+    ):
+        additional_headers = "".join(
+            f"{name}: {value}\r\n" for name, value in (extra_headers or {}).items()
+        )
         request = (
             f"POST {path} HTTP/1.1\r\n"
             f"Host: 127.0.0.1:{port}\r\n"
             f"Content-Type: {content_type}\r\n"
             f"Content-Length: {content_length}\r\n"
+            f"{additional_headers}"
             "Connection: keep-alive\r\n"
             "\r\n"
         ).encode("ascii")
@@ -1348,6 +1367,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 )
             ],
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -1368,7 +1388,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             request = Request(
                 f"http://127.0.0.1:{port}/mcp",
                 data=payload,
-                headers={"Content-Type": "application/json"},
+                headers=self._http_headers({"Content-Type": "application/json"}),
                 method="POST",
             )
             with urlopen(request, timeout=5) as response:
@@ -1414,6 +1434,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             ],
             host="127.0.0.1",
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = controller.create_http_server()
         port = httpd.server_address[1]
@@ -1425,7 +1446,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             request = Request(
                 f"http://127.0.0.1:{port}/mcp",
                 data=payload,
-                headers={"Content-Type": "application/json"},
+                headers=self._http_headers({"Content-Type": "application/json"}),
                 method="POST",
             )
             with urlopen(request, timeout=5) as response:
@@ -1787,6 +1808,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
     def test_run_mcp_server_applies_log_file_argument(self):
         import qcopilots_common.mcp_http as mcp_http
+        from qcopilots_common.constants import MCP_AUTH_TOKEN_ENV
 
         class FakeMcpHttpServer:
             instances = []
@@ -1808,7 +1830,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         old_argv = sys.argv[:]
         original_server = mcp_http.McpHttpServer
         temp_dir = tempfile.TemporaryDirectory()
+        old_auth_token = os.environ.get(MCP_AUTH_TOKEN_ENV)
         try:
+            os.environ[MCP_AUTH_TOKEN_ENV] = "unit-test-service-token"
             log_file = Path(temp_dir.name) / "service.log"
             sys.argv = ["server.py", "--port", "0", "--log-file", str(log_file)]
             mcp_http.McpHttpServer = FakeMcpHttpServer
@@ -1824,6 +1848,10 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
             self.assertEqual(FakeMcpHttpServer.instances[0].kwargs["port"], 0)
             self.assertEqual(
+                FakeMcpHttpServer.instances[0].kwargs["auth_token"],
+                "unit-test-service-token",
+            )
+            self.assertEqual(
                 FakeMcpHttpServer.instances[0].kwargs["logger"].name,
                 logger_name,
             )
@@ -1837,117 +1865,187 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             sys.argv = old_argv
             mcp_http.McpHttpServer = original_server
+            if old_auth_token is None:
+                os.environ.pop(MCP_AUTH_TOKEN_ENV, None)
+            else:
+                os.environ[MCP_AUTH_TOKEN_ENV] = old_auth_token
             for handler in list(logger.handlers):
                 logger.removeHandler(handler)
                 handler.close()
             temp_dir.cleanup()
 
-    def test_http_transport_health_cors_and_requests_without_auth(self):
+    def test_run_mcp_server_requires_auth_token_environment(self):
+        import qcopilots_common.mcp_http as mcp_http
+        from qcopilots_common.constants import MCP_AUTH_TOKEN_ENV
+
+        old_argv = sys.argv[:]
+        old_auth_token = os.environ.get(MCP_AUTH_TOKEN_ENV)
+        try:
+            sys.argv = ["server.py", "--port", "0"]
+            for value in (None, "   "):
+                if value is None:
+                    os.environ.pop(MCP_AUTH_TOKEN_ENV, None)
+                else:
+                    os.environ[MCP_AUTH_TOKEN_ENV] = value
+                with self.subTest(value=value):
+                    with self.assertRaisesRegex(RuntimeError, MCP_AUTH_TOKEN_ENV):
+                        mcp_http.run_mcp_server(
+                            name="qcopilots-auth-required-test",
+                            version="1.0.0",
+                            tools=[],
+                            default_port=48211,
+                            description="Auth required test",
+                            logger=logging.getLogger("qcopilots-auth-required-test"),
+                        )
+        finally:
+            sys.argv = old_argv
+            if old_auth_token is None:
+                os.environ.pop(MCP_AUTH_TOKEN_ENV, None)
+            else:
+                os.environ[MCP_AUTH_TOKEN_ENV] = old_auth_token
+
+    def test_http_transport_refuses_to_start_without_auth_token(self):
         from qcopilots_common.mcp_http import McpHttpServer
 
+        for auth_token in (None, "", "   "):
+            server = McpHttpServer(
+                name="qcopilots-http-test",
+                version="1.0.0",
+                tools=[],
+                port=0,
+                auth_token=auth_token,
+            )
+            with self.subTest(auth_token=auth_token):
+                with self.assertRaisesRegex(ValueError, "auth token"):
+                    server.create_http_server()
+
+    def test_http_transport_requires_bearer_and_strict_host(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        auth_token = "unit-test-service-secret"
+        log_stream = StringIO()
+        logger = logging.getLogger(f"qcopilots-http-auth-test-{os.getpid()}")
+        logger.handlers.clear()
+        logger.propagate = False
+        logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler(log_stream)
+        logger.addHandler(handler)
         server = McpHttpServer(
-            name="qcopilots-http-test",
+            name="qcopilots-http-auth-test",
             version="1.0.0",
             tools=[],
             port=0,
+            auth_token=auth_token,
+            logger=logger,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
+        payload = json.dumps(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        ).encode("utf-8")
         try:
-            with urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as response:
+            for headers in ({}, {"Authorization": "Bearer wrong"}):
+                request = Request(
+                    f"http://127.0.0.1:{port}/health",
+                    headers=headers,
+                )
+                with self.subTest(endpoint="health", headers=headers):
+                    with self.assertRaises(HTTPError) as error_context:
+                        urlopen(request, timeout=5)
+                    self.assertEqual(error_context.exception.code, 401)
+                    self.assertNotIn(
+                        auth_token,
+                        error_context.exception.read().decode("utf-8"),
+                    )
+
+            with urlopen(
+                Request(
+                    f"http://127.0.0.1:{port}/health",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                ),
+                timeout=5,
+            ) as response:
                 self.assertEqual(response.status, 200)
-                self.assertEqual(
-                    json.loads(response.read().decode("utf-8"))["server"],
-                    "qcopilots-http-test",
-                )
 
-            options_request = Request(
-                f"http://127.0.0.1:{port}/mcp",
-                headers={
-                    "Origin": "http://127.0.0.1:8282",
-                    "Access-Control-Request-Method": "POST",
-                    "Access-Control-Request-Headers": "mcp-protocol-version",
-                },
-                method="OPTIONS",
-            )
-            with urlopen(options_request, timeout=5) as response:
-                self.assertEqual(response.status, 204)
-                self.assertEqual(
-                    response.headers["Access-Control-Allow-Origin"],
-                    "http://127.0.0.1:8282",
+            for authorization in (None, "Bearer wrong"):
+                headers = {"Content-Type": "application/json"}
+                if authorization is not None:
+                    headers["Authorization"] = authorization
+                request = Request(
+                    f"http://127.0.0.1:{port}/mcp",
+                    data=payload,
+                    headers=headers,
+                    method="POST",
                 )
-                self.assertIn(
-                    "mcp-protocol-version",
-                    response.headers["Access-Control-Allow-Headers"].lower(),
-                )
-                self.assertIn(
-                    "mcp-session-id",
-                    response.headers["Access-Control-Expose-Headers"].lower(),
-                )
-                self.assertIn("POST", response.headers["Access-Control-Allow-Methods"])
-                self.assertIn(
-                    "DELETE",
-                    response.headers["Access-Control-Allow-Methods"],
-                )
-                self.assertEqual(
-                    response.headers["Access-Control-Allow-Private-Network"],
-                    "true",
-                )
+                with self.subTest(endpoint="mcp", authorization=authorization):
+                    with self.assertRaises(HTTPError) as error_context:
+                        urlopen(request, timeout=5)
+                    self.assertEqual(error_context.exception.code, 401)
 
-            delete_request = Request(
-                f"http://127.0.0.1:{port}/mcp",
-                headers={"Origin": "http://127.0.0.1:8282"},
-                method="DELETE",
-            )
-            with urlopen(delete_request, timeout=5) as response:
-                self.assertEqual(response.status, 204)
-                self.assertEqual(
-                    response.headers["Access-Control-Allow-Origin"],
-                    "http://127.0.0.1:8282",
-                )
-
-            payload = json.dumps(
-                {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-            ).encode("utf-8")
-            request = Request(
-                f"http://127.0.0.1:{port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "http://127.0.0.1:8282",
-                },
-                method="POST",
-            )
-            with urlopen(request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(
-                    response.headers["Access-Control-Allow-Origin"],
-                    "http://127.0.0.1:8282",
-                )
+            authorized_headers = {
+                "Authorization": f"Bearer {auth_token}",
+                "Content-Type": "application/json",
+            }
+            with urlopen(
+                Request(
+                    f"http://127.0.0.1:{port}/mcp",
+                    data=payload,
+                    headers=authorized_headers,
+                    method="POST",
+                ),
+                timeout=5,
+            ) as response:
                 self.assertEqual(
                     json.loads(response.read().decode("utf-8"))["result"],
                     {"tools": []},
                 )
 
-            extra_header_request = Request(
-                f"http://127.0.0.1:{port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer ignored",
-                },
-                method="POST",
-            )
-            with urlopen(extra_header_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(
-                    json.loads(response.read().decode("utf-8"))["result"],
-                    {"tools": []},
+            with self.assertRaises(HTTPError) as origin_context:
+                urlopen(
+                    Request(
+                        f"http://127.0.0.1:{port}/mcp",
+                        data=payload,
+                        headers={
+                            **authorized_headers,
+                            "Origin": "http://127.0.0.1:8282",
+                        },
+                        method="POST",
+                    ),
+                    timeout=5,
                 )
+            self.assertEqual(origin_context.exception.code, 403)
+
+            with self.assertRaises(HTTPError) as options_context:
+                urlopen(
+                    Request(
+                        f"http://127.0.0.1:{port}/mcp",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                        method="OPTIONS",
+                    ),
+                    timeout=5,
+                )
+            self.assertEqual(options_context.exception.code, 405)
+
+            raw_request = (
+                "GET /health HTTP/1.1\r\n"
+                f"Host: localhost:{port}\r\n"
+                f"Authorization: Bearer {auth_token}\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            ).encode("ascii")
+            with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+                connection.sendall(raw_request)
+                raw_response = connection.recv(4096).decode("iso-8859-1")
+            self.assertIn(" 403 ", raw_response.splitlines()[0])
+
+            handler.flush()
+            self.assertNotIn(auth_token, log_stream.getvalue())
         finally:
             self._stop_http_server(httpd, thread)
+            logger.removeHandler(handler)
+            handler.close()
 
     def test_http_health_uses_cached_tool_names(self):
         from qcopilots_common.mcp_http import McpHttpServer, McpTool
@@ -1971,6 +2069,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             version="1.0.0",
             tools=tools_source,
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         phase["after_init"] = True
         httpd = server.create_http_server()
@@ -1978,7 +2077,13 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
         try:
-            with urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as response:
+            with urlopen(
+                Request(
+                    f"http://127.0.0.1:{port}/health",
+                    headers=self._http_headers(),
+                ),
+                timeout=5,
+            ) as response:
                 self.assertEqual(response.status, 200)
                 body = json.loads(response.read().decode("utf-8"))
                 self.assertEqual(body["tools"], ["echo"])
@@ -1994,6 +2099,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             version="1.0.0",
             tools=[],
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -2004,6 +2110,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             headers = {
                 "Accept": "application/json, text/event-stream",
                 "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
             }
             if session_id:
                 headers.update(
@@ -2064,6 +2171,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     "Accept": "text/event-stream",
                     "MCP-Protocol-Version": "2025-06-18",
                     "MCP-Session-Id": session_id,
+                    "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
                 },
                 method="GET",
             )
@@ -2074,7 +2182,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             self.assertEqual(stream_response.headers["content-length"], "0")
             self.assertIn("POST", stream_response.headers["Allow"])
             self.assertIn("DELETE", stream_response.headers["Allow"])
-            self.assertIn("OPTIONS", stream_response.headers["Allow"])
+            self.assertNotIn("OPTIONS", stream_response.headers["Allow"])
             self.assertEqual(stream_response.read(), b"")
 
             with post(
@@ -2119,6 +2227,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 )
             ],
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -2136,7 +2245,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             initialize_request = Request(
                 f"http://127.0.0.1:{port}/mcp",
                 data=initialize_payload,
-                headers={"Content-Type": "application/json"},
+                headers=self._http_headers({"Content-Type": "application/json"}),
                 method="POST",
             )
             with urlopen(initialize_request, timeout=5) as response:
@@ -2158,6 +2267,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 headers={
                     "Content-Type": "application/json",
                     "mcp-session-id": session_id,
+                    "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
                 },
                 method="POST",
             )
@@ -2171,7 +2281,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
             delete_request = Request(
                 f"http://127.0.0.1:{port}/mcp",
-                headers={"mcp-session-id": session_id},
+                headers=self._http_headers({"mcp-session-id": session_id}),
                 method="DELETE",
             )
             with urlopen(delete_request, timeout=5) as response:
@@ -2187,7 +2297,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             self._stop_http_server(httpd, thread)
 
-    def test_empty_cors_environment_uses_loopback_defaults(self):
+    def test_empty_cors_environment_still_rejects_origin(self):
         from qcopilots_common.constants import CORS_ORIGINS_ENV
         from qcopilots_common.mcp_http import McpHttpServer
 
@@ -2199,6 +2309,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 version="1.0.0",
                 tools=[],
                 port=0,
+                auth_token=self.HTTP_AUTH_TOKEN,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -2213,12 +2324,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     },
                     method="OPTIONS",
                 )
-                with urlopen(request, timeout=5) as response:
-                    self.assertEqual(response.status, 204)
-                    self.assertEqual(
-                        response.headers["Access-Control-Allow-Origin"],
-                        "http://127.0.0.1:8282",
-                    )
+                with self.assertRaises(HTTPError) as error_context:
+                    urlopen(request, timeout=5)
+                self.assertEqual(error_context.exception.code, 403)
             finally:
                 self._stop_http_server(httpd, thread)
         finally:
@@ -2227,54 +2335,35 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             else:
                 os.environ[CORS_ORIGINS_ENV] = old_origins
 
-    def test_service_bind_host_accepts_loopback_and_lan_hosts(self):
+    def test_service_bind_host_only_accepts_literal_loopback(self):
         from qcopilots_common.constants import DEFAULT_HOST
         from qcopilots_common.mcp_http import McpHttpServer, parse_server_args
 
-        wildcard_server = McpHttpServer(
-            name="qcopilots-http-test",
+        loopback_server = McpHttpServer(
+            name="qcopilots-http-loopback-test",
             version="1.0.0",
             tools=[],
-            host="0.0.0.0",
+            host=DEFAULT_HOST,
         )
-        self.assertEqual(wildcard_server.host, "0.0.0.0")
-        private_server = McpHttpServer(
-            name="qcopilots-http-private-test",
-            version="1.0.0",
-            tools=[],
-            host="192.168.1.10",
-        )
-        self.assertEqual(private_server.host, "192.168.1.10")
-        with self.assertRaises(ValueError):
-            McpHttpServer(
-                name="qcopilots-http-test",
-                version="1.0.0",
-                tools=[],
-                host="::1",
-            )
-        with self.assertRaises(ValueError):
-            McpHttpServer(
-                name="qcopilots-http-public-test",
-                version="1.0.0",
-                tools=[],
-                host="8.8.8.8",
-            )
+        self.assertEqual(loopback_server.host, DEFAULT_HOST)
+        for host in ("localhost", "0.0.0.0", "192.168.1.10", "::1", "8.8.8.8"):
+            with self.subTest(host=host):
+                with self.assertRaises(ValueError):
+                    McpHttpServer(
+                        name="qcopilots-http-rejected-host-test",
+                        version="1.0.0",
+                        tools=[],
+                        host=host,
+                    )
 
         old_argv = sys.argv[:]
         try:
-            sys.argv = ["server.py", "--host", "192.168.1.10"]
-            self.assertEqual(
-                parse_server_args(48211, "QCopilots test server").host,
-                "192.168.1.10",
-            )
-            sys.argv = ["server.py", "--host", "::1"]
-            with redirect_stderr(StringIO()):
-                with self.assertRaises(SystemExit):
-                    parse_server_args(48211, "QCopilots test server")
-            sys.argv = ["server.py", "--host", "8.8.8.8"]
-            with redirect_stderr(StringIO()):
-                with self.assertRaises(SystemExit):
-                    parse_server_args(48211, "QCopilots test server")
+            for host in ("localhost", "0.0.0.0", "192.168.1.10", "::1", "8.8.8.8"):
+                sys.argv = ["server.py", "--host", host]
+                with self.subTest(argument_host=host):
+                    with redirect_stderr(StringIO()):
+                        with self.assertRaises(SystemExit):
+                            parse_server_args(48211, "QCopilots test server")
 
             sys.argv = ["server.py", "--host", DEFAULT_HOST]
             self.assertEqual(
@@ -2293,6 +2382,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             version="1.0.0",
             tools=[],
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -2314,13 +2404,14 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 "/mcp",
                 "application/json",
                 oversized_length,
+                {"Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}"},
             )
             self.assertIn(" 413 ", valid_path_response.splitlines()[0])
             self.assertIn("Connection: close", valid_path_response)
         finally:
             self._stop_http_server(httpd, thread)
 
-    def test_http_transport_accepts_requests_without_auth_environment(self):
+    def test_http_transport_rejects_requests_without_bearer(self):
         from qcopilots_common.mcp_http import McpHttpServer
 
         server = McpHttpServer(
@@ -2328,6 +2419,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             version="1.0.0",
             tools=[],
             port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -2343,132 +2435,26 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urlopen(request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(
-                    json.loads(response.read().decode("utf-8"))["result"],
-                    {"tools": []},
-                )
+            with self.assertRaises(HTTPError) as error_context:
+                urlopen(request, timeout=5)
+            self.assertEqual(error_context.exception.code, 401)
         finally:
             self._stop_http_server(httpd, thread)
 
-    def test_http_transport_accepts_loopback_and_explicit_wildcard_cors_without_auth(
-        self,
-    ):
+    def test_http_transport_rejects_wildcard_cors_configuration(self):
         from qcopilots_common.mcp_http import McpHttpServer
 
-        payload = json.dumps(
-            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-        ).encode("utf-8")
-        local_server = McpHttpServer(
-            name="qcopilots-http-local-test",
-            version="1.0.0",
-            tools=[],
-            host="127.0.0.1",
-            port=0,
-        )
-        local_httpd = local_server.create_http_server()
-        local_port = local_httpd.server_address[1]
-        local_thread = threading.Thread(target=local_httpd.serve_forever, daemon=True)
-        local_thread.start()
-        try:
-            local_request = Request(
-                f"http://127.0.0.1:{local_port}/mcp",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
+        with self.assertRaisesRegex(ValueError, "wildcard CORS"):
+            McpHttpServer(
+                name="qcopilots-http-wildcard-cors-test",
+                version="1.0.0",
+                tools=[],
+                host="127.0.0.1",
+                port=0,
+                cors_origins=["*"],
             )
-            with urlopen(local_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
 
-            local_ui_request = Request(
-                f"http://127.0.0.1:{local_port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "http://127.0.0.1:8282",
-                },
-                method="POST",
-            )
-            with urlopen(local_ui_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-
-            cross_site_request = Request(
-                f"http://127.0.0.1:{local_port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "text/plain",
-                    "Origin": "https://example.invalid",
-                },
-                method="POST",
-            )
-            with self.assertRaises(HTTPError) as error_context:
-                urlopen(cross_site_request, timeout=5)
-            self.assertEqual(error_context.exception.code, 415)
-
-            cross_site_json_request = Request(
-                f"http://127.0.0.1:{local_port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "https://example.invalid",
-                },
-                method="POST",
-            )
-            with urlopen(cross_site_json_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertNotEqual(
-                    response.headers["Access-Control-Allow-Origin"],
-                    "https://example.invalid",
-                )
-                self.assertNotEqual(response.headers["Access-Control-Allow-Origin"], "*")
-        finally:
-            self._stop_http_server(local_httpd, local_thread)
-
-        wildcard_server = McpHttpServer(
-            name="qcopilots-http-wildcard-cors-test",
-            version="1.0.0",
-            tools=[],
-            host="0.0.0.0",
-            port=0,
-            cors_origins=["*"],
-        )
-        wildcard_httpd = wildcard_server.create_http_server()
-        wildcard_port = wildcard_httpd.server_address[1]
-        wildcard_thread = threading.Thread(
-            target=wildcard_httpd.serve_forever,
-            daemon=True,
-        )
-        wildcard_thread.start()
-        try:
-            wildcard_request = Request(
-                f"http://127.0.0.1:{wildcard_port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "https://example.invalid",
-                },
-                method="POST",
-            )
-            with urlopen(wildcard_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
-
-            header_request = Request(
-                f"http://127.0.0.1:{wildcard_port}/mcp",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer ignored",
-                },
-                method="POST",
-            )
-            with urlopen(header_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-        finally:
-            self._stop_http_server(wildcard_httpd, wildcard_thread)
-
-    def test_http_transport_runs_qcopilots_tools_without_auth_header(self):
+    def test_http_transport_runs_qcopilots_tools_with_bearer(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools
         import qcopilots_common.processing_tools as processing_tools
         from qcopilots_common.mcp_http import McpHttpServer, McpTool
@@ -2519,6 +2505,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 + processing_tools.build_processing_tools("raster"),
                 host="127.0.0.1",
                 port=0,
+                auth_token=self.HTTP_AUTH_TOKEN,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -2537,7 +2524,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     request = Request(
                         f"http://127.0.0.1:{port}/mcp",
                         data=payload,
-                        headers={"Content-Type": "application/json"},
+                        headers=self._http_headers(
+                            {"Content-Type": "application/json"}
+                        ),
                         method="POST",
                     )
                     with urlopen(request, timeout=5) as response:
@@ -2664,7 +2653,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 safe_request = Request(
                     f"http://127.0.0.1:{port}/mcp",
                     data=safe_payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=self._http_headers(
+                        {"Content-Type": "application/json"}
+                    ),
                     method="POST",
                 )
                 with urlopen(safe_request, timeout=5) as response:
@@ -2682,7 +2673,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 list_layers_request = Request(
                     f"http://127.0.0.1:{port}/mcp",
                     data=list_layers_payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=self._http_headers(
+                        {"Content-Type": "application/json"}
+                    ),
                     method="POST",
                 )
                 with urlopen(list_layers_request, timeout=5) as response:
@@ -2706,7 +2699,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 write_request = Request(
                     f"http://127.0.0.1:{port}/mcp",
                     data=write_payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=self._http_headers(
+                        {"Content-Type": "application/json"}
+                    ),
                     method="POST",
                 )
                 with urlopen(write_request, timeout=5) as response:
@@ -2791,7 +2786,9 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     request = Request(
                         f"http://127.0.0.1:{port}/mcp",
                         data=payload,
-                        headers={"Content-Type": "application/json"},
+                        headers=self._http_headers(
+                            {"Content-Type": "application/json"}
+                        ),
                         method="POST",
                     )
                     with urlopen(request, timeout=5) as response:
@@ -2814,10 +2811,99 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             processing_tools.BridgeClient = original_bridge_client
             interactive_layer_tools.BridgeClient = original_interactive_layer_bridge_client
 
-    def test_qgis_bridge_accepts_requests_without_auth_headers(self):
+    def test_qgis_bridge_dispatcher_close_cancels_queued_calls(self):
+        from qcopilots_common.bridge import _QtMainThreadDispatcher
+
+        emitted = threading.Event()
+        queued_payloads = []
+        invoked = []
+        errors = []
+
+        class FakeSignal:
+            def emit(self, payload):
+                queued_payloads.append(payload)
+                emitted.set()
+
+        class FakeThread:
+            @staticmethod
+            def currentThread():
+                return object()
+
+        dispatcher = object.__new__(_QtMainThreadDispatcher)
+        dispatcher._app = types.SimpleNamespace(thread=lambda: "main-thread")
+        dispatcher._qthread = FakeThread
+        dispatcher._object = types.SimpleNamespace(request=FakeSignal())
+        dispatcher._closed = threading.Event()
+        dispatcher._pending_lock = threading.Lock()
+        dispatcher._pending = {}
+
+        def wait_for_dispatch():
+            try:
+                dispatcher.call(lambda: invoked.append(True), timeout_seconds=5)
+            except Exception as err:
+                errors.append(err)
+
+        thread = threading.Thread(target=wait_for_dispatch)
+        thread.start()
+        self.assertTrue(emitted.wait(2), "Dispatcher call was not queued")
+        dispatcher.close()
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive(), "Dispatcher close did not unblock the call")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("stopping", str(errors[0]))
+
+        dispatcher._dispatch(queued_payloads[0])
+        self.assertEqual(invoked, [])
+        with self.assertRaisesRegex(RuntimeError, "stopping"):
+            dispatcher.call(lambda: None)
+
+    def test_bridge_client_reads_bearer_token_from_environment(self):
+        import qcopilots_common.bridge as bridge_module
+        from qcopilots_common.bridge import BridgeClient
+        from qcopilots_common.constants import QGIS_BRIDGE_AUTH_TOKEN_ENV
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                del exc_type, exc_value, traceback
+
+            def read(self):
+                return b'{"ok": true, "result": {"value": 1}}'
+
+        captured_requests = []
+        original_urlopen = bridge_module.urlopen
+        old_auth_token = os.environ.get(QGIS_BRIDGE_AUTH_TOKEN_ENV)
+        try:
+            os.environ[QGIS_BRIDGE_AUTH_TOKEN_ENV] = "unit-test-bridge-secret"
+
+            def fake_urlopen(request, timeout):
+                captured_requests.append((request, timeout))
+                return FakeResponse()
+
+            bridge_module.urlopen = fake_urlopen
+            result = BridgeClient("http://127.0.0.1:48200").call("echo", {})
+
+            self.assertEqual(result, {"value": 1})
+            request, timeout = captured_requests[0]
+            self.assertEqual(timeout, 60)
+            self.assertEqual(
+                request.get_header("Authorization"),
+                "Bearer unit-test-bridge-secret",
+            )
+        finally:
+            bridge_module.urlopen = original_urlopen
+            if old_auth_token is None:
+                os.environ.pop(QGIS_BRIDGE_AUTH_TOKEN_ENV, None)
+            else:
+                os.environ[QGIS_BRIDGE_AUTH_TOKEN_ENV] = old_auth_token
+
+    def test_qgis_bridge_requires_bearer_and_rejects_origin(self):
         from qcopilots_common.bridge import QgisBridgeController
 
-        controller = QgisBridgeController(None, port=0)
+        auth_token = "unit-test-bridge-secret"
+        controller = QgisBridgeController(None, port=0, auth_token=auth_token)
         controller.dispatch = lambda tool, arguments: {
             "tool": tool,
             "arguments": arguments,
@@ -2830,76 +2916,99 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             payload = json.dumps(
                 {"tool": "echo", "arguments": {"value": 1}}
             ).encode("utf-8")
-            request = Request(
-                f"{controller.url}/call",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urlopen(request, timeout=5) as response:
+            for path, method, data in (
+                ("/health", "GET", None),
+                ("/call", "POST", payload),
+            ):
+                for authorization in (None, "Bearer wrong"):
+                    headers = {"Content-Type": "application/json"}
+                    if authorization is not None:
+                        headers["Authorization"] = authorization
+                    request = Request(
+                        f"{controller.url}{path}",
+                        data=data,
+                        headers=headers,
+                        method=method,
+                    )
+                    with self.subTest(path=path, authorization=authorization):
+                        with self.assertRaises(HTTPError) as error_context:
+                            urlopen(request, timeout=5)
+                        self.assertEqual(error_context.exception.code, 401)
+
+            with urlopen(
+                Request(
+                    f"{controller.url}/health",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                ),
+                timeout=5,
+            ) as response:
                 self.assertEqual(response.status, 200)
+
+            authorized_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {auth_token}",
+            }
+            with urlopen(
+                Request(
+                    f"{controller.url}/call",
+                    data=payload,
+                    headers=authorized_headers,
+                    method="POST",
+                ),
+                timeout=5,
+            ) as response:
                 self.assertEqual(
                     json.loads(response.read().decode("utf-8"))["result"],
                     {"tool": "echo", "arguments": {"value": 1}},
                 )
 
-            header_request = Request(
-                f"{controller.url}/call",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer ignored",
-                },
-                method="POST",
-            )
-            with urlopen(header_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(
-                    json.loads(response.read().decode("utf-8"))["result"],
-                    {"tool": "echo", "arguments": {"value": 1}},
+            for origin in ("http://127.0.0.1:8282", "https://example.invalid"):
+                request = Request(
+                    f"{controller.url}/call",
+                    data=payload,
+                    headers={**authorized_headers, "Origin": origin},
+                    method="POST",
                 )
+                with self.subTest(origin=origin):
+                    with self.assertRaises(HTTPError) as error_context:
+                        urlopen(request, timeout=5)
+                    self.assertEqual(error_context.exception.code, 403)
 
-            local_ui_request = Request(
-                f"{controller.url}/call",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "http://127.0.0.1:8282",
-                },
-                method="POST",
-            )
-            with urlopen(local_ui_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-
-            cross_site_request = Request(
-                f"{controller.url}/call",
-                data=payload,
-                headers={
-                    "Content-Type": "text/plain",
-                    "Origin": "https://example.invalid",
-                },
-                method="POST",
-            )
-            with self.assertRaises(HTTPError) as error_context:
-                urlopen(cross_site_request, timeout=5)
-            self.assertEqual(error_context.exception.code, 415)
-
-            cross_site_json_request = Request(
-                f"{controller.url}/call",
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Origin": "https://example.invalid",
-                },
-                method="POST",
-            )
-            with urlopen(cross_site_json_request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                self.assertNotEqual(
-                    response.headers["Access-Control-Allow-Origin"],
-                    "https://example.invalid",
+            with self.assertRaises(HTTPError) as options_context:
+                urlopen(
+                    Request(
+                        f"{controller.url}/call",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                        method="OPTIONS",
+                    ),
+                    timeout=5,
                 )
-                self.assertNotEqual(response.headers["Access-Control-Allow-Origin"], "*")
+            self.assertEqual(options_context.exception.code, 405)
+
+            raw_request = (
+                "GET /health HTTP/1.1\r\n"
+                f"Host: localhost:{controller.port}\r\n"
+                f"Authorization: Bearer {auth_token}\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            ).encode("ascii")
+            with socket.create_connection(
+                ("127.0.0.1", controller.port), timeout=2
+            ) as connection:
+                connection.sendall(raw_request)
+                raw_response = connection.recv(4096).decode("iso-8859-1")
+            self.assertIn(" 403 ", raw_response.splitlines()[0])
+
+            controller.clear_auth_token()
+            with self.assertRaises(HTTPError) as revoked_context:
+                urlopen(
+                    Request(
+                        f"{controller.url}/health",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                    ),
+                    timeout=5,
+                )
+            self.assertEqual(revoked_context.exception.code, 401)
         finally:
             controller.stop()
             if controller_thread is not None:
@@ -2908,10 +3017,92 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     "QGIS bridge HTTP thread did not terminate",
                 )
 
+    def test_qgis_bridge_requires_token_and_literal_loopback_to_start(self):
+        from qcopilots_common.bridge import QgisBridgeController
+
+        with self.assertRaisesRegex(ValueError, "auth token"):
+            QgisBridgeController(None, port=0).start()
+        for host in ("localhost", "0.0.0.0", "192.168.1.20", "::1"):
+            with self.subTest(host=host):
+                with self.assertRaises(ValueError):
+                    QgisBridgeController(
+                        None,
+                        host=host,
+                        port=0,
+                        auth_token="bridge-token",
+                    )
+
+    def test_qgis_bridge_stop_retains_live_thread_for_retry(self):
+        from qcopilots_common.bridge import QgisBridgeController
+
+        class FakeDispatcher:
+            def __init__(self):
+                self.closed = False
+
+            def close(self):
+                self.closed = True
+
+        class FakeServer:
+            def __init__(self):
+                self.shutdown_count = 0
+                self.close_count = 0
+
+            def shutdown(self):
+                self.shutdown_count += 1
+
+            def server_close(self):
+                self.close_count += 1
+
+        class FakeThread:
+            def __init__(self):
+                self.alive = True
+                self.join_timeouts = []
+
+            def is_alive(self):
+                return self.alive
+
+            def join(self, timeout=None):
+                self.join_timeouts.append(timeout)
+
+        controller = QgisBridgeController(
+            None,
+            port=0,
+            auth_token="bridge-token",
+        )
+        dispatcher = FakeDispatcher()
+        server = FakeServer()
+        thread = FakeThread()
+        controller._dispatcher = dispatcher
+        controller._httpd = server
+        controller._thread = thread
+
+        with self.assertRaisesRegex(RuntimeError, "did not stop"):
+            controller.stop(timeout_seconds=0.01)
+
+        self.assertTrue(dispatcher.closed)
+        self.assertIs(controller._httpd, server)
+        self.assertIs(controller._thread, thread)
+        self.assertTrue(controller._shutdown_requested)
+        self.assertEqual(thread.join_timeouts, [0.01])
+
+        thread.alive = False
+        controller.stop(timeout_seconds=0.01)
+
+        self.assertIsNone(controller._httpd)
+        self.assertIsNone(controller._thread)
+        self.assertFalse(controller._shutdown_requested)
+        self.assertEqual(server.shutdown_count, 1)
+        self.assertEqual(server.close_count, 2)
+
     def test_qgis_bridge_falls_back_when_preferred_port_is_busy(self):
         from qcopilots_common.bridge import QgisBridgeController
 
-        first_controller = QgisBridgeController(None, port=0)
+        auth_token = "unit-test-bridge-token"
+        first_controller = QgisBridgeController(
+            None,
+            port=0,
+            auth_token=auth_token,
+        )
         second_controller = None
         first_thread = None
         second_thread = None
@@ -2919,7 +3110,11 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             first_controller.start()
             first_thread = first_controller._thread
             self.assertIsNotNone(first_thread)
-            second_controller = QgisBridgeController(None, port=first_controller.port)
+            second_controller = QgisBridgeController(
+                None,
+                port=first_controller.port,
+                auth_token=auth_token,
+            )
             second_controller.dispatch = lambda tool, arguments: {
                 "tool": tool,
                 "arguments": arguments,
@@ -2931,9 +3126,16 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             self.assertNotEqual(second_controller.port, first_controller.port)
             self.assertNotEqual(second_controller.url, first_controller.url)
 
-            with urlopen(f"{first_controller.url}/health", timeout=5) as response:
+            health_headers = {"Authorization": f"Bearer {auth_token}"}
+            with urlopen(
+                Request(f"{first_controller.url}/health", headers=health_headers),
+                timeout=5,
+            ) as response:
                 self.assertEqual(response.status, 200)
-            with urlopen(f"{second_controller.url}/health", timeout=5) as response:
+            with urlopen(
+                Request(f"{second_controller.url}/health", headers=health_headers),
+                timeout=5,
+            ) as response:
                 self.assertEqual(response.status, 200)
 
             payload = json.dumps(
@@ -2942,7 +3144,10 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             request = Request(
                 f"{second_controller.url}/call",
                 data=payload,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {auth_token}",
+                },
                 method="POST",
             )
             with urlopen(request, timeout=5) as response:
@@ -2970,7 +3175,12 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         from qcopilots_common.bridge import QgisBridgeController
         from qcopilots_common.constants import MAX_HTTP_REQUEST_BODY_BYTES
 
-        controller = QgisBridgeController(None, port=0)
+        auth_token = "unit-test-bridge-token"
+        controller = QgisBridgeController(
+            None,
+            port=0,
+            auth_token=auth_token,
+        )
         controller_thread = None
         try:
             controller.start()
@@ -2991,6 +3201,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 "/call",
                 "application/json",
                 oversized_length,
+                {"Authorization": f"Bearer {auth_token}"},
             )
             self.assertIn(" 413 ", valid_path_response.splitlines()[0])
             self.assertIn("Connection: close", valid_path_response)

@@ -12,7 +12,6 @@ import base64
 import hashlib
 import hmac
 import inspect
-import ipaddress
 import json
 import logging
 import math
@@ -39,6 +38,7 @@ from qcopilots_common.constants import (
     HTTP_ERROR_BODY_DRAIN_TIMEOUT_SECONDS,
     MAX_HTTP_ERROR_BODY_DRAIN_BYTES,
     MAX_HTTP_REQUEST_BODY_BYTES,
+    MCP_AUTH_TOKEN_ENV,
     MCP_PROTOCOL_VERSION,
     SERVICE_DESCRIPTION_ENV,
     SERVICE_ICON_ENV,
@@ -447,6 +447,7 @@ class McpHttpServer:
         session_ttl_seconds: float = DEFAULT_SESSION_TTL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
         list_page_size: int = DEFAULT_MCP_LIST_PAGE_SIZE,
+        auth_token: str | None = None,
     ):
         self.name = name
         self.version = version
@@ -456,7 +457,14 @@ class McpHttpServer:
         self.host = _service_bind_host(host)
         self.port = port
         self.path = path or DEFAULT_MCP_PATH
-        self.cors_origins = cors_origins or _cors_origins_from_env()
+        self.cors_origins = (
+            list(cors_origins)
+            if cors_origins is not None
+            else _cors_origins_from_env()
+        )
+        if "*" in self.cors_origins:
+            raise ValueError("QCopilots MCP services do not allow wildcard CORS.")
+        self._auth_token = auth_token or ""
         self.logger = logger or logging.getLogger(name)
         self.rpc_server = McpJsonRpcServer(
             name,
@@ -479,6 +487,8 @@ class McpHttpServer:
         return {tool.name: tool for tool in _resolve_tools(self._tools_source)}
 
     def create_http_server(self) -> ThreadingHTTPServer:
+        if not self._auth_token or not self._auth_token.strip():
+            raise ValueError("QCopilots MCP services require a non-empty auth token")
         controller = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -488,9 +498,16 @@ class McpHttpServer:
                 controller.logger.info(fmt, *args)
 
             def do_OPTIONS(self) -> None:
-                self._send_empty(HTTPStatus.NO_CONTENT)
+                if not self._request_allowed():
+                    return
+                self._send_empty(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    {"Allow": "GET, POST, DELETE"},
+                )
 
             def do_DELETE(self) -> None:
+                if not self._request_allowed():
+                    return
                 if self.path != controller.path:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                     return
@@ -498,6 +515,8 @@ class McpHttpServer:
                 self._send_empty(HTTPStatus.NO_CONTENT)
 
             def do_GET(self) -> None:
+                if not self._request_allowed():
+                    return
                 if self.path.rstrip("/") == "/health":
                     self._send_json(
                         HTTPStatus.OK,
@@ -511,12 +530,14 @@ class McpHttpServer:
                 if self.path == controller.path:
                     self._send_empty(
                         HTTPStatus.METHOD_NOT_ALLOWED,
-                        {"Allow": "POST, DELETE, OPTIONS"},
+                        {"Allow": "POST, DELETE"},
                     )
                     return
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
             def do_POST(self) -> None:
+                if not self._request_allowed():
+                    return
                 if self.path != controller.path:
                     self._discard_request_body()
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
@@ -602,13 +623,59 @@ class McpHttpServer:
                         self._session_headers(session_id),
                     )
 
+            def _request_allowed(self) -> bool:
+                host_headers = self.headers.get_all("Host") or []
+                expected_host = (
+                    f"{controller.host}:{int(self.server.server_address[1])}"
+                )
+                if len(host_headers) != 1 or not hmac.compare_digest(
+                    host_headers[0], expected_host
+                ):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"error": "host_not_allowed"},
+                    )
+                    return False
+
+                if self.headers.get_all("Origin"):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"error": "origin_not_allowed"},
+                    )
+                    return False
+
+                if not self._is_protected_path():
+                    return True
+
+                authorization_headers = self.headers.get_all("Authorization") or []
+                expected_authorization = f"Bearer {controller._auth_token}"
+                if len(authorization_headers) == 1 and hmac.compare_digest(
+                    authorization_headers[0], expected_authorization
+                ):
+                    return True
+
+                self.close_connection = True
+                self._send_json(
+                    HTTPStatus.UNAUTHORIZED,
+                    {"error": "unauthorized"},
+                    {"WWW-Authenticate": "Bearer"},
+                )
+                return False
+
+            def _is_protected_path(self) -> bool:
+                return (
+                    self.path == controller.path
+                    or self.path.rstrip("/") == "/health"
+                )
+
             def _send_empty(
                 self,
                 status: HTTPStatus,
                 extra_headers: Mapping[str, str] | None = None,
             ) -> None:
                 self.send_response(status)
-                self._send_cors_headers()
                 for name, value in (extra_headers or {}).items():
                     self.send_header(name, value)
                 if not (
@@ -632,7 +699,6 @@ class McpHttpServer:
                     allow_nan=False,
                 ).encode("utf-8")
                 self.send_response(status)
-                self._send_cors_headers()
                 for name, value in (extra_headers or {}).items():
                     self.send_header(name, value)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -697,30 +763,6 @@ class McpHttpServer:
                     self.close_connection = True
                     return -1
 
-            def _send_cors_headers(self) -> None:
-                origin = self.headers.get("Origin")
-                if "*" in controller.cors_origins:
-                    allowed_origin = "*"
-                elif origin in controller.cors_origins:
-                    allowed_origin = origin
-                else:
-                    allowed_origin = (
-                        controller.cors_origins[0]
-                        if controller.cors_origins
-                        else DEFAULT_CORS_ORIGINS[0]
-                    )
-                self.send_header("Access-Control-Allow-Origin", allowed_origin)
-                self.send_header(
-                    "Access-Control-Allow-Headers",
-                    "content-type, mcp-protocol-version, mcp-session-id",
-                )
-                self.send_header(
-                    "Access-Control-Allow-Methods",
-                    "GET, POST, DELETE, OPTIONS",
-                )
-                self.send_header("Access-Control-Expose-Headers", "mcp-session-id")
-                self.send_header("Access-Control-Allow-Private-Network", "true")
-
         return ThreadingHTTPServer((self.host, self.port), Handler)
 
     def serve_forever(self) -> None:
@@ -773,6 +815,11 @@ def run_mcp_server(
     prompts: McpPromptSource | None = None,
 ) -> None:
     args = parse_server_args(default_port, description)
+    auth_token = os.environ.get(MCP_AUTH_TOKEN_ENV)
+    if not auth_token or not auth_token.strip():
+        raise RuntimeError(
+            f"{MCP_AUTH_TOKEN_ENV} must be configured for QCopilots MCP services"
+        )
     if args.log_file:
         logger = configure_logger(logger.name, args.log_file)
     server = McpHttpServer(
@@ -789,6 +836,7 @@ def run_mcp_server(
         server_title=os.environ.get(SERVICE_TITLE_ENV, ""),
         server_description=os.environ.get(SERVICE_DESCRIPTION_ENV, description),
         server_icons=_server_icons_from_env(),
+        auth_token=auth_token,
     )
     server.serve_forever()
 
@@ -1347,27 +1395,14 @@ def _server_icons_from_env() -> list[dict[str, Any]]:
 
 
 SERVICE_BIND_HOST_ERROR = (
-    "QCopilots MCP services require localhost, an IPv4 LAN/private address, or 0.0.0.0"
+    "QCopilots MCP services require the literal IPv4 loopback host 127.0.0.1"
 )
 
 
 def _service_bind_host(value: str) -> str:
     host = value.strip()
-    if not host:
-        raise ValueError("QCopilots MCP services require an explicit IPv4 bind host.")
-    if host.lower() == "localhost":
+    if host == DEFAULT_HOST:
         return host
-    try:
-        address = ipaddress.ip_address(host)
-        if address.version == 4 and (
-            address.is_loopback
-            or address.is_private
-            or address.is_link_local
-            or host == "0.0.0.0"
-        ):
-            return host
-    except ValueError as err:
-        raise ValueError(f"{SERVICE_BIND_HOST_ERROR}: {host}") from err
     raise ValueError(f"{SERVICE_BIND_HOST_ERROR}: {host}")
 
 

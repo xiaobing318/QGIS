@@ -12,10 +12,8 @@
   },
   "service_network": {
     "enabled": true,
-    "host": "0.0.0.0",
-    "advertised_host": "",
-    "cors_origins": [
-      "*"
-    ]
+    "host": "127.0.0.1",
+    "advertised_host": "127.0.0.1",
+    "cors_origins": []
   }
 }

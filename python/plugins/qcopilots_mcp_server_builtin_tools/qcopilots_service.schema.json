@@ -12,6 +12,7 @@
     "description",
     "entry_point",
     "host",
+    "advertised_host",
     "default_port",
     "mcp_path",
     "category",
@@ -58,13 +59,17 @@
     },
     "host": {
       "type": "string",
+      "const": "127.0.0.1",
+      "enum": ["127.0.0.1"],
       "default": "127.0.0.1",
-      "description": "字段作用是在未设置 transport.host 时指定 HTTP 服务绑定主机。候选值包括 '127.0.0.1'、其它 IPv4 loopback 地址、'localhost'、'0.0.0.0'、IPv4 私有局域网地址或链路本地地址。不同值会改变 MCP 端点只在本机可访问还是可被局域网访问，开放到 LAN 时应同步配置 advertised_host 和 cors_origins。"
+      "description": "字段作用是指定 HTTP 服务绑定主机。候选值只有 '127.0.0.1'。不同值会被 schema 拒绝并在运行时回退，确保服务只在本机 loopback 上监听。"
     },
     "advertised_host": {
       "type": "string",
-      "default": "",
-      "description": "字段作用是在未设置 transport.advertised_host 时指定远端 MCP 客户端可连接到运行服务的 QGIS 主机名或 LAN IP。候选值为空字符串、远端 MCP 客户端可解析的 QGIS 客户端主机名，或该 Windows 客户端的局域网 IP。空字符串会沿用绑定 host；不同值会改变管理器和状态文件生成的 endpoint URL，但不会改变服务实际绑定地址。"
+      "const": "127.0.0.1",
+      "enum": ["127.0.0.1"],
+      "default": "127.0.0.1",
+      "description": "字段作用是指定管理器发布的服务主机。候选值只有 '127.0.0.1'。不同值会被 schema 拒绝，避免生成可从局域网或互联网直接访问的端点。"
     },
     "default_port": {
       "type": "integer",
@@ -91,13 +96,17 @@
         },
         "host": {
           "type": "string",
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
           "default": "127.0.0.1",
-          "description": "字段作用是在 transport 配置中覆盖顶层 host。候选值包括 '127.0.0.1'、其它 IPv4 loopback 地址、'localhost'、'0.0.0.0'、IPv4 私有局域网地址或链路本地地址。不同值会改变 MCP 端点只在本机可访问还是可被局域网访问，开放到 LAN 时应同步配置 advertised_host 和 cors_origins。"
+          "description": "字段作用是在 transport 配置中声明 HTTP 服务绑定主机。候选值只有 '127.0.0.1'。不同值会被拒绝，确保嵌套配置不会放宽本机网络边界。"
         },
         "advertised_host": {
           "type": "string",
-          "default": "",
-          "description": "字段作用是在 transport 配置中覆盖顶层 advertised_host。候选值为空字符串、远端 MCP 客户端可解析的 QGIS 客户端主机名，或该 Windows 客户端的 LAN IP。空字符串会沿用绑定 host；不同值会改变客户端看到和复制的 endpoint URL，但不会改变 HTTP 服务实际监听地址。"
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
+          "default": "127.0.0.1",
+          "description": "字段作用是在 transport 配置中声明管理器发布的服务主机。候选值只有 '127.0.0.1'。不同值会被拒绝，避免嵌套配置生成外部可达地址。"
         },
         "port": {
           "type": "integer",
@@ -150,11 +159,10 @@
     },
     "cors_origins": {
       "type": "array",
-      "description": "字段作用是声明允许浏览器跨域调用 MCP HTTP 端点的 CORS origins。常用候选值是 'http://127.0.0.1:8282'、'http://localhost:8282'、服务器端 llama-ui 的精确 origin，或封闭 LAN 中显式使用的 '*'。不同来源会改变哪些浏览器页面能访问服务，加入非本机或通配来源会扩大访问面，应谨慎配置。",
-      "items": {
-        "type": "string",
-        "description": "字段作用是声明一个允许的浏览器来源。候选值通常是 llama-ui 的本机地址、服务器端 llama-ui 的 LAN origin，或封闭 LAN 中显式使用的 '*'。加入更多来源会让对应页面可以跨域访问 MCP 端点，也会扩大暴露面。"
-      }
+      "enum": [[]],
+      "maxItems": 0,
+      "default": [],
+      "description": "字段作用是声明浏览器 CORS origins。候选值只有空数组 []。任何非空 origin 或通配值都会被拒绝，浏览器访问必须通过 QGIS 原生桥。"
     },
     "enabled": {
       "type": "boolean",

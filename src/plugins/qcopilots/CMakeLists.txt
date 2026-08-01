@@ -5,12 +5,16 @@ set (qcopilots_SRCS
   qcopilots_container_dock.cpp
   qcopilots_container_plugin.cpp
   qcopilots_container_utils.cpp
+  qcopilots_mcp_bridge.cpp
+  qcopilots_mcp_catalog.cpp
 )
 
 set (qcopilots_HDRS
   qcopilots_container_dock.h
   qcopilots_container_plugin.h
   qcopilots_container_utils.h
+  qcopilots_mcp_bridge.h
+  qcopilots_mcp_catalog.h
 )
 
 set (qcopilots_UIS
@@ -24,7 +28,7 @@ set (qcopilots_RCCS
 ########################################################
 # Build
 
-find_package(${QT_VERSION_BASE} COMPONENTS WebEngineWidgets REQUIRED)
+find_package(${QT_VERSION_BASE} COMPONENTS Network WebChannel WebEngineWidgets REQUIRED)
 
 qt_wrap_ui(qcopilots_UIS_H ${qcopilots_UIS})
 
@@ -45,6 +49,8 @@ include_directories(
 target_link_libraries(plugin_qcopilots
   qgis_core
   qgis_gui
+  Qt::Network
+  Qt::WebChannel
   Qt::WebEngineWidgets
 )
 

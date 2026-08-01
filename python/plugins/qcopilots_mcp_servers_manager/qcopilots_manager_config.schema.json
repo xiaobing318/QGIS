@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qgis.org/qcopilots/qcopilots_manager_config.schema.json",
   "title": "QCopilots MCP Servers Manager Configuration",
-  "description": "配置 QCopilots MCP Servers Manager 的管理器级启动和网络覆盖行为。每个字段提示都说明字段作用、候选值或取值范围，以及不同取值对服务排序、首次自动启动、端点展示、CORS 跨域访问、局域网可达性和暴露面的影响。",
+  "description": "配置 QCopilots MCP Servers Manager 的管理器级启动和本机网络行为。每个字段提示都说明字段作用、候选值或取值范围，以及不同取值对服务排序、QGIS 初始化自动启动、端点展示和本机暴露面的影响。",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -12,13 +12,13 @@
     },
     "default_startup": {
       "type": "object",
-      "description": "字段作用是控制管理器首次填充服务列表时的默认自动启动策略。候选子字段为 enabled 和 service_ids。enabled 决定是否自动启动，service_ids 决定自动启动的服务编号和优先显示顺序，未列出的服务仍会被发现并追加显示，但不会因默认策略自动启动。",
+      "description": "字段作用是控制管理器插件 initGui 初始化时的默认自动启动策略，不依赖打开对话框。候选子字段为 enabled 和 service_ids。enabled 决定是否自动启动，service_ids 决定自动启动的服务编号和优先显示顺序，未列出的服务仍会被发现并追加显示，但不会因默认策略自动启动。",
       "additionalProperties": false,
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": true,
-          "description": "字段作用是启用或关闭首次填充服务列表时的自动启动。候选值为 true 或 false。true 表示管理器会自动启动 service_ids 中列出的服务，false 表示所有服务保持停止状态，直到用户在界面中手动切换。"
+          "description": "字段作用是启用或关闭插件初始化时的自动启动。候选值为 true 或 false。true 表示管理器无需打开对话框便会自动启动 service_ids 中列出的服务，false 表示所有服务保持停止状态，直到用户在界面中手动切换。"
         },
         "service_ids": {
           "type": "array",
@@ -48,37 +48,34 @@
     },
     "service_network": {
       "type": "object",
-      "description": "字段作用是控制管理器启动 MCP 服务时使用的网络绑定和浏览器跨域策略。候选子字段为 enabled、host、advertised_host 和 cors_origins。默认配置文件显式提供该对象，并默认 enabled 且绑定到局域网可访问地址，便于编译后的 QGIS 在封闭局域网中直接服务服务器端 llama-ui；如果整个字段缺失、配置文件缺失或配置文件无法读取，运行时会保守回退到 loopback 本机访问，避免异常时静默打开局域网。显式设为 false 后会保留各服务 manifest 的本机访问边界。不同 host 或 CORS 设置会改变服务器端 llama-ui 能否访问这些端点，也会改变暴露面。",
+      "description": "字段作用是把管理器启动的 MCP 服务严格限制在 loopback 本机网络边界。候选子字段为 enabled、host、advertised_host 和 cors_origins。host 与 advertised_host 只允许 127.0.0.1，cors_origins 只允许空数组；不同的宽绑定、非 loopback 或 wildcard 取值会被 schema 拒绝，运行时也会回退到安全本机值，避免扩大暴露面。",
       "additionalProperties": false,
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": true,
-          "description": "字段作用是启用或关闭管理器级服务网络覆盖。候选值为 true 或 false。true 表示管理器会把五个 MCP 服务按 service_network.host 绑定并按 cors_origins 设置跨域访问，默认适合封闭局域网直接使用；false 表示保留每个服务 manifest 中的本机绑定，适合只想完全限制为本机访问的场景。"
+          "description": "字段作用是保留 service_network.enabled 配置键的兼容性。候选值为 true 或 false。当前两种取值都会把动态发现的 MCP 服务统一限制为 127.0.0.1 并关闭 CORS，不会保留或接受 manifest 中的宽绑定、非 loopback 地址或非空 CORS 来源，因此切换该值不会放宽本机安全边界。"
         },
         "host": {
           "type": "string",
-          "default": "0.0.0.0",
-          "pattern": "^(?:localhost|0\\.0\\.0\\.0|(?:127|10)\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})|172\\.(?:1[6-9]|2[0-9]|3[0-1])\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})|192\\.168\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})|169\\.254\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2}))$",
-          "description": "字段作用是指定 MCP HTTP 服务进程实际绑定的主机。候选值包括 '0.0.0.0'、'127.0.0.1'、其它 IPv4 loopback、IPv4 私有局域网地址或链路本地地址。默认 '0.0.0.0' 会监听本机所有 IPv4 网卡，让同局域网服务器上的 llama-ui 可以访问；本机调试仍可通过 127.0.0.1 或 localhost 访问。使用具体 LAN IP 会限制到对应网卡，使用 loopback 会退回本机访问。"
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
+          "default": "127.0.0.1",
+          "description": "字段作用是指定 MCP HTTP 服务进程实际绑定的主机。唯一候选值为 '127.0.0.1'。使用该 loopback 地址只允许本机访问；0.0.0.0、局域网地址或其它非 loopback 值会扩大暴露面，因此会被拒绝。"
         },
         "advertised_host": {
           "type": "string",
-          "default": "",
-          "pattern": "^(?:$|(?!-)(?!.*\\.\\.)(?!.*-$)[A-Za-z0-9](?:[A-Za-z0-9_.-]*[A-Za-z0-9])?)$",
-          "description": "字段作用是指定管理器界面和状态文件展示给远端 MCP 客户端连接的 QGIS 客户端主机名或 LAN IP。候选值为空字符串、远端 MCP 客户端可解析的 QGIS 客户端主机名，或该 Windows 客户端自己的局域网 IP。空字符串会在 host 为 '0.0.0.0' 时优先自动使用本机非 loopback 的私有或链路本地 IPv4 地址，失败后再回退到本机 hostname；不同值会改变服务器端 llama-ui 应填写的目标 URL，但不改变服务实际绑定地址。"
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
+          "default": "127.0.0.1",
+          "description": "字段作用是指定管理器内部实际端点展示使用的主机。唯一候选值为 '127.0.0.1'，确保不同动态端口仍只指向本机；主机名、空字符串、局域网地址和非 loopback 地址会被拒绝。"
         },
         "cors_origins": {
           "type": "array",
-          "description": "字段作用是声明服务器端浏览器页面允许跨域访问 MCP HTTP 端点的 origins。候选值可以是本机 llama-ui 来源、明确的服务器端 llama-ui 来源，例如 'http://server-host:8282' 或 'http://192.168.1.10:8282'，也可以在封闭 LAN 中显式使用 '*'。使用 '*' 会让任何可达浏览器来源通过 CORS，使用精确 origin 会缩小访问面；不同列表会直接影响服务器端 llama-ui 能否调用这些服务。",
-          "items": {
-            "type": "string",
-            "pattern": "^(?:\\*|https?://[^\\s/?#]+/?)$",
-            "description": "字段作用是声明一个允许的浏览器来源。候选值是明确可信的 llama-ui origin，例如 'http://127.0.0.1:8282' 或 'http://server-host:8282'，也可以在封闭 LAN 中显式使用 '*'。加入更多来源会让对应页面可以跨域访问 MCP 端点，也会扩大暴露面。"
-          },
-          "default": [
-            "*"
-          ]
+          "enum": [[]],
+          "maxItems": 0,
+          "description": "字段作用是声明浏览器跨域访问来源。唯一候选值为空数组 []，表示不开放 CORS；加入任何 origin 或 wildcard '*' 都会扩大暴露面，因此不同的非空列表会被拒绝。",
+          "default": []
         }
       }
     }

@@ -2,5 +2,6 @@
   <qresource prefix="/qcopilots">
     <file>icons/qcopilots-plugin.svg</file>
     <file>icons/qcopilots-configureurl.svg</file>
+    <file>web/qcopilots_mcp_bootstrap.js</file>
   </qresource>
 </RCC>

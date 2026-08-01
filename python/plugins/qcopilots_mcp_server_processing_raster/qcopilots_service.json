@@ -6,6 +6,7 @@
   "description": "通过 QGIS bridge 将 QGIS Processing 中的栅格算法暴露为 MCP 工具，覆盖 DEM、栅格计算、重采样、格式转换和栅格分析等处理流程。适合让 llama-ui 或其它 MCP 客户端驱动 QGIS 完成栅格数据处理任务，服务依赖当前 QGIS Processing 环境、可用 provider 和本机数据访问权限。",
   "entry_point": "server.py",
   "host": "127.0.0.1",
+  "advertised_host": "127.0.0.1",
   "default_port": 48215,
   "mcp_path": "/mcp",
   "category": "qcopilots",
@@ -14,5 +15,5 @@
     "type": "uv",
     "requirements": "requirements.lock"
   },
-  "cors_origins": ["http://127.0.0.1:8282", "http://localhost:8282"]
+  "cors_origins": []
 }

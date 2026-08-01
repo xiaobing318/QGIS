@@ -16,9 +16,11 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SERVICE_PLUGIN_DIR_NAMES = (
@@ -186,10 +188,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                     "category": "qcopilots",
                     "capabilities": ["tools"],
                     "enabled": True,
-                    "cors_origins": [
-                        "http://127.0.0.1:8282",
-                        "http://localhost:8282",
-                    ],
+                    "cors_origins": [],
                     "icon": "",
                     "icon_path": "",
                     "icons": [],
@@ -277,13 +276,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
     def test_real_qcopilots_service_bridge_urls_match_capabilities(self):
         _install_manager_import_stubs()
 
-        from qcopilots_common.constants import BRIDGE_URL_ENV
+        from qcopilots_common.constants import BRIDGE_URL_ENV, QGIS_BRIDGE_AUTH_TOKEN_ENV
         from qcopilots_common.discovery import discover_service_manifests
         from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
 
         bridge_url = "http://127.0.0.1:48200"
         plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
         plugin.bridge = types.SimpleNamespace(url=bridge_url)
+        plugin._bridge_auth_token = "bridge-session-token"
         manifests = {
             manifest.service_id: manifest
             for manifest in discover_service_manifests(_plugins_root())
@@ -304,7 +304,13 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertEqual(plugin._bridge_url(manifest), expected_url)
                 env = plugin._service_env(manifest)
                 if uses_bridge:
-                    self.assertEqual(env, {BRIDGE_URL_ENV: bridge_url})
+                    self.assertEqual(
+                        env,
+                        {
+                            BRIDGE_URL_ENV: bridge_url,
+                            QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
+                        },
+                    )
                 else:
                     self.assertEqual(env, {})
 
@@ -367,6 +373,62 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertIn(field, properties, f"{plugin_dir_name}:{field}")
                 _assert_described_property(self, properties, field, plugin_dir_name)
 
+            self.assertEqual(manifest["host"], "127.0.0.1", plugin_dir_name)
+            self.assertEqual(manifest["advertised_host"], "127.0.0.1", plugin_dir_name)
+            self.assertEqual(manifest["cors_origins"], [], plugin_dir_name)
+            for field in ("host", "advertised_host", "cors_origins"):
+                self.assertIn(field, schema["required"], f"{plugin_dir_name}:{field}")
+
+            for field in ("host", "advertised_host"):
+                network_property = properties[field]
+                self.assertEqual(network_property["const"], "127.0.0.1", plugin_dir_name)
+                self.assertEqual(network_property["enum"], ["127.0.0.1"], plugin_dir_name)
+                self.assertEqual(network_property["default"], "127.0.0.1", plugin_dir_name)
+                for invalid_host in ("localhost", "0.0.0.0", "127.0.0.2", "192.168.1.50"):
+                    candidate = dict(manifest)
+                    candidate[field] = invalid_host
+                    self.assertTrue(
+                        _json_schema_errors(
+                            candidate,
+                            schema,
+                            f"{plugin_dir_name}:invalid {field} {invalid_host}",
+                        ),
+                        f"{plugin_dir_name}:{field}:{invalid_host}",
+                    )
+
+            transport_properties = properties["transport"]["properties"]
+            for field in ("host", "advertised_host"):
+                network_property = transport_properties[field]
+                self.assertEqual(network_property["const"], "127.0.0.1", plugin_dir_name)
+                self.assertEqual(network_property["enum"], ["127.0.0.1"], plugin_dir_name)
+                self.assertEqual(network_property["default"], "127.0.0.1", plugin_dir_name)
+                candidate = dict(manifest)
+                candidate["transport"] = {field: "0.0.0.0"}
+                self.assertTrue(
+                    _json_schema_errors(
+                        candidate,
+                        schema,
+                        f"{plugin_dir_name}:invalid transport {field}",
+                    ),
+                    f"{plugin_dir_name}:transport:{field}",
+                )
+
+            cors_property = properties["cors_origins"]
+            self.assertEqual(cors_property["enum"], [[]], plugin_dir_name)
+            self.assertEqual(cors_property["maxItems"], 0, plugin_dir_name)
+            self.assertEqual(cors_property["default"], [], plugin_dir_name)
+            for invalid_origin in ("*", "http://127.0.0.1:8282", "https://example.invalid"):
+                candidate = dict(manifest)
+                candidate["cors_origins"] = [invalid_origin]
+                self.assertTrue(
+                    _json_schema_errors(
+                        candidate,
+                        schema,
+                        f"{plugin_dir_name}:invalid CORS {invalid_origin}",
+                    ),
+                    f"{plugin_dir_name}:cors_origins:{invalid_origin}",
+                )
+
             _assert_described_property(
                 self,
                 properties,
@@ -386,7 +448,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 properties,
                 "cors_origins",
                 plugin_dir_name,
-                required_terms=(("CORS", "origin", "origins"), ("跨域", "browser", "allowed")),
+                required_terms=(
+                    ("CORS", "origin", "origins"),
+                    ("空数组", "[]"),
+                    ("QGIS 原生桥", "原生桥"),
+                ),
             )
             _assert_described_property(
                 self,
@@ -487,7 +553,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self,
             service_network,
             "manager:service_network",
-            required_terms=(("LAN", "局域网"), ("host", "绑定"), ("CORS", "cors_origins")),
+            required_terms=(("loopback", "本机"), "127.0.0.1", ("CORS", "cors_origins")),
         )
         service_network_properties = service_network["properties"]
         self.assertIn("enabled", service_network_properties)
@@ -495,39 +561,23 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertIn("advertised_host", service_network_properties)
         self.assertIn("cors_origins", service_network_properties)
         self.assertIs(config["service_network"]["enabled"], True)
-        self.assertEqual(config["service_network"]["host"], "0.0.0.0")
-        self.assertEqual(config["service_network"]["advertised_host"], "")
-        self.assertEqual(
-            config["service_network"]["cors_origins"],
-            ["*"],
-        )
+        self.assertEqual(config["service_network"]["host"], "127.0.0.1")
+        self.assertEqual(config["service_network"]["advertised_host"], "127.0.0.1")
+        self.assertEqual(config["service_network"]["cors_origins"], [])
         self.assertEqual(service_network_properties["enabled"]["default"], True)
-        self.assertEqual(service_network_properties["host"]["default"], "0.0.0.0")
-        self.assertEqual(
-            service_network_properties["cors_origins"]["default"],
-            ["*"],
-        )
-        for host in ("0.0.0.0", "127.0.0.1", "10.1.2.3", "192.168.1.50", "169.254.10.20"):
-            candidate = json.loads(json.dumps(config))
-            candidate["service_network"]["host"] = host
-            _assert_json_matches_schema(self, candidate, schema, f"manager config host {host}")
-        for host in ("8.8.8.8", "qgis-client-01.local", "127.0.0.999"):
+        self.assertEqual(service_network_properties["host"]["const"], "127.0.0.1")
+        self.assertEqual(service_network_properties["host"]["default"], "127.0.0.1")
+        self.assertEqual(service_network_properties["advertised_host"]["const"], "127.0.0.1")
+        self.assertEqual(service_network_properties["cors_origins"]["maxItems"], 0)
+        self.assertEqual(service_network_properties["cors_origins"]["default"], [])
+        for host in ("0.0.0.0", "127.0.0.2", "10.1.2.3", "qgis-client-01.local"):
             candidate = json.loads(json.dumps(config))
             candidate["service_network"]["host"] = host
             self.assertTrue(
                 _json_schema_errors(candidate, schema, f"manager config invalid host {host}"),
                 host,
             )
-        for advertised_host in ("qgis-client-01", "qgis-client-01.local", "192.168.1.50", ""):
-            candidate = json.loads(json.dumps(config))
-            candidate["service_network"]["advertised_host"] = advertised_host
-            _assert_json_matches_schema(
-                self,
-                candidate,
-                schema,
-                f"manager config advertised_host {advertised_host}",
-            )
-        for advertised_host in ("qgis..local", "http://qgis-client-01.local/mcp", "qgis-client-01:48200"):
+        for advertised_host in ("", "127.0.0.2", "qgis-client-01", "192.168.1.50"):
             candidate = json.loads(json.dumps(config))
             candidate["service_network"]["advertised_host"] = advertised_host
             self.assertTrue(
@@ -541,159 +591,378 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         for origin in ("*", "http://127.0.0.1:8282", "https://server-host/"):
             candidate = json.loads(json.dumps(config))
             candidate["service_network"]["cors_origins"] = [origin]
-            _assert_json_matches_schema(self, candidate, schema, f"manager config CORS {origin}")
-        for origin in ("::1", "https://example.invalid/path", "http://server-host:8282/?debug=1"):
-            candidate = json.loads(json.dumps(config))
-            candidate["service_network"]["cors_origins"] = [origin]
             self.assertTrue(
                 _json_schema_errors(candidate, schema, f"manager config invalid CORS {origin}"),
                 origin,
             )
 
-    def test_manager_default_startup_config_orders_and_applies_explicit_list(self):
+    def test_manager_config_store_user_fields_override_template_independently(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "plugin" / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.parent.mkdir(parents=True)
+            user_path.parent.mkdir(parents=True)
+            template_path.write_text(
+                json.dumps(
+                    {
+                        "default_startup": {
+                            "enabled": True,
+                            "service_ids": [
+                                "qcopilots.mcp_server_builtin_tools",
+                                "qcopilots.template_future",
+                            ],
+                        },
+                        "service_network": {
+                            "enabled": True,
+                            "host": "127.0.0.1",
+                            "advertised_host": "127.0.0.1",
+                            "cors_origins": [],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            user_path.write_text(
+                json.dumps(
+                    {
+                        "default_startup": {
+                            "enabled": False,
+                            "service_ids": [
+                                "qcopilots.mcp_server_skills",
+                                "qcopilots.user_future",
+                                "qcopilots.mcp_server_skills",
+                                "../unsafe",
+                                42,
+                            ],
+                        },
+                        "service_network": {
+                            "enabled": False,
+                            "host": "0.0.0.0",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            logger = _FakeLogger()
+
+            store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
+
+            self.assertEqual(
+                store.snapshot(),
+                {
+                    "default_startup": {
+                        "enabled": False,
+                        "service_ids": [
+                            "qcopilots.mcp_server_skills",
+                            "qcopilots.user_future",
+                        ],
+                    },
+                    "service_network": {
+                        "enabled": False,
+                        "host": "127.0.0.1",
+                        "advertised_host": "127.0.0.1",
+                        "cors_origins": [],
+                    },
+                },
+            )
+            _assert_logger_warning_contains(self, logger, "duplicate")
+            _assert_logger_warning_contains(self, logger, "unsafe")
+            _assert_logger_warning_contains(self, logger, "non-string")
+            _assert_logger_warning_contains(self, logger, "service_network.%s")
+            self.assertTrue(any("host" in args for _message, args in logger.messages))
+
+    def test_manager_config_store_corrupt_user_falls_back_and_repairs_on_success(self):
+        from qcopilots_mcp_servers_manager.config_store import (
+            DEFAULT_STARTUP_SERVICE_IDS,
+            ManagerConfigStore,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "plugin" / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.parent.mkdir(parents=True)
+            user_path.parent.mkdir(parents=True)
+            template_config = {
+                "default_startup": {
+                    "enabled": False,
+                    "service_ids": ["qcopilots.template_only"],
+                },
+                "service_network": {
+                    "enabled": True,
+                    "host": "127.0.0.1",
+                    "advertised_host": "127.0.0.1",
+                    "cors_origins": [],
+                },
+            }
+            template_path.write_text(json.dumps(template_config), encoding="utf-8")
+            user_path.write_text("{", encoding="utf-8")
+            logger = _FakeLogger()
+
+            store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
+
+            self.assertEqual(store.snapshot(), template_config)
+            _assert_logger_warning_contains(self, logger, "Could not read")
+            result = store.add_startup_service("qcopilots.template_only")
+            self.assertTrue(result.saved)
+            self.assertFalse(result.changed)
+            self.assertFalse(result.dirty)
+            self.assertEqual(json.loads(user_path.read_text(encoding="utf-8")), template_config)
+
+            missing_template_store = ManagerConfigStore(
+                root / "missing-template.json",
+                user_path=root / "missing-user.json",
+            )
+            missing_snapshot = missing_template_store.snapshot()
+            self.assertIs(missing_snapshot["default_startup"]["enabled"], True)
+            self.assertEqual(
+                missing_snapshot["default_startup"]["service_ids"],
+                list(DEFAULT_STARTUP_SERVICE_IDS),
+            )
+            self.assertIs(missing_snapshot["service_network"]["enabled"], False)
+
+    def test_manager_config_store_defaults_to_qcopilots_home(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "qcopilots_manager_config.json"
+            template_path.write_text("{}", encoding="utf-8")
+            configured_home = root / "user-home"
+
+            with mock.patch.dict(os.environ, {"QCOPILOTS_HOME": str(configured_home)}):
+                store = ManagerConfigStore(template_path)
+
+            self.assertEqual(
+                store.user_path,
+                configured_home.resolve() / "qcopilots_manager_config.json",
+            )
+
+    def test_manager_config_store_failed_save_keeps_dirty_snapshot_for_retry(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "plugin" / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.parent.mkdir(parents=True)
+            template_config = {
+                "default_startup": {
+                    "enabled": False,
+                    "service_ids": [
+                        "qcopilots.mcp_server_builtin_tools",
+                        "qcopilots.mcp_server_skills",
+                    ],
+                },
+                "service_network": {
+                    "enabled": True,
+                    "host": "127.0.0.1",
+                    "advertised_host": "127.0.0.1",
+                    "cors_origins": [],
+                },
+            }
+            template_text = json.dumps(template_config)
+            template_path.write_text(template_text, encoding="utf-8")
+            store = config_store.ManagerConfigStore(template_path, user_path=user_path)
+
+            with mock.patch.object(
+                config_store,
+                "_atomic_write_json",
+                side_effect=OSError("disk full"),
+            ):
+                failed = store.add_startup_service("qcopilots.user_future")
+
+            self.assertFalse(failed.saved)
+            self.assertTrue(failed.changed)
+            self.assertTrue(failed.dirty)
+            self.assertEqual(failed.error, "disk full")
+            self.assertTrue(store.dirty)
+            self.assertFalse(user_path.exists())
+            self.assertIn(
+                "qcopilots.user_future",
+                store.snapshot()["default_startup"]["service_ids"],
+            )
+
+            retried = store.add_startup_service("qcopilots.user_future")
+
+            self.assertTrue(retried.saved)
+            self.assertFalse(retried.changed)
+            self.assertFalse(retried.dirty)
+            self.assertFalse(store.dirty)
+            persisted = json.loads(user_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                persisted["default_startup"]["service_ids"],
+                [
+                    "qcopilots.mcp_server_builtin_tools",
+                    "qcopilots.mcp_server_skills",
+                    "qcopilots.user_future",
+                ],
+            )
+
+            removed = store.remove_startup_service(
+                "qcopilots.mcp_server_builtin_tools"
+            )
+
+            self.assertTrue(removed.saved)
+            self.assertTrue(removed.changed)
+            persisted = json.loads(user_path.read_text(encoding="utf-8"))
+            self.assertEqual(template_path.read_text(encoding="utf-8"), template_text)
+            self.assertIs(persisted["default_startup"]["enabled"], False)
+            self.assertEqual(
+                persisted["default_startup"]["service_ids"],
+                ["qcopilots.mcp_server_skills", "qcopilots.user_future"],
+            )
+            reloaded = config_store.ManagerConfigStore(template_path, user_path=user_path)
+            self.assertEqual(reloaded.snapshot(), store.snapshot())
+
+    def test_manager_remember_service_startup_delegates_to_store_only_while_active(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        self.assertTrue(
-            hasattr(manager_plugin, "_normalize_manager_config"),
-            "manager plugin must keep manager config normalization testable",
+        calls = []
+        saved_result = types.SimpleNamespace(saved=True, error="")
+
+        class FakeStore:
+            def set_startup_service_enabled(self, service_id, enabled):
+                calls.append((service_id, enabled))
+                return saved_result
+
+            def snapshot(self):
+                return {
+                    "default_startup": {
+                        "enabled": False,
+                        "service_ids": ["qcopilots.test"],
+                    },
+                    "service_network": {
+                        "enabled": True,
+                        "host": "127.0.0.1",
+                        "advertised_host": "127.0.0.1",
+                        "cors_origins": [],
+                    },
+                }
+
+        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+        plugin._shutdown_started = False
+        plugin._config_store = FakeStore()
+        plugin._manager_config = manager_plugin._default_manager_config()
+        plugin.logger = _FakeLogger()
+
+        result = plugin.remember_service_startup("qcopilots.test", True)
+
+        self.assertIs(result, saved_result)
+        self.assertEqual(calls, [("qcopilots.test", True)])
+        self.assertIs(plugin._manager_config["default_startup"]["enabled"], False)
+
+        plugin._shutdown_started = True
+        self.assertIsNone(
+            plugin.remember_service_startup("qcopilots.test", False)
         )
-        self.assertTrue(
-            hasattr(manager_plugin, "_order_service_manifests"),
-            "manager plugin must keep startup service ordering testable",
-        )
+        self.assertEqual(calls, [("qcopilots.test", True)])
+
+    def test_manager_config_store_atomic_replace_failure_preserves_old_file_and_cleans_temp(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "qcopilots_manager_config.json"
+            original = '{"original": true}\n'
+            path.write_text(original, encoding="utf-8")
+
+            with mock.patch.object(
+                config_store.os,
+                "replace",
+                side_effect=PermissionError("read only"),
+            ):
+                with self.assertRaisesRegex(PermissionError, "read only"):
+                    config_store._atomic_write_json(
+                        path,
+                        {"default_startup": {"enabled": True, "service_ids": []}},
+                    )
+
+            self.assertEqual(path.read_text(encoding="utf-8"), original)
+            self.assertEqual(list(path.parent.glob(f".{path.name}.*.tmp")), [])
+
+    def test_manager_config_store_serializes_concurrent_updates_without_losing_ids(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.write_text(
+                json.dumps(
+                    {
+                        "default_startup": {"enabled": True, "service_ids": []},
+                        "service_network": {
+                            "enabled": True,
+                            "host": "127.0.0.1",
+                            "advertised_host": "127.0.0.1",
+                            "cors_origins": [],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            store = ManagerConfigStore(template_path, user_path=user_path)
+            service_ids = [f"qcopilots.concurrent_{index}" for index in range(8)]
+            threads = [
+                threading.Thread(target=store.add_startup_service, args=(service_id,))
+                for service_id in service_ids
+            ]
+
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=5)
+                self.assertFalse(thread.is_alive())
+
+            stored_ids = store.snapshot()["default_startup"]["service_ids"]
+            self.assertEqual(len(stored_ids), len(service_ids))
+            self.assertEqual(set(stored_ids), set(service_ids))
+            persisted_ids = json.loads(user_path.read_text(encoding="utf-8"))[
+                "default_startup"
+            ]["service_ids"]
+            self.assertEqual(persisted_ids, stored_ids)
+            self.assertEqual(list(user_path.parent.glob(f".{user_path.name}.*.tmp")), [])
+
+    def test_manager_default_startup_config_only_orders_discovered_manifests(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
         builtin_id = "qcopilots.mcp_server_builtin_tools"
         skills_id = "qcopilots.mcp_server_skills"
         interactive_id = "qcopilots.mcp_server_interactive_tools"
-        vector_id = "qcopilots.mcp_server_processing_vector"
-        raster_id = "qcopilots.mcp_server_processing_raster"
         manifests = [
-            types.SimpleNamespace(service_id=raster_id),
             types.SimpleNamespace(service_id=interactive_id),
             types.SimpleNamespace(service_id=builtin_id),
-            types.SimpleNamespace(service_id=vector_id),
             types.SimpleNamespace(service_id=skills_id),
         ]
-        default_startup_ids = [builtin_id, interactive_id, vector_id, raster_id, skills_id]
-        default_order = [builtin_id, interactive_id, vector_id, raster_id, skills_id]
-        explicit_order = [skills_id, builtin_id, raster_id, interactive_id, vector_id]
-
-        class StartupPlugin:
-            def __init__(self, running_ids=None, deep_running_ids=None):
-                self._default_startup_applied = False
-                self.running_ids = set(running_ids or set())
-                self.deep_running_ids = set(deep_running_ids if deep_running_ids is not None else self.running_ids)
-                self.deep_checks = []
-                self.logger = _FakeLogger()
-
-            def service_status(self, manifest, deep=True):
-                if deep:
-                    self.deep_checks.append(manifest.service_id)
-                    running = manifest.service_id in self.deep_running_ids
-                else:
-                    running = manifest.service_id in self.running_ids
-                return _status(running=running, health="ok" if running else "stopped")
-
-        def toggled_ids(config_data, running_ids=None, deep_running_ids=None):
-            config = manager_plugin._normalize_manager_config(config_data)
-            ordered = manager_plugin._order_service_manifests(
-                manifests,
-                manager_plugin._startup_service_ids(config),
-            )
-            cards = [
-                _DefaultStartupCard(manifest, manifest.service_id in (running_ids or set()))
-                for manifest in ordered
-            ]
-            dialog = object.__new__(manager_plugin.ManagerDialog)
-            dialog.plugin = StartupPlugin(running_ids=running_ids, deep_running_ids=deep_running_ids)
-            manager_plugin.ManagerDialog._apply_default_startup(dialog, cards, config)
-            return [card.manifest.service_id for card in cards if card.toggle_values == [True]]
-
-        config = manager_plugin._normalize_manager_config({})
-        self.assertNotIn("workspace_roots", config)
-        self.assertEqual(config["default_startup"]["service_ids"], default_startup_ids)
-        self.assertEqual(
-            config["service_network"],
-            {
-                "enabled": False,
-                "host": "127.0.0.1",
-                "advertised_host": "",
-                "cors_origins": [
-                    "http://127.0.0.1:8282",
-                    "http://localhost:8282",
-                ],
-            },
-        )
-        ordered = manager_plugin._order_service_manifests(
-            manifests,
-            manager_plugin._startup_service_ids(config),
-        )
-        self.assertEqual([manifest.service_id for manifest in ordered], default_order)
-        self.assertEqual(toggled_ids({}), default_startup_ids)
         config = manager_plugin._normalize_manager_config(
             {"default_startup": {"enabled": True, "service_ids": [skills_id, builtin_id]}}
         )
+
         ordered = manager_plugin._order_service_manifests(
             manifests,
             manager_plugin._startup_service_ids(config),
         )
-        self.assertEqual([manifest.service_id for manifest in ordered], explicit_order)
+
         self.assertEqual(
-            toggled_ids({"default_startup": {"enabled": True, "service_ids": [skills_id, builtin_id]}}),
-            [skills_id, builtin_id],
+            [manifest.service_id for manifest in ordered],
+            [skills_id, builtin_id, interactive_id],
         )
+        self.assertFalse(hasattr(manager_plugin.ManagerDialog, "_apply_default_startup"))
         self.assertEqual(
-            toggled_ids(
-                {
-                    "default_startup": {
-                        "enabled": True,
-                        "service_ids": [builtin_id, skills_id, interactive_id, vector_id, raster_id],
-                    }
-                }
-            ),
-            [builtin_id, skills_id, interactive_id, vector_id, raster_id],
-        )
-        self.assertEqual(
-            toggled_ids({"default_startup": {"enabled": False, "service_ids": [builtin_id, skills_id]}}),
-            [],
-        )
-        self.assertEqual(
-            toggled_ids({"default_startup": {"enabled": True, "service_ids": []}}),
-            [],
-        )
-        self.assertEqual(
-            toggled_ids(
-                {"default_startup": {"enabled": True, "service_ids": [builtin_id]}},
-                running_ids={builtin_id},
-            ),
-            [],
-        )
-        self.assertEqual(
-            toggled_ids(
-                {"default_startup": {"enabled": True, "service_ids": [builtin_id, skills_id]}},
-                running_ids={builtin_id},
-            ),
-            [skills_id],
-        )
-        self.assertEqual(
-            toggled_ids(
-                {"default_startup": {"enabled": True, "service_ids": [builtin_id]}},
-                running_ids={builtin_id},
-                deep_running_ids=set(),
-            ),
-            [builtin_id],
-        )
-        self.assertEqual(
-            toggled_ids(
-                {
-                    "default_startup": {
-                        "enabled": True,
-                        "service_ids": ["qcopilots.future_service", builtin_id],
-                    }
-                }
-            ),
-            [builtin_id],
+            manager_plugin._normalize_manager_config({})["service_network"],
+            {
+                "enabled": False,
+                "host": "127.0.0.1",
+                "advertised_host": "127.0.0.1",
+                "cors_origins": [],
+            },
         )
 
     def test_manager_normalizes_default_startup_service_ids(self):
@@ -786,14 +1055,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             {
                 "enabled": False,
                 "host": "127.0.0.1",
-                "advertised_host": "qgis-client-01.local",
-                "cors_origins": ["http://llama-server:8282", "*"],
+                "advertised_host": "127.0.0.1",
+                "cors_origins": [],
             },
         )
         _assert_logger_warning_contains(self, logger, "not a boolean")
-        _assert_logger_warning_contains(self, logger, "outside loopback or LAN/private IPv4")
+        _assert_logger_warning_contains(self, logger, "non-loopback")
         _assert_logger_warning_contains(self, logger, "invalid")
-        _assert_logger_warning_contains(self, logger, "not a string")
+        _assert_logger_warning_contains(self, logger, "empty list")
 
     def test_manager_config_load_failures_use_loopback_service_network_fallback(self):
         _install_manager_import_stubs()
@@ -809,11 +1078,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 {
                     "enabled": False,
                     "host": "127.0.0.1",
-                    "advertised_host": "",
-                    "cors_origins": [
-                        "http://127.0.0.1:8282",
-                        "http://localhost:8282",
-                    ],
+                    "advertised_host": "127.0.0.1",
+                    "cors_origins": [],
                 },
             )
             _assert_logger_warning_contains(self, logger, "missing")
@@ -839,180 +1105,45 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "qcopilots.mcp_server_builtin_tools",
                 ["tools"],
             )
-            config = manager_plugin._normalize_manager_config(
-                {
-                    "service_network": {
-                        "enabled": True,
-                        "host": "0.0.0.0",
-                        "advertised_host": "qgis-client-01.local",
-                        "cors_origins": ["http://llama-server:8282"],
-                    }
+            for enabled in (True, False):
+                clamped = manager_plugin._network_overrides_manifest(
+                    manifest,
+                    {"enabled": enabled, "host": "0.0.0.0", "cors_origins": ["*"]},
+                )
+                self.assertEqual(clamped.host, "127.0.0.1")
+                self.assertEqual(clamped.advertised_host, "127.0.0.1")
+                self.assertEqual(clamped.url(), "http://127.0.0.1:48211/mcp")
+                self.assertEqual(clamped.cors_origins, [])
+
+    def test_manager_runtime_normalization_rejects_wide_network_values(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        logger = _FakeLogger()
+        config = manager_plugin._normalize_manager_config(
+            {
+                "service_network": {
+                    "enabled": True,
+                    "host": "0.0.0.0",
+                    "advertised_host": "127.0.0.2",
+                    "cors_origins": ["*"],
                 }
-            )
+            },
+            logger,
+        )
 
-            lan_manifest = manager_plugin._network_overrides_manifest(
-                manifest,
-                config["service_network"],
-            )
-
-            self.assertEqual(manifest.host, "127.0.0.1")
-            self.assertEqual(lan_manifest.host, "0.0.0.0")
-            self.assertEqual(lan_manifest.advertised_host, "qgis-client-01.local")
-            self.assertEqual(lan_manifest.url(), "http://qgis-client-01.local:48211/mcp")
-            self.assertEqual(lan_manifest.cors_origins, ["http://llama-server:8282"])
-
-            disabled_config = manager_plugin._normalize_manager_config(
-                {"service_network": {"enabled": False}}
-            )
-            self.assertIs(
-                manager_plugin._network_overrides_manifest(
-                    manifest,
-                    disabled_config["service_network"],
-                ),
-                manifest,
-            )
-            self.assertIs(
-                manager_plugin._network_overrides_manifest(
-                    manifest,
-                    {},
-                ),
-                manifest,
-            )
-
-    def test_manager_default_service_network_advertises_detected_lan_host(self):
-        _install_manager_import_stubs()
-
-        import qcopilots_mcp_servers_manager.plugin as manager_plugin
-
-        old_local_lan_ipv4_host = manager_plugin._local_lan_ipv4_host
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                manager_plugin._local_lan_ipv4_host = lambda: "192.168.1.50"
-                manifest = _manifest(
-                    tmp,
-                    "qcopilots.mcp_server_builtin_tools",
-                    ["tools"],
-                )
-                config = manager_plugin._normalize_manager_config(
-                    {"service_network": {"enabled": True}}
-                )
-
-                lan_manifest = manager_plugin._network_overrides_manifest(
-                    manifest,
-                    config["service_network"],
-                )
-
-                self.assertEqual(config["service_network"]["host"], "0.0.0.0")
-                self.assertEqual(config["service_network"]["advertised_host"], "")
-                self.assertEqual(lan_manifest.host, "0.0.0.0")
-                self.assertEqual(lan_manifest.advertised_host, "192.168.1.50")
-                self.assertEqual(lan_manifest.url(), "http://192.168.1.50:48211/mcp")
-                self.assertEqual(lan_manifest.cors_origins, ["*"])
-        finally:
-            manager_plugin._local_lan_ipv4_host = old_local_lan_ipv4_host
-
-    def test_manager_default_advertised_host_falls_back_when_lan_detection_fails(self):
-        _install_manager_import_stubs()
-
-        import qcopilots_mcp_servers_manager.plugin as manager_plugin
-
-        old_local_lan_ipv4_host = manager_plugin._local_lan_ipv4_host
-        old_gethostname = manager_plugin.socket.gethostname
-        try:
-            manager_plugin._local_lan_ipv4_host = lambda: ""
-            manager_plugin.socket.gethostname = lambda: "qgis-client-01"
-
-            self.assertEqual(
-                manager_plugin._default_advertised_host("0.0.0.0"),
-                "qgis-client-01",
-            )
-
-            def raise_gethostname():
-                raise OSError("hostname unavailable")
-
-            manager_plugin.socket.gethostname = raise_gethostname
-            self.assertEqual(
-                manager_plugin._default_advertised_host("0.0.0.0"),
-                "127.0.0.1",
-            )
-        finally:
-            manager_plugin._local_lan_ipv4_host = old_local_lan_ipv4_host
-            manager_plugin.socket.gethostname = old_gethostname
-
-    def test_manager_detects_lan_ipv4_from_routing_probe_before_hostname(self):
-        _install_manager_import_stubs()
-
-        import qcopilots_mcp_servers_manager.plugin as manager_plugin
-
-        class FakeSocket:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_value, traceback):
-                del exc_type, exc_value, traceback
-                return False
-
-            def connect(self, address):
-                self.address = address
-
-            def getsockname(self):
-                return ("192.168.1.50", 59312)
-
-        old_socket = manager_plugin.socket.socket
-        old_gethostbyname_ex = manager_plugin.socket.gethostbyname_ex
-        old_getaddrinfo = manager_plugin.socket.getaddrinfo
-        try:
-            manager_plugin.socket.socket = lambda *args, **kwargs: FakeSocket()
-            manager_plugin.socket.gethostbyname_ex = lambda hostname: (
-                hostname,
-                [],
-                ["127.0.0.1", "192.168.56.1"],
-            )
-            manager_plugin.socket.getaddrinfo = lambda *args, **kwargs: []
-
-            self.assertEqual(manager_plugin._local_lan_ipv4_host(), "192.168.1.50")
-        finally:
-            manager_plugin.socket.socket = old_socket
-            manager_plugin.socket.gethostbyname_ex = old_gethostbyname_ex
-            manager_plugin.socket.getaddrinfo = old_getaddrinfo
-
-    def test_manager_lan_ipv4_detection_prefers_private_over_link_local(self):
-        _install_manager_import_stubs()
-
-        import qcopilots_mcp_servers_manager.plugin as manager_plugin
-
-        class FakeSocket:
-            probe_index = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_value, traceback):
-                del exc_type, exc_value, traceback
-                return False
-
-            def connect(self, address):
-                self.address = address
-
-            def getsockname(self):
-                FakeSocket.probe_index += 1
-                if FakeSocket.probe_index == 1:
-                    return ("169.254.10.20", 59312)
-                return ("192.168.1.50", 59312)
-
-        old_socket = manager_plugin.socket.socket
-        old_gethostbyname_ex = manager_plugin.socket.gethostbyname_ex
-        old_getaddrinfo = manager_plugin.socket.getaddrinfo
-        try:
-            manager_plugin.socket.socket = lambda *args, **kwargs: FakeSocket()
-            manager_plugin.socket.gethostbyname_ex = lambda hostname: (hostname, [], [])
-            manager_plugin.socket.getaddrinfo = lambda *args, **kwargs: []
-
-            self.assertEqual(manager_plugin._local_lan_ipv4_host(), "192.168.1.50")
-        finally:
-            manager_plugin.socket.socket = old_socket
-            manager_plugin.socket.gethostbyname_ex = old_gethostbyname_ex
-            manager_plugin.socket.getaddrinfo = old_getaddrinfo
+        self.assertEqual(
+            config["service_network"],
+            {
+                "enabled": True,
+                "host": "127.0.0.1",
+                "advertised_host": "127.0.0.1",
+                "cors_origins": [],
+            },
+        )
+        _assert_logger_warning_contains(self, logger, "non-loopback")
+        _assert_logger_warning_contains(self, logger, "empty list")
 
     def test_manager_rejects_invalid_advertised_host_values(self):
         _install_manager_import_stubs()
@@ -1030,7 +1161,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             logger,
         )
 
-        self.assertEqual(config["service_network"]["advertised_host"], "")
+        self.assertEqual(config["service_network"]["advertised_host"], "127.0.0.1")
         _assert_logger_warning_contains(self, logger, "advertised_host")
 
     def test_manager_discovery_applies_service_network_to_all_services(self):
@@ -1072,36 +1203,18 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 discovered = plugin._discover_services()
 
                 self.assertEqual([manifest.service_id for manifest in discovered], service_ids)
-                self.assertTrue(all(manifest.host == "0.0.0.0" for manifest in discovered))
-                self.assertTrue(
-                    all(manifest.advertised_host == "qgis-client-01.local" for manifest in discovered)
-                )
+                self.assertTrue(all(manifest.host == "127.0.0.1" for manifest in discovered))
+                self.assertTrue(all(manifest.advertised_host == "127.0.0.1" for manifest in discovered))
+                self.assertTrue(all(manifest.cors_origins == [] for manifest in discovered))
                 self.assertEqual(
                     [manifest.url() for manifest in discovered],
                     [
-                        "http://qgis-client-01.local:48211/mcp",
-                        "http://qgis-client-01.local:48212/mcp",
-                        "http://qgis-client-01.local:48213/mcp",
-                        "http://qgis-client-01.local:48214/mcp",
-                        "http://qgis-client-01.local:48215/mcp",
+                        "http://127.0.0.1:48211/mcp",
+                        "http://127.0.0.1:48212/mcp",
+                        "http://127.0.0.1:48213/mcp",
+                        "http://127.0.0.1:48214/mcp",
+                        "http://127.0.0.1:48215/mcp",
                     ],
-                )
-
-                plugin._manager_config = manager_plugin._normalize_manager_config(
-                    {
-                        "service_network": {
-                            "enabled": True,
-                            "host": "0.0.0.0",
-                            "advertised_host": "qgis-client-02.local",
-                            "cors_origins": ["http://llama-server:8282"],
-                        }
-                    }
-                )
-                self.assertTrue(
-                    all(
-                        manifest.advertised_host == "qgis-client-02.local"
-                        for manifest in plugin._discover_services()
-                    )
                 )
         finally:
             manager_plugin.discover_service_manifests = old_discover
@@ -1129,16 +1242,13 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
                 discovered = plugin._discover_services()
 
-                self.assertEqual(discovered, manifests)
-                self.assertTrue(all(manifest.host == "127.0.0.1" for manifest in discovered))
-                self.assertTrue(all(manifest.advertised_host == "" for manifest in discovered))
-                self.assertTrue(
-                    all(
-                        manifest.cors_origins
-                        == ["http://127.0.0.1:8282", "http://localhost:8282"]
-                        for manifest in discovered
-                    )
+                self.assertEqual(
+                    [manifest.service_id for manifest in discovered],
+                    [manifest.service_id for manifest in manifests],
                 )
+                self.assertTrue(all(manifest.host == "127.0.0.1" for manifest in discovered))
+                self.assertTrue(all(manifest.advertised_host == "127.0.0.1" for manifest in discovered))
+                self.assertTrue(all(manifest.cors_origins == [] for manifest in discovered))
         finally:
             manager_plugin.discover_service_manifests = old_discover
 
@@ -1150,7 +1260,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         old_bridge = manager_plugin.QgisBridgeController
         old_configure_logger = manager_plugin.configure_logger
         old_core_application = manager_plugin.QCoreApplication
-        old_load_manager_config = manager_plugin._load_manager_config
+        old_config_store = manager_plugin.ManagerConfigStore
         old_process_controller = manager_plugin.ProcessController
         old_service_log_file = manager_plugin.service_log_file
         try:
@@ -1162,16 +1272,19 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 }
             }
 
-            def fake_load_manager_config(path, logger):
-                load_calls.append((path, logger))
-                return cached_config
+            class FakeManagerConfigStore:
+                def __init__(self, path, logger):
+                    load_calls.append((path, logger))
 
-            manager_plugin.QgisBridgeController = lambda iface, port: types.SimpleNamespace(
+                def snapshot(self):
+                    return json.loads(json.dumps(cached_config))
+
+            manager_plugin.QgisBridgeController = lambda iface, port, auth_token=None: types.SimpleNamespace(
                 url=f"http://127.0.0.1:{port}"
             )
             manager_plugin.configure_logger = lambda *args, **kwargs: _FakeLogger()
             manager_plugin.QCoreApplication = types.SimpleNamespace(applicationFilePath=lambda: "")
-            manager_plugin._load_manager_config = fake_load_manager_config
+            manager_plugin.ManagerConfigStore = FakeManagerConfigStore
             manager_plugin.ProcessController = lambda **kwargs: types.SimpleNamespace()
             manager_plugin.service_log_file = lambda service_id: Path(f"{service_id}.log")
 
@@ -1186,11 +1299,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 {
                     "enabled": False,
                     "host": "127.0.0.1",
-                    "advertised_host": "",
-                    "cors_origins": [
-                        "http://127.0.0.1:8282",
-                        "http://localhost:8282",
-                    ],
+                    "advertised_host": "127.0.0.1",
+                    "cors_origins": [],
                 },
             )
             self.assertEqual(
@@ -1201,7 +1311,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             manager_plugin.QgisBridgeController = old_bridge
             manager_plugin.configure_logger = old_configure_logger
             manager_plugin.QCoreApplication = old_core_application
-            manager_plugin._load_manager_config = old_load_manager_config
+            manager_plugin.ManagerConfigStore = old_config_store
             manager_plugin.ProcessController = old_process_controller
             manager_plugin.service_log_file = old_service_log_file
 
@@ -1225,7 +1335,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             DEFAULT_STARTUP_SERVICE_IDS,
         )
 
-    def test_manager_dialog_populate_services_applies_default_startup(self):
+    def test_manager_dialog_populate_services_does_not_apply_default_startup(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
@@ -1273,14 +1383,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 ],
             )
             self.assertEqual([card.expanded for card in cards], [True, False, False])
-            self.assertEqual(
-                [card.manifest.service_id for card in cards if card.toggle_values == [True]],
-                [
-                    "qcopilots.mcp_server_builtin_tools",
-                    "qcopilots.mcp_server_skills",
-                ],
-            )
-            self.assertTrue(plugin._default_startup_applied)
+            self.assertTrue(all(card.toggle_values == [] for card in cards))
+            self.assertFalse(hasattr(plugin, "_default_startup_applied"))
         finally:
             manager_plugin.ServiceCard = old_service_card
 
@@ -1340,12 +1444,13 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
     def test_manager_service_env_only_injects_bridge_url_for_bridge_services(self):
         _install_manager_import_stubs()
 
-        from qcopilots_common.constants import BRIDGE_URL_ENV
+        from qcopilots_common.constants import BRIDGE_URL_ENV, QGIS_BRIDGE_AUTH_TOKEN_ENV
         from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
 
         with tempfile.TemporaryDirectory() as tmp:
             plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
             plugin.bridge = types.SimpleNamespace(url="http://127.0.0.1:48200")
+            plugin._bridge_auth_token = "bridge-session-token"
 
             builtin_manifest = _manifest(
                 tmp,
@@ -1366,22 +1471,29 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(plugin._service_env(builtin_manifest), {})
             self.assertEqual(
                 plugin._service_env(interactive_manifest),
-                {BRIDGE_URL_ENV: "http://127.0.0.1:48200"},
+                {
+                    BRIDGE_URL_ENV: "http://127.0.0.1:48200",
+                    QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
+                },
             )
             self.assertEqual(
                 plugin._service_env(processing_manifest),
-                {BRIDGE_URL_ENV: "http://127.0.0.1:48200"},
+                {
+                    BRIDGE_URL_ENV: "http://127.0.0.1:48200",
+                    QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
+                },
             )
 
     def test_manager_service_env_does_not_inject_workspace_settings(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
-        from qcopilots_common.constants import BRIDGE_URL_ENV
+        from qcopilots_common.constants import BRIDGE_URL_ENV, QGIS_BRIDGE_AUTH_TOKEN_ENV
 
         with tempfile.TemporaryDirectory() as tmp:
             plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
             plugin.bridge = types.SimpleNamespace(url="http://127.0.0.1:48200")
+            plugin._bridge_auth_token = "bridge-session-token"
             manifest = _manifest(
                 tmp,
                 "qcopilots.mcp_server_interactive_tools",
@@ -1390,17 +1502,24 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
             env = plugin._service_env(manifest)
 
-            self.assertEqual(env, {BRIDGE_URL_ENV: "http://127.0.0.1:48200"})
+            self.assertEqual(
+                env,
+                {
+                    BRIDGE_URL_ENV: "http://127.0.0.1:48200",
+                    QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
+                },
+            )
 
-    def test_manager_start_service_only_passes_bridge_url_to_bridge_services(self):
+    def test_manager_start_service_rotates_token_and_passes_bridge_credentials(self):
         _install_manager_import_stubs()
 
-        from qcopilots_common.constants import BRIDGE_URL_ENV
-        from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
+        from qcopilots_common.constants import BRIDGE_URL_ENV, QGIS_BRIDGE_AUTH_TOKEN_ENV
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
-            plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
+            plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
             plugin.bridge = types.SimpleNamespace(url="http://127.0.0.1:48200")
+            plugin._bridge_auth_token = "bridge-session-token"
             plugin.controller = _FakeProcessController()
 
             builtin_manifest = _manifest(
@@ -1408,23 +1527,773 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "qcopilots.mcp_server_builtin_tools",
                 ["tools"],
             )
-            plugin.start_service(builtin_manifest)
-            self.assertIsNone(plugin.controller.bridge_url)
-            self.assertEqual(plugin.controller.extra_env, {})
-
             processing_manifest = _manifest(
                 tmp,
                 "qcopilots.mcp_server_processing_vector",
                 ["tools", "processing"],
             )
+            _prime_manager_runtime(plugin, [builtin_manifest, processing_manifest])
+
+            plugin.start_service(builtin_manifest)
+            first_token = plugin.controller.auth_token
+            self.assertIsNone(plugin.controller.bridge_url)
+            self.assertEqual(plugin.controller.extra_env, {})
+            self.assertTrue(first_token)
+
+            plugin.stop_service(builtin_manifest)
+            plugin.start_service(builtin_manifest)
+            self.assertNotEqual(plugin.controller.auth_token, first_token)
+
             plugin.start_service(processing_manifest)
             self.assertEqual(plugin.controller.bridge_url, "http://127.0.0.1:48200")
             self.assertEqual(
                 plugin.controller.extra_env,
-                {BRIDGE_URL_ENV: "http://127.0.0.1:48200"},
+                {
+                    BRIDGE_URL_ENV: "http://127.0.0.1:48200",
+                    QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
+                },
             )
 
-    def test_manager_source_has_no_auth_or_workspace_environment_helpers(self):
+    def test_manager_start_service_stops_process_when_controller_start_raises(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class RaiseAfterLaunchController:
+            def __init__(self):
+                self.running = False
+                self.stop_calls = 0
+                self.token = None
+
+            def status(self, manifest, deep=True):
+                del manifest, deep
+                return _status(
+                    running=self.running,
+                    health="running" if self.running else "stopped",
+                    owner_match=self.running,
+                )
+
+            def start(self, manifest, **kwargs):
+                del manifest
+                self.running = True
+                self.token = kwargs["auth_token"]
+                raise RuntimeError("raised after launch")
+
+            def stop(self, manifest):
+                del manifest
+                self.stop_calls += 1
+                self.running = False
+                self.token = None
+                return _status(running=False, health="stopped")
+
+            def current_auth_token(self, service_id):
+                del service_id
+                return self.token
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _manifest(tmp, "qcopilots.raise_after_launch", ["tools"])
+            plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+            plugin.bridge = _FakeBridge()
+            plugin._bridge_auth_token = "bridge-session-token"
+            plugin.controller = RaiseAfterLaunchController()
+            _prime_manager_runtime(plugin, [manifest])
+
+            with self.assertRaisesRegex(RuntimeError, "raised after launch"):
+                plugin.start_service(manifest)
+
+            self.assertEqual(plugin.controller.stop_calls, 1)
+            self.assertFalse(plugin.controller.running)
+            self.assertNotIn(manifest.service_id, plugin._owned_manifests)
+            self.assertEqual(plugin._catalog_states[manifest.service_id], "failed")
+
+    def test_manager_runtime_catalog_tracks_dynamic_ports_token_rotation_and_shutdown(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        self.assertEqual(
+            manager_plugin.RUNTIME_CATALOG_PROPERTY,
+            "qcopilotsMcpRuntimeCatalog",
+        )
+
+        old_core_application = manager_plugin.QCoreApplication
+        app = _FakeCatalogApplication(
+            {
+                manager_plugin.RUNTIME_CATALOG_PROPERTY: json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "generation": 7,
+                        "startupComplete": True,
+                        "services": [],
+                    }
+                )
+            }
+        )
+
+        class FakeCoreApplication:
+            @staticmethod
+            def instance():
+                return app
+
+        try:
+            manager_plugin.QCoreApplication = FakeCoreApplication
+            with tempfile.TemporaryDirectory() as tmp:
+                manifest = _manifest(
+                    tmp,
+                    "qcopilots.mcp_server_builtin_tools",
+                    ["tools"],
+                    port=48211,
+                )
+                running = _status(
+                    running=True,
+                    health="ok",
+                    url="http://127.0.0.1:59321/mcp",
+                    port=59321,
+                )
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                plugin.controller = _FakeProcessController(
+                    start_status=running,
+                    stop_status=_status(running=False, health="stopped", port=0, url=""),
+                )
+                plugin.bridge = _FakeBridge()
+                plugin._bridge_auth_token = "bridge-session-token"
+                _prime_manager_runtime(plugin, [manifest])
+
+                first_token = plugin.prepare_service_start(manifest)
+                starting_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertEqual(starting_catalog["generation"], 8)
+                self.assertTrue(starting_catalog["startupComplete"])
+                self.assertEqual(starting_catalog["services"][0]["state"], "starting")
+                self.assertEqual(starting_catalog["services"][0]["targetUrl"], "")
+                self.assertEqual(starting_catalog["services"][0]["authToken"], "")
+                self.assertEqual(
+                    starting_catalog["services"][0]["virtualUrl"],
+                    "https://qcopilots.localmachine/mcp/"
+                    "qcopilots.mcp_server_builtin_tools",
+                )
+                self.assertEqual(
+                    set(starting_catalog["services"][0]),
+                    {"id", "displayName", "state", "virtualUrl", "targetUrl", "authToken"},
+                )
+
+                plugin.start_service(manifest, first_token)
+                running_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                running_item = running_catalog["services"][0]
+                self.assertEqual(running_catalog["generation"], 9)
+                self.assertEqual(running_item["state"], "running")
+                self.assertEqual(running_item["targetUrl"], "http://127.0.0.1:59321/mcp")
+                self.assertEqual(running_item["authToken"], first_token)
+                self.assertNotIn(first_token, running_item["virtualUrl"])
+
+                plugin.stop_service(manifest)
+                stopped_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                stopped_item = stopped_catalog["services"][0]
+                self.assertEqual(stopped_item["state"], "stopped")
+                self.assertEqual(stopped_item["targetUrl"], "")
+                self.assertEqual(stopped_item["authToken"], "")
+
+                second_token = plugin.prepare_service_start(manifest)
+                self.assertNotEqual(second_token, first_token)
+                plugin.start_service(manifest, second_token)
+                self.assertEqual(
+                    app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)["services"][0]["authToken"],
+                    second_token,
+                )
+
+                generation_before_shutdown = app.catalog(
+                    manager_plugin.RUNTIME_CATALOG_PROPERTY
+                )["generation"]
+                plugin._shutdown_services()
+                shutdown_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertGreater(shutdown_catalog["generation"], generation_before_shutdown)
+                self.assertTrue(shutdown_catalog["startupComplete"])
+                self.assertEqual(shutdown_catalog["services"], [])
+                self.assertEqual(plugin._bridge_auth_token, "")
+
+                reloaded = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(reloaded, [manifest])
+                reloaded._publish_runtime_catalog()
+                self.assertGreater(
+                    app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)["generation"],
+                    shutdown_catalog["generation"],
+                )
+        finally:
+            manager_plugin.QCoreApplication = old_core_application
+
+    def test_manager_runtime_catalog_uses_all_five_localmachine_urls(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        old_core_application = manager_plugin.QCoreApplication
+        app = _FakeCatalogApplication()
+
+        class FakeCoreApplication:
+            @staticmethod
+            def instance():
+                return app
+
+        service_ids = [
+            "qcopilots.mcp_server_builtin_tools",
+            "qcopilots.mcp_server_interactive_tools",
+            "qcopilots.mcp_server_processing_vector",
+            "qcopilots.mcp_server_processing_raster",
+            "qcopilots.mcp_server_skills",
+        ]
+        try:
+            manager_plugin.QCoreApplication = FakeCoreApplication
+            with tempfile.TemporaryDirectory() as tmp:
+                manifests = [
+                    _manifest(tmp, service_id, ["tools"], port=48211 + index)
+                    for index, service_id in enumerate(service_ids)
+                ]
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(plugin, manifests)
+
+                plugin._publish_runtime_catalog()
+
+                catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertEqual(
+                    [service["virtualUrl"] for service in catalog["services"]],
+                    [
+                        f"https://qcopilots.localmachine/mcp/{service_id}"
+                        for service_id in service_ids
+                    ],
+                )
+        finally:
+            manager_plugin.QCoreApplication = old_core_application
+
+    def test_manager_runtime_catalog_filters_entries_that_violate_native_contract(self):
+        _install_manager_import_stubs()
+
+        from dataclasses import replace
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        old_core_application = manager_plugin.QCoreApplication
+        app = _FakeCatalogApplication()
+
+        class FakeCoreApplication:
+            @staticmethod
+            def instance():
+                return app
+
+        try:
+            manager_plugin.QCoreApplication = FakeCoreApplication
+            with tempfile.TemporaryDirectory() as tmp:
+                valid = _manifest(tmp, "qcopilots.valid", ["tools"])
+                bad_id = replace(valid, service_id="_qcopilots.bad_id")
+                bad_display = replace(
+                    valid,
+                    service_id="qcopilots.bad_display",
+                    display_name=" bad display",
+                )
+                bad_path = replace(
+                    valid,
+                    service_id="qcopilots.bad_path",
+                    display_name="Bad path",
+                    transport=replace(valid.transport, path="/custom"),
+                )
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(
+                    plugin,
+                    [valid, bad_id, bad_display, bad_path],
+                )
+
+                plugin._publish_runtime_catalog()
+
+                catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertEqual(
+                    [service["id"] for service in catalog["services"]],
+                    [valid.service_id],
+                )
+                compatible = manager_plugin._runtime_catalog_compatible_manifests(
+                    [valid, bad_id, bad_display, bad_path],
+                    plugin.logger,
+                )
+                self.assertEqual(compatible, [valid])
+                self.assertEqual(len(plugin.logger.messages), 3)
+
+                plugin._catalog_states[valid.service_id] = "running"
+                plugin._catalog_statuses[valid.service_id] = _status(
+                    running=True,
+                    health="ok",
+                    port=0,
+                )
+                plugin._service_auth_tokens[valid.service_id] = "short"
+                plugin._publish_runtime_catalog()
+                invalid_credentials = app.catalog(
+                    manager_plugin.RUNTIME_CATALOG_PROPERTY
+                )["services"][0]
+                self.assertEqual(invalid_credentials["state"], "failed")
+                self.assertEqual(invalid_credentials["targetUrl"], "")
+                self.assertEqual(invalid_credentials["authToken"], "")
+        finally:
+            manager_plugin.QCoreApplication = old_core_application
+
+    def test_manager_default_startup_worker_is_concurrent_and_isolates_failures(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class ConcurrentController:
+            def __init__(self):
+                self.barrier = threading.Barrier(3)
+                self.lock = threading.Lock()
+                self.active = 0
+                self.max_active = 0
+                self.start_calls = []
+                self.tokens = {}
+                self.stop_calls = []
+
+            def start(
+                self,
+                manifest,
+                bridge_url=None,
+                extra_env=None,
+                startup_timeout_seconds=None,
+                auth_token=None,
+                cancel_event=None,
+            ):
+                with self.lock:
+                    self.active += 1
+                    self.max_active = max(self.max_active, self.active)
+                    self.start_calls.append(
+                        (
+                            manifest.service_id,
+                            bridge_url,
+                            extra_env,
+                            startup_timeout_seconds,
+                            auth_token,
+                            cancel_event,
+                        )
+                    )
+                try:
+                    self.barrier.wait(timeout=2)
+                    if manifest.service_id.endswith("failed"):
+                        raise RuntimeError("isolated startup failure")
+                    self.tokens[manifest.service_id] = auth_token
+                    return _status(
+                        running=True,
+                        health="ok",
+                        port=59000 + len(self.tokens),
+                    )
+                finally:
+                    with self.lock:
+                        self.active -= 1
+
+            def current_auth_token(self, service_id):
+                return self.tokens.get(service_id)
+
+            def stop(self, manifest):
+                self.stop_calls.append(manifest.service_id)
+                return _status(running=False, health="stopped")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifests = [
+                _manifest(tmp, "qcopilots.first", ["tools"]),
+                _manifest(tmp, "qcopilots.failed", ["tools"]),
+                _manifest(tmp, "qcopilots.third", ["tools"]),
+            ]
+            controller = ConcurrentController()
+            jobs = [
+                {
+                    "manifest": manifest,
+                    "auth_token": f"token-{index}",
+                    "bridge_url": "http://127.0.0.1:48200",
+                    "extra_env": {"QCOPILOTS_TEST": str(index)},
+                }
+                for index, manifest in enumerate(manifests)
+            ]
+            worker = manager_plugin._DefaultStartupWorker(controller, jobs)
+            worker.service_finished = _CaptureSignal()
+            worker.finished = _CaptureSignal()
+
+            worker.run()
+
+            results = [emission[0] for emission in worker.service_finished.emissions]
+            self.assertEqual(len(results), 3)
+            self.assertEqual(sum(result["succeeded"] for result in results), 2)
+            failed = next(result for result in results if not result["succeeded"])
+            self.assertEqual(failed["manifest"].service_id, "qcopilots.failed")
+            self.assertIn("isolated startup failure", failed["detail"])
+            self.assertGreaterEqual(controller.max_active, 2)
+            self.assertEqual(worker.finished.emissions, [(False,)])
+            self.assertEqual(
+                {call[3] for call in controller.start_calls},
+                {manager_plugin.SERVICE_STARTUP_TIMEOUT_SECONDS},
+            )
+            self.assertEqual(
+                {call[4] for call in controller.start_calls},
+                {"token-0", "token-1", "token-2"},
+            )
+            self.assertEqual(
+                {call[5] for call in controller.start_calls},
+                {worker._cancelled},
+            )
+
+    def test_manager_default_startup_worker_stops_after_launch_exception(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class RaiseAfterLaunchController:
+            def __init__(self):
+                self.running = False
+                self.stop_calls = 0
+
+            def start(self, manifest, **kwargs):
+                del manifest, kwargs
+                self.running = True
+                raise RuntimeError("raised after launch")
+
+            def status(self, manifest, deep=True):
+                del manifest, deep
+                return _status(
+                    running=self.running,
+                    health="running" if self.running else "stopped",
+                    owner_match=self.running,
+                )
+
+            def stop(self, manifest):
+                del manifest
+                self.stop_calls += 1
+                self.running = False
+                return _status(running=False, health="stopped")
+
+        manifest = types.SimpleNamespace(service_id="qcopilots.raise_after_launch")
+        controller = RaiseAfterLaunchController()
+        worker = manager_plugin._DefaultStartupWorker(
+            controller,
+            [
+                {
+                    "manifest": manifest,
+                    "auth_token": "service-session-token",
+                    "bridge_url": None,
+                    "extra_env": {},
+                }
+            ],
+        )
+
+        result = worker._start_one(worker.jobs[0])
+
+        self.assertFalse(result["succeeded"])
+        self.assertIn("raised after launch", result["detail"])
+        self.assertEqual(controller.stop_calls, 1)
+        self.assertFalse(controller.running)
+
+    def test_manager_default_startup_cancel_sweep_stops_missed_owned_service(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class CancelRaceController:
+            def __init__(self):
+                self.running = True
+                self.stop_calls = 0
+
+            def status(self, manifest, deep=True):
+                del manifest, deep
+                return _status(
+                    running=self.running,
+                    health="ok" if self.running else "stopped",
+                    owner_match=self.running,
+                )
+
+            def stop(self, manifest):
+                del manifest
+                self.stop_calls += 1
+                self.running = False
+                return _status(running=False, health="stopped")
+
+        manifest = types.SimpleNamespace(service_id="qcopilots.cancel_race")
+        controller = CancelRaceController()
+        worker = manager_plugin._DefaultStartupWorker(
+            controller,
+            [
+                {
+                    "manifest": manifest,
+                    "auth_token": "service-session-token",
+                    "bridge_url": None,
+                    "extra_env": {},
+                }
+            ],
+        )
+        worker.service_finished = _CaptureSignal()
+        worker.finished = _CaptureSignal()
+
+        def missed_cancel_cleanup(job):
+            worker.cancel()
+            return {
+                "manifest": job["manifest"],
+                "status": _status(running=True, health="ok", owner_match=True),
+                "auth_token": job["auth_token"],
+                "succeeded": False,
+                "detail": "Startup cancelled",
+            }
+
+        worker._start_one = missed_cancel_cleanup
+        worker.run()
+
+        self.assertEqual(controller.stop_calls, 1)
+        self.assertFalse(controller.running)
+        self.assertEqual(worker.finished.emissions, [(True,)])
+
+    def test_manager_init_gui_starts_bridge_and_default_batch_without_opening_dialog(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        old_action = manager_plugin.QAction
+        old_add_menu_action = manager_plugin.add_qcopilots_menu_action
+        old_core_application = manager_plugin.QCoreApplication
+        old_thread = manager_plugin.QThread
+        old_startup_worker = manager_plugin._DefaultStartupWorker
+        events = []
+        app = _FakeCatalogApplication()
+
+        class FakeCoreApplication:
+            @staticmethod
+            def instance():
+                return app
+
+            @staticmethod
+            def translate(_context, message):
+                return message
+
+        class RecordingThread(_DeferredFakeThread):
+            def start(self):
+                events.append("startup-batch")
+                super().start()
+
+        class RecordingBridge(_FakeBridge):
+            def start(self):
+                events.append("bridge")
+                super().start()
+
+        class RecordingStartupWorker:
+            def __init__(self, controller, jobs):
+                self.controller = controller
+                self.jobs = list(jobs)
+                self.service_finished = _CaptureSignal()
+                self.finished = _CaptureSignal()
+                self.thread = None
+                self.cancelled = False
+
+            def moveToThread(self, thread):
+                self.thread = thread
+
+            def run(self):
+                return
+
+            def cancel(self):
+                self.cancelled = True
+
+            def deleteLater(self):
+                return
+
+        try:
+            manager_plugin.QAction = _FakeAction
+            manager_plugin.add_qcopilots_menu_action = lambda _iface, _action: events.append("menu")
+            manager_plugin.QCoreApplication = FakeCoreApplication
+            manager_plugin.QThread = RecordingThread
+            manager_plugin._DefaultStartupWorker = RecordingStartupWorker
+            with tempfile.TemporaryDirectory() as tmp:
+                manifest = _manifest(tmp, "qcopilots.first", ["tools"])
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(plugin)
+                plugin.iface = _FakeIface()
+                plugin.action = None
+                plugin.icon_path = Path(tmp) / "icon.svg"
+                plugin.bridge = RecordingBridge()
+                plugin.controller = _FakeProcessController()
+                plugin._bridge_auth_token = "bridge-session-token"
+                plugin._manager_config = {
+                    "default_startup": {
+                        "enabled": True,
+                        "service_ids": [manifest.service_id],
+                    },
+                    "service_network": {
+                        "enabled": True,
+                        "host": "127.0.0.1",
+                        "advertised_host": "127.0.0.1",
+                        "cors_origins": [],
+                    },
+                }
+                plugin._discover_services = lambda: [manifest]
+                plugin._event_relay = types.SimpleNamespace(
+                    handle_default_start_result=lambda result: plugin._handle_default_start_result(result),
+                    handle_default_start_finished=lambda cancelled: plugin._handle_default_start_finished(cancelled),
+                )
+
+                plugin.initGui()
+
+                self.assertEqual(events[0], "bridge")
+                self.assertIn("startup-batch", events)
+                self.assertTrue(plugin.bridge.started)
+                self.assertIsNone(plugin.dialog)
+                self.assertIsInstance(plugin._startup_thread, RecordingThread)
+                self.assertEqual(plugin._startup_thread.started_count, 1)
+                self.assertEqual(len(plugin.iface.toolbar_actions), 1)
+                catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertFalse(catalog["startupComplete"])
+                self.assertEqual(catalog["services"][0]["state"], "starting")
+
+                plugin.initGui()
+                self.assertEqual(plugin.bridge.start_count, 1)
+                self.assertEqual(plugin._startup_thread.started_count, 1)
+                self.assertEqual(len(plugin.iface.toolbar_actions), 1)
+
+                startup_thread = plugin._startup_thread
+                self.assertTrue(plugin._cleanup_startup_thread(wait=True))
+                self.assertEqual(startup_thread.wait_args, [(manager_plugin.STARTUP_THREAD_WAIT_TIMEOUT_MS,)])
+                self.assertIsNone(plugin._startup_thread)
+                self.assertIsNone(plugin._startup_worker)
+        finally:
+            manager_plugin.QAction = old_action
+            manager_plugin.add_qcopilots_menu_action = old_add_menu_action
+            manager_plugin.QCoreApplication = old_core_application
+            manager_plugin.QThread = old_thread
+            manager_plugin._DefaultStartupWorker = old_startup_worker
+
+    def test_manager_startup_cleanup_waits_past_normal_timeout_until_thread_finishes(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class SlowFinishingThread:
+            def __init__(self):
+                self.running = True
+                self.quit_count = 0
+                self.wait_args = []
+
+            def isRunning(self):
+                return self.running
+
+            def quit(self):
+                self.quit_count += 1
+
+            def wait(self, timeout):
+                self.wait_args.append(timeout)
+                if timeout == manager_plugin.STARTUP_THREAD_FINAL_WAIT_SLICE_MS:
+                    self.running = False
+                    return True
+                return False
+
+        class RecordingWorker:
+            def __init__(self):
+                self.cancel_count = 0
+
+            def cancel(self):
+                self.cancel_count += 1
+
+        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+        _prime_manager_runtime(plugin)
+        thread = SlowFinishingThread()
+        worker = RecordingWorker()
+        plugin._startup_thread = thread
+        plugin._startup_worker = worker
+
+        self.assertTrue(plugin._cleanup_startup_thread(wait=True))
+        self.assertEqual(
+            thread.wait_args,
+            [
+                manager_plugin.STARTUP_THREAD_WAIT_TIMEOUT_MS,
+                manager_plugin.STARTUP_THREAD_FINAL_WAIT_SLICE_MS,
+            ],
+        )
+        self.assertGreaterEqual(worker.cancel_count, 2)
+        self.assertIsNone(plugin._startup_thread)
+        self.assertIsNone(plugin._startup_worker)
+
+    def test_manager_startup_cleanup_timeout_is_bounded_and_keeps_references(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class StuckThread:
+            def __init__(self):
+                self.wait_args = []
+
+            def isRunning(self):
+                return True
+
+            def quit(self):
+                pass
+
+            def wait(self, timeout):
+                self.wait_args.append(timeout)
+                return False
+
+        class RecordingWorker:
+            def __init__(self):
+                self.cancel_count = 0
+
+            def cancel(self):
+                self.cancel_count += 1
+
+        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+        _prime_manager_runtime(plugin)
+        thread = StuckThread()
+        worker = RecordingWorker()
+        plugin._startup_thread = thread
+        plugin._startup_worker = worker
+
+        self.assertFalse(plugin._cleanup_startup_thread(wait=True))
+        self.assertIs(plugin._startup_thread, thread)
+        self.assertIs(plugin._startup_worker, worker)
+        self.assertEqual(
+            thread.wait_args,
+            [
+                manager_plugin.STARTUP_THREAD_WAIT_TIMEOUT_MS,
+                manager_plugin.STARTUP_THREAD_FINAL_WAIT_SLICE_MS,
+            ],
+        )
+        self.assertGreaterEqual(worker.cancel_count, 2)
+
+    def test_manager_disabled_default_startup_keeps_discovered_services_stopped(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        old_core_application = manager_plugin.QCoreApplication
+        app = _FakeCatalogApplication()
+
+        class FakeCoreApplication:
+            @staticmethod
+            def instance():
+                return app
+
+        try:
+            manager_plugin.QCoreApplication = FakeCoreApplication
+            with tempfile.TemporaryDirectory() as tmp:
+                manifest = _manifest(tmp, "qcopilots.first", ["tools"])
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(plugin)
+                plugin._manager_config = {
+                    "default_startup": {
+                        "enabled": False,
+                        "service_ids": [manifest.service_id],
+                    },
+                    "service_network": {
+                        "enabled": True,
+                        "host": "127.0.0.1",
+                        "advertised_host": "127.0.0.1",
+                        "cors_origins": [],
+                    },
+                }
+                plugin._discover_services = lambda: [manifest]
+
+                plugin._discover_and_start_default_services()
+
+                self.assertIsNone(plugin._startup_thread)
+                self.assertIsNone(plugin._startup_worker)
+                catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
+                self.assertTrue(catalog["startupComplete"])
+                self.assertEqual(catalog["services"][0]["state"], "stopped")
+        finally:
+            manager_plugin.QCoreApplication = old_core_application
+
+    def test_manager_source_keeps_tokens_native_only_and_has_no_workspace_environment_helpers(self):
         plugin_source = (
             Path(__file__).resolve().parents[3]
             / "python"
@@ -1434,8 +2303,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertNotIn("_local_unauthenticated_mcp_ok", plugin_source)
-        self.assertNotIn("auth" + "_token", plugin_source)
-        self.assertNotIn("mcp_" + "auth" + "_token", plugin_source)
+        self.assertIn("secrets.token_urlsafe(32)", plugin_source)
+        self.assertIn("QGIS_BRIDGE_AUTH_TOKEN_ENV", plugin_source)
+        self.assertNotIn("auth_header_label", plugin_source)
         self.assertNotIn("WORKSPACE" + "_ROOTS_ENV", plugin_source)
 
     def test_qgis_bridge_allows_external_paths(self):
@@ -1684,14 +2554,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         running = _status(running=True, health="ok")
         stopped = _status(running=False, health="stopped")
         controller = _FakeProcessController(start_status=running, stop_status=stopped)
+        manager = _FakeManagerPlugin()
+        manager.controller = controller
         worker = ServiceToggleWorker(
-            controller,
-            _FakeLogger(),
+            manager,
             manifest,
             True,
             False,
-            "http://127.0.0.1:48200",
-            {"QCOPILOTS_TEST_ENV": "1"},
+            "service-session-token",
             "Service did not become healthy",
             "Unknown service state",
             shutdown_requested=lambda: True,
@@ -1703,6 +2573,70 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
         self.assertEqual(controller.calls, ["start", "stop"])
         self.assertEqual(worker.finished.emissions[0], (stopped,))
+        self.assertEqual(worker.failed.emissions, [])
+
+    def test_manager_toggle_worker_cancellation_reaches_start_and_forces_stop(self):
+        _install_manager_import_stubs()
+
+        import threading
+
+        from qcopilots_mcp_servers_manager.plugin import ServiceToggleWorker
+
+        manifest = types.SimpleNamespace(service_id="qcopilots.test")
+        running = _status(running=True, health="ok")
+        stopped = _status(running=False, health="stopped")
+        start_entered = threading.Event()
+
+        class BlockingManager:
+            def __init__(self):
+                self.controller = object()
+                self.logger = _FakeLogger()
+                self.cancel_events = []
+
+            def start_service(self, manifest, auth_token=None, cancel_event=None):
+                del manifest, auth_token
+                self.cancel_events.append(("start", cancel_event))
+                start_entered.set()
+                if not cancel_event.wait(timeout=3):
+                    raise TimeoutError("Toggle cancellation was not signaled")
+                return running
+
+            def stop_service(self, manifest, cancel_event=None):
+                del manifest
+                self.cancel_events.append(("stop", cancel_event))
+                return stopped
+
+            def service_status(self, manifest, deep=True):
+                del manifest, deep
+                return stopped
+
+        manager = BlockingManager()
+        worker = ServiceToggleWorker(
+            manager,
+            manifest,
+            True,
+            False,
+            "service-session-token",
+            "Service did not become healthy",
+            "Unknown service state",
+        )
+        worker.finished = _CaptureSignal()
+        worker.failed = _CaptureSignal()
+        thread = threading.Thread(target=worker.run)
+        thread.start()
+        self.addCleanup(worker.cancel)
+        self.addCleanup(thread.join, 3)
+
+        self.assertTrue(start_entered.wait(timeout=2))
+        worker.cancel()
+        thread.join(timeout=3)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(
+            manager.cancel_events,
+            [("start", worker._cancelled), ("stop", worker._cancelled)],
+        )
+        self.assertEqual(worker.finished.emissions, [(stopped,)])
         self.assertEqual(worker.failed.emissions, [])
 
     def test_manager_toggle_worker_reports_stop_failure_with_live_status(self):
@@ -1762,8 +2696,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertIsInstance(card.toggle_thread, _DeferredFakeThread)
             self.assertIsNotNone(card.toggle_worker)
             self.assertIs(card.toggle_worker.controller, card.plugin.controller)
-            self.assertEqual(card.toggle_worker.extra_env["QCOPILOTS_TEST_ENV"], "1")
-            self.assertEqual(card.plugin.calls, ["service_env"])
+            self.assertTrue(card.toggle_worker.auth_token)
+            self.assertEqual(card.plugin.calls, ["prepare_service_start"])
         finally:
             manager_plugin.QThread = old_thread
             manager_plugin.ServiceToggleWorker = old_worker
@@ -1773,25 +2707,25 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        class FailingEnvPlugin(_FakeManagerPlugin):
-            def _service_env(self, manifest):
+        class FailingPreparePlugin(_FakeManagerPlugin):
+            def prepare_service_start(self, manifest):
                 del manifest
-                self.calls.append("service_env")
-                raise RuntimeError("env failed")
+                self.calls.append("prepare_service_start")
+                raise RuntimeError("prepare failed")
 
         card = _fake_service_card(manager_plugin, running=False)
-        card.plugin = FailingEnvPlugin(status=_status(running=False, health="stopped"))
+        card.plugin = FailingPreparePlugin(status=_status(running=False, health="stopped"))
 
         card.toggle_service(True)
 
-        self.assertEqual(card.plugin.calls, ["service_env", "status"])
+        self.assertEqual(card.plugin.calls, ["prepare_service_start", "status"])
         self.assertEqual(card.plugin.controller.calls, ["status"])
         self.assertEqual(card.plugin.controller.status_deep_values, [False])
         self.assertIsNone(card.toggle_thread)
         self.assertTrue(card.switch.enabled)
         self.assertFalse(card.switch.checked)
         self.assertEqual(card.running_label.text(), "Start failed")
-        self.assertEqual(card.running_label.toolTip(), "env failed")
+        self.assertEqual(card.running_label.toolTip(), "prepare failed")
 
     def test_manager_toggle_service_stops_worker_without_service_env(self):
         _install_manager_import_stubs()
@@ -1812,7 +2746,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertIsInstance(card.toggle_thread, _DeferredFakeThread)
             self.assertFalse(card.toggle_worker.enabled)
             self.assertTrue(card.toggle_worker.was_running)
-            self.assertEqual(card.toggle_worker.extra_env, {})
+            self.assertIsNone(card.toggle_worker.auth_token)
             self.assertEqual(card.plugin.calls, [])
         finally:
             manager_plugin.QThread = old_thread
@@ -1902,6 +2836,32 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertTrue(status.running)
         self.assertEqual(plugin.controller.calls, ["status"])
         self.assertEqual(plugin.controller.status_deep_values, [True])
+
+    def test_manager_service_status_snapshot_uses_nonblocking_controller_path(self):
+        _install_manager_import_stubs()
+
+        from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
+
+        expected = _status(running=False, health="starting")
+
+        class SnapshotController:
+            def __init__(self):
+                self.calls = []
+
+            def status_snapshot(self, manifest):
+                self.calls.append(("snapshot", manifest.service_id))
+                return expected
+
+            def status(self, manifest, deep=True):
+                del manifest, deep
+                raise AssertionError("blocking status path must not be used")
+
+        plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
+        plugin.controller = SnapshotController()
+        manifest = types.SimpleNamespace(service_id="qcopilots.test")
+
+        self.assertIs(plugin.service_status_snapshot(manifest), expected)
+        self.assertEqual(plugin.controller.calls, [("snapshot", "qcopilots.test")])
 
     def test_manager_service_card_initial_status_uses_lightweight_probe(self):
         _install_manager_import_stubs()
@@ -1995,20 +2955,54 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         plugin.iface = _FakeIface()
         plugin.bridge = _FakeBridge()
         plugin.controller = _RecordingController()
-        plugin._discover_services = lambda include_disabled=False: [
+        owned = [
             types.SimpleNamespace(service_id="qcopilots.first"),
             types.SimpleNamespace(service_id="qcopilots.second"),
         ]
+        _prime_manager_runtime(plugin, owned)
+        plugin._owned_manifests = {manifest.service_id: manifest for manifest in owned}
+        plugin.dialog = dialog
 
         QCopilotsMCPServersManagerPlugin.unload(plugin)
 
-        self.assertEqual(dialog.prepare_close_wait_values, [True])
+        self.assertEqual(dialog.prepare_close_wait_values, [True, True])
         self.assertTrue(dialog.closed)
         self.assertTrue(dialog.deleted)
         self.assertIsNone(plugin.dialog)
         self.assertEqual(plugin.controller.stopped_service_ids, ["qcopilots.first", "qcopilots.second"])
         self.assertTrue(plugin.bridge.stopped)
         self.assertEqual(plugin.bridge.stop_count, 1)
+
+    def test_manager_unload_failure_is_explicit_and_keeps_ui_references(self):
+        _install_manager_import_stubs()
+
+        from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
+
+        plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
+        dialog = _FakeDialog()
+        action = types.SimpleNamespace(enabled=True)
+        action.setEnabled = lambda enabled: setattr(action, "enabled", enabled)
+        plugin.dialog = dialog
+        plugin.logger = _FakeLogger()
+        plugin.action = action
+        plugin.iface = _FakeIface()
+        plugin.bridge = _FakeBridge()
+        plugin.controller = _RecordingController(fail_service_ids={"qcopilots.first"})
+        manifest = types.SimpleNamespace(service_id="qcopilots.first")
+        _prime_manager_runtime(plugin, [manifest])
+        plugin._initialized = True
+        plugin._owned_manifests = {manifest.service_id: manifest}
+        plugin.dialog = dialog
+        plugin.action = action
+
+        with self.assertRaisesRegex(RuntimeError, "shutdown remains incomplete"):
+            QCopilotsMCPServersManagerPlugin.unload(plugin)
+
+        self.assertIs(plugin.action, action)
+        self.assertIs(plugin.dialog, dialog)
+        self.assertFalse(dialog.closed)
+        self.assertFalse(action.enabled)
+        self.assertTrue(plugin._initialized)
 
     def test_manager_about_to_quit_hook_shuts_down_services(self):
         _install_manager_import_stubs()
@@ -2026,16 +3020,16 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         try:
             manager_plugin.QCoreApplication = FakeCoreApplication
             plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
-            plugin._about_to_quit_connected = False
-            plugin._shutdown_started = False
             plugin.dialog = _FakeDialog()
             plugin.logger = _FakeLogger()
             plugin.bridge = _FakeBridge()
             plugin.controller = _RecordingController()
-            plugin._discover_services = lambda include_disabled=False: [
+            owned = [
                 types.SimpleNamespace(service_id="qcopilots.first"),
                 types.SimpleNamespace(service_id="qcopilots.second"),
             ]
+            _prime_manager_runtime(plugin, owned)
+            plugin._owned_manifests = {manifest.service_id: manifest for manifest in owned}
 
             plugin._connect_about_to_quit()
             app.aboutToQuit.emit()
@@ -2064,17 +3058,15 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         try:
             manager_plugin.QCoreApplication = FakeCoreApplication
             plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
-            plugin._about_to_quit_connected = False
-            plugin._shutdown_started = False
             plugin.dialog = _FakeDialog()
             plugin.logger = _FakeLogger()
             plugin.action = None
             plugin.iface = _FakeIface()
             plugin.bridge = _FakeBridge()
             plugin.controller = _RecordingController()
-            plugin._discover_services = lambda include_disabled=False: [
-                types.SimpleNamespace(service_id="qcopilots.first")
-            ]
+            owned = [types.SimpleNamespace(service_id="qcopilots.first")]
+            _prime_manager_runtime(plugin, owned)
+            plugin._owned_manifests = {manifest.service_id: manifest for manifest in owned}
 
             plugin._connect_about_to_quit()
             app.aboutToQuit.emit()
@@ -2094,24 +3086,49 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
         plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
-        plugin._shutdown_started = False
         plugin.dialog = _FakeDialog()
         plugin.logger = _FakeLogger()
         plugin.bridge = _FakeBridge()
         plugin.controller = _RecordingController(fail_service_ids={"qcopilots.first"})
-        plugin._discover_services = lambda include_disabled=False: [
+        owned = [
             types.SimpleNamespace(service_id="qcopilots.first"),
             types.SimpleNamespace(service_id="qcopilots.second"),
         ]
+        _prime_manager_runtime(plugin, owned)
+        plugin._owned_manifests = {manifest.service_id: manifest for manifest in owned}
+        plugin.dialog = _FakeDialog()
+        plugin._bridge_auth_token = "bridge-session-token"
 
-        plugin._shutdown_services()
+        self.assertFalse(plugin._shutdown_services())
 
         self.assertEqual(plugin.dialog.prepare_close_wait_values, [True])
-        self.assertEqual(plugin.controller.stopped_service_ids, ["qcopilots.first", "qcopilots.second"])
+        self.assertEqual(
+            plugin.controller.stopped_service_ids,
+            ["qcopilots.first", "qcopilots.second", "qcopilots.first"],
+        )
         self.assertEqual(plugin.bridge.stop_count, 1)
+        self.assertFalse(plugin._shutdown_completed)
+        self.assertEqual(set(plugin._owned_manifests), {"qcopilots.first"})
+        self.assertEqual(plugin._bridge_auth_token, "")
         self.assertEqual(plugin.logger.messages[0][0], "Failed to stop %s: %s")
         self.assertEqual(plugin.logger.messages[0][1][0], "qcopilots.first")
         self.assertEqual(str(plugin.logger.messages[0][1][1]), "stop failed")
+
+        plugin.controller.fail_service_ids.clear()
+        self.assertTrue(plugin._shutdown_services())
+        self.assertTrue(plugin._shutdown_completed)
+        self.assertEqual(plugin._owned_manifests, {})
+        self.assertEqual(plugin._bridge_auth_token, "")
+        self.assertEqual(
+            plugin.controller.stopped_service_ids,
+            [
+                "qcopilots.first",
+                "qcopilots.second",
+                "qcopilots.first",
+                "qcopilots.first",
+            ],
+        )
+        self.assertEqual(plugin.bridge.stop_count, 2)
 
     def test_manager_shutdown_continues_cleanup_when_toggle_action_is_still_running(self):
         _install_manager_import_stubs()
@@ -2119,49 +3136,124 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
         plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
-        plugin._shutdown_started = False
-        plugin._shutdown_completed = False
         plugin.dialog = _FakeDialog(prepare_close_result=False)
         plugin.logger = _FakeLogger()
         plugin.bridge = _FakeBridge()
         plugin.controller = _RecordingController()
-        plugin._discover_services = lambda include_disabled=False: [
-            types.SimpleNamespace(service_id="qcopilots.first")
-        ]
+        owned = [types.SimpleNamespace(service_id="qcopilots.first")]
+        _prime_manager_runtime(plugin, owned)
+        plugin._owned_manifests = {manifest.service_id: manifest for manifest in owned}
+        plugin.dialog = _FakeDialog(prepare_close_result=False)
+        plugin._bridge_auth_token = "bridge-session-token"
 
-        plugin._shutdown_services()
+        self.assertFalse(plugin._shutdown_services())
 
         self.assertTrue(plugin._shutdown_started)
-        self.assertTrue(plugin._shutdown_completed)
+        self.assertFalse(plugin._shutdown_completed)
         self.assertEqual(plugin.dialog.prepare_close_wait_values, [True])
         self.assertEqual(plugin.controller.stopped_service_ids, ["qcopilots.first"])
         self.assertEqual(plugin.bridge.stop_count, 1)
+        self.assertEqual(plugin._bridge_auth_token, "")
         self.assertEqual(
             plugin.logger.messages[1],
             ("Continuing QCopilots MCP shutdown cleanup with a running service action", ()),
         )
 
-    def test_manager_shutdown_uses_stored_manifests_when_discovery_misses_service(self):
+        plugin.dialog.prepare_close_result = True
+        self.assertTrue(plugin._shutdown_services())
+        self.assertTrue(plugin._shutdown_completed)
+        self.assertEqual(plugin.controller.stopped_service_ids, ["qcopilots.first"])
+        self.assertEqual(plugin.bridge.stop_count, 2)
+        self.assertEqual(plugin._bridge_auth_token, "")
+
+    def test_manager_shutdown_retries_after_startup_thread_timeout(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
         plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
-        plugin._shutdown_started = False
-        plugin._shutdown_completed = False
+        plugin.dialog = _FakeDialog()
+        plugin.logger = _FakeLogger()
+        plugin.bridge = _FakeBridge()
+        plugin.controller = _RecordingController()
+        _prime_manager_runtime(plugin)
+        plugin.dialog = _FakeDialog()
+        plugin._bridge_auth_token = "bridge-session-token"
+        startup_cleanup_results = iter((False, True))
+        plugin._cleanup_startup_thread = lambda wait=False: next(
+            startup_cleanup_results
+        )
+
+        self.assertFalse(plugin._shutdown_services())
+        self.assertFalse(plugin._shutdown_completed)
+        self.assertEqual(plugin._bridge_auth_token, "")
+
+        self.assertTrue(plugin._shutdown_services())
+        self.assertTrue(plugin._shutdown_completed)
+        self.assertEqual(plugin._bridge_auth_token, "")
+        self.assertEqual(plugin.bridge.stop_count, 2)
+
+    def test_manager_shutdown_does_not_stop_unowned_stored_manifests(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
         plugin.dialog = _FakeDialog()
         plugin.logger = _FakeLogger()
         plugin.bridge = _FakeBridge()
         plugin.controller = _RecordingController(
             stored_manifests=[types.SimpleNamespace(service_id="qcopilots.stored")]
         )
-        plugin._discover_services = lambda include_disabled=False: []
+        _prime_manager_runtime(plugin)
+        plugin.dialog = _FakeDialog()
 
         plugin._shutdown_services()
 
-        self.assertEqual(plugin.controller.stopped_service_ids, ["qcopilots.stored"])
+        self.assertEqual(plugin.controller.stopped_service_ids, [])
         self.assertEqual(plugin.bridge.stop_count, 1)
         self.assertTrue(plugin._shutdown_completed)
+
+    def test_manager_shutdown_final_sweep_stops_late_owned_catalog_service(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class InflightController:
+            def __init__(self):
+                self.status_calls = 0
+                self.stop_events = []
+
+            def status(self, manifest, deep=True):
+                del manifest, deep
+                self.status_calls += 1
+                if self.status_calls == 1:
+                    return _status(running=False, health="starting", owner_match=False)
+                return _status(running=True, health="ok", owner_match=True)
+
+            def stop(self, manifest, cancel_event=None):
+                del manifest
+                self.stop_events.append(cancel_event)
+                return _status(running=False, health="stopped", owner_match=True)
+
+        manifest = types.SimpleNamespace(service_id="qcopilots.inflight")
+        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+        plugin.dialog = _FakeDialog()
+        plugin.logger = _FakeLogger()
+        plugin.bridge = _FakeBridge()
+        plugin.controller = InflightController()
+        _prime_manager_runtime(plugin, [manifest])
+        plugin._bridge_auth_token = "bridge-session-token"
+
+        self.assertTrue(plugin._shutdown_services())
+
+        self.assertEqual(plugin.controller.status_calls, 2)
+        self.assertEqual(plugin.controller.stop_events, [plugin._shutdown_event])
+        self.assertTrue(plugin._shutdown_event.is_set())
+        self.assertTrue(plugin._shutdown_completed)
+        self.assertEqual(plugin._owned_manifests, {})
+        self.assertEqual(plugin._catalog_manifests, {})
+        self.assertEqual(plugin._bridge_auth_token, "")
 
     def test_manager_cleanup_toggle_thread_waits_only_on_unload_path(self):
         _install_manager_import_stubs()
@@ -2184,32 +3276,113 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertIsNone(card.toggle_thread)
         self.assertIsNone(card.toggle_worker)
 
-    def test_manager_cleanup_toggle_thread_timeout_keeps_running_references(self):
+    def test_manager_cleanup_toggle_thread_waits_past_normal_timeout_until_finished(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
+        class SlowFinishingThread:
+            def __init__(self):
+                self.running = True
+                self.quit_count = 0
+                self.wait_args = []
+
+            def isRunning(self):
+                return self.running
+
+            def quit(self):
+                self.quit_count += 1
+
+            def wait(self, timeout):
+                self.wait_args.append(timeout)
+                if timeout == manager_plugin.TOGGLE_THREAD_FINAL_WAIT_SLICE_MS:
+                    self.running = False
+                    return True
+                return False
+
+        class RecordingWorker:
+            def __init__(self):
+                self.cancel_count = 0
+
+            def cancel(self):
+                self.cancel_count += 1
+
         card = object.__new__(manager_plugin.ServiceCard)
-        thread = _DeferredFakeThread()
-        thread.running = True
-        thread.wait_result = False
-        thread.emit_finished_on_quit = False
-        worker = object()
+        thread = SlowFinishingThread()
+        worker = RecordingWorker()
         card.plugin = _FakeManagerPlugin()
         card.manifest = types.SimpleNamespace(service_id="qcopilots.test")
         card.toggle_thread = thread
         card.toggle_worker = worker
         cleanup = types.MethodType(manager_plugin.ServiceCard.cleanup_toggle_thread, card)
 
-        self.assertFalse(cleanup(wait=True))
-        self.assertEqual(thread.quit_count, 1)
-        self.assertEqual(thread.wait_args, [(manager_plugin.TOGGLE_THREAD_WAIT_TIMEOUT_MS,)])
+        self.assertTrue(cleanup(wait=True))
+        self.assertEqual(thread.quit_count, 2)
+        self.assertEqual(
+            thread.wait_args,
+            [
+                manager_plugin.TOGGLE_THREAD_WAIT_TIMEOUT_MS,
+                manager_plugin.TOGGLE_THREAD_FINAL_WAIT_SLICE_MS,
+            ],
+        )
+        self.assertGreaterEqual(worker.cancel_count, 2)
+        self.assertIsNone(card.toggle_thread)
+        self.assertIsNone(card.toggle_worker)
+        self.assertEqual(
+            card.plugin.logger.messages[0],
+            (
+                "QCopilots %s MCP server action cancellation exceeded the normal wait; "
+                "performing one final bounded wait",
+                ("qcopilots.test",),
+            ),
+        )
+
+    def test_manager_cleanup_toggle_thread_timeout_is_bounded_and_keeps_references(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class StuckThread:
+            def __init__(self):
+                self.wait_args = []
+                self.quit_count = 0
+
+            def isRunning(self):
+                return True
+
+            def quit(self):
+                self.quit_count += 1
+
+            def wait(self, timeout):
+                self.wait_args.append(timeout)
+                return False
+
+        class RecordingWorker:
+            def __init__(self):
+                self.cancel_count = 0
+
+            def cancel(self):
+                self.cancel_count += 1
+
+        card = object.__new__(manager_plugin.ServiceCard)
+        card.plugin = _FakeManagerPlugin()
+        card.manifest = types.SimpleNamespace(service_id="qcopilots.test")
+        card.toggle_thread = StuckThread()
+        card.toggle_worker = RecordingWorker()
+        thread = card.toggle_thread
+        worker = card.toggle_worker
+
+        self.assertFalse(card.cleanup_toggle_thread(wait=True))
         self.assertIs(card.toggle_thread, thread)
         self.assertIs(card.toggle_worker, worker)
         self.assertEqual(
-            card.plugin.logger.messages[0],
-            ("Timed out waiting for %s MCP server action to finish", ("qcopilots.test",)),
+            thread.wait_args,
+            [
+                manager_plugin.TOGGLE_THREAD_WAIT_TIMEOUT_MS,
+                manager_plugin.TOGGLE_THREAD_FINAL_WAIT_SLICE_MS,
+            ],
         )
+        self.assertGreaterEqual(worker.cancel_count, 2)
 
     def test_manager_worker_teardown_uses_stable_thread_and_worker_references(self):
         _install_manager_import_stubs()
@@ -2322,6 +3495,71 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertTrue(card.switch.enabled)
         self.assertFalse(card.switch.checked)
         self.assertEqual(card.running_label.text(), "Stopped")
+        self.assertEqual(card.plugin.remembered_service_states, [])
+
+    def test_manager_successful_explicit_toggles_persist_startup_preference(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        card = _fake_service_card(manager_plugin, running=False)
+
+        card._finish_toggle_service(
+            True,
+            "Start failed",
+            _status(running=True, health="ok"),
+        )
+        card._finish_toggle_service(
+            False,
+            "Stop failed",
+            _status(running=False, health="stopped"),
+        )
+
+        self.assertEqual(
+            card.plugin.remembered_service_states,
+            [("qcopilots.test", True), ("qcopilots.test", False)],
+        )
+
+    def test_manager_shutdown_toggle_completion_does_not_persist_preference(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        card = _fake_service_card(manager_plugin, running=True)
+        card.plugin._shutdown_started = True
+
+        card._finish_toggle_service(
+            False,
+            "Stop failed",
+            _status(running=False, health="stopped"),
+        )
+
+        self.assertEqual(card.plugin.remembered_service_states, [])
+
+    def test_manager_preference_save_failure_is_nonfatal_ui_feedback(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        card = _fake_service_card(manager_plugin, running=False)
+        card.plugin.preference_result = types.SimpleNamespace(
+            saved=False,
+            error="disk full",
+        )
+
+        card._finish_toggle_service(
+            True,
+            "Start failed",
+            _status(running=True, health="ok"),
+        )
+
+        self.assertTrue(card.status.running)
+        self.assertEqual(card.running_label.text(), "Preference not saved")
+        self.assertEqual(card.running_label.toolTip(), "disk full")
+        self.assertEqual(
+            card.plugin.remembered_service_states,
+            [("qcopilots.test", True)],
+        )
 
     def test_common_plugin_has_metadata_and_noop_wrapper(self):
         common_root = Path(__file__).resolve().parents[3] / "python" / "plugins" / "qcopilots_common"
@@ -2691,6 +3929,7 @@ def _status(
     diagnostic="",
     log_file="",
     exit_code=None,
+    owner_match=True,
 ):
     return types.SimpleNamespace(
         running=running,
@@ -2700,6 +3939,7 @@ def _status(
         diagnostic=diagnostic,
         log_file=log_file,
         exit_code=exit_code,
+        owner_match=owner_match,
     )
 
 
@@ -2718,14 +3958,14 @@ class _DefaultStartupCard:
 
 
 def _worker(worker_class, controller, manifest, enabled, was_running):
+    manager = _FakeManagerPlugin()
+    manager.controller = controller
     return worker_class(
-        controller,
-        _FakeLogger(),
+        manager,
         manifest,
         enabled,
         was_running,
-        "http://127.0.0.1:48200",
-        {"QCOPILOTS_TEST_ENV": "1"},
+        "service-session-token" if enabled else None,
         "Service did not become healthy",
         "Unknown service state",
     )
@@ -2771,6 +4011,41 @@ class _CaptureSignal:
         self.emissions.append(args)
         for slot in self.slots:
             slot(*args)
+
+
+class _FakeCatalogApplication:
+    def __init__(self, properties=None):
+        self.aboutToQuit = _CaptureSignal()
+        self.properties = dict(properties or {})
+        self.set_calls = []
+
+    def property(self, name):
+        return self.properties.get(name)
+
+    def setProperty(self, name, value):
+        self.properties[name] = value
+        self.set_calls.append((name, value))
+
+    def catalog(self, name):
+        return json.loads(self.properties[name])
+
+
+class _FakeAction:
+    def __init__(self, *args, **kwargs):
+        del args, kwargs
+        self.triggered = _CaptureSignal()
+        self.object_name = ""
+        self.tooltip = ""
+        self.icon_visible_in_menu = False
+
+    def setObjectName(self, value):
+        self.object_name = value
+
+    def setToolTip(self, value):
+        self.tooltip = value
+
+    def setIconVisibleInMenu(self, value):
+        self.icon_visible_in_menu = value
 
 
 class _FakeTimer:
@@ -2922,6 +4197,27 @@ class _FakeLogger:
         self.messages.append((message, args))
 
 
+def _prime_manager_runtime(plugin, manifests=()):
+    plugin._initialized = False
+    plugin._shutdown_started = False
+    plugin._shutdown_completed = False
+    plugin._shutdown_event = threading.Event()
+    plugin._about_to_quit_connected = False
+    plugin._startup_thread = None
+    plugin._startup_worker = None
+    plugin._state_lock = threading.RLock()
+    plugin._starting_service_ids = set()
+    plugin._owned_manifests = {}
+    plugin._service_auth_tokens = {}
+    plugin._catalog_manifests = {manifest.service_id: manifest for manifest in manifests}
+    plugin._catalog_states = {manifest.service_id: "stopped" for manifest in manifests}
+    plugin._catalog_statuses = {}
+    plugin._catalog_generation = 0
+    plugin._catalog_startup_complete = True
+    plugin.dialog = getattr(plugin, "dialog", None)
+    plugin.logger = getattr(plugin, "logger", _FakeLogger())
+
+
 def _assert_logger_warning_contains(testcase, logger, text):
     testcase.assertTrue(
         any(text in message for message, _args in logger.messages),
@@ -2967,6 +4263,7 @@ class _FakeBridge:
         self.start_count = 0
         self.stopped = False
         self.stop_count = 0
+        self.clear_auth_token_count = 0
 
     def start(self):
         self.started = True
@@ -2976,6 +4273,9 @@ class _FakeBridge:
         self.stopped = True
         self.stop_count += 1
 
+    def clear_auth_token(self):
+        self.clear_auth_token_count += 1
+
 
 class _FakeManagerPlugin:
     def __init__(self, start_status=None, stop_status=None, status=None):
@@ -2984,9 +4284,12 @@ class _FakeManagerPlugin:
         self.status = status or _status(running=False, health="stopped")
         self.controller = _FakeProcessController(self.start_status, self.stop_status, self.status)
         self.bridge = types.SimpleNamespace(url="http://127.0.0.1:48200")
-        self._default_startup_applied = False
+        self._bridge_auth_token = "bridge-session-token"
         self.calls = []
         self.logger = _FakeLogger()
+        self._token_counter = 0
+        self.remembered_service_states = []
+        self.preference_result = types.SimpleNamespace(saved=True, error="")
 
     def tr(self, message):
         return message
@@ -2995,6 +4298,12 @@ class _FakeManagerPlugin:
         del manifest
         self.calls.append("service_env")
         return {"QCOPILOTS_TEST_ENV": "1"}
+
+    def prepare_service_start(self, manifest):
+        del manifest
+        self.calls.append("prepare_service_start")
+        self._token_counter += 1
+        return f"service-session-token-{self._token_counter}"
 
     def _discover_services(self):
         return [
@@ -3006,14 +4315,21 @@ class _FakeManagerPlugin:
     def manager_config(self):
         return {"default_startup": {"enabled": False, "service_ids": []}}
 
+    def remember_service_startup(self, service_id, enabled):
+        self.remembered_service_states.append((service_id, enabled))
+        return self.preference_result
+
     def service_status(self, manifest, deep=True):
         self.calls.append("status")
         return self.controller.status(manifest, deep=deep)
 
+    def start_service(self, manifest, auth_token=None):
+        self.calls.append("start_service")
+        return self.controller.start(manifest, auth_token=auth_token)
+
     def stop_service(self, manifest):
-        del manifest
         self.calls.append("stop_service")
-        return self.controller.stop(types.SimpleNamespace(service_id="qcopilots.test"))
+        return self.controller.stop(manifest)
 
     def is_shutting_down(self):
         return getattr(self, "_shutdown_started", False)
@@ -3028,28 +4344,46 @@ class _FakeProcessController:
         self.stop_error = stop_error
         self.calls = []
         self.status_deep_values = []
+        self.status_values = {}
+        self.auth_tokens = {}
+        self.auth_token = None
 
-    def start(self, manifest, bridge_url=None, extra_env=None):
-        del manifest
+    def start(
+        self,
+        manifest,
+        bridge_url=None,
+        extra_env=None,
+        startup_timeout_seconds=None,
+        auth_token=None,
+    ):
         self.calls.append("start")
         self.bridge_url = bridge_url
         self.extra_env = extra_env
+        self.startup_timeout_seconds = startup_timeout_seconds
+        self.auth_token = auth_token
         if self.start_error:
             raise self.start_error
+        self.status_values[manifest.service_id] = self.start_status
+        if auth_token:
+            self.auth_tokens[manifest.service_id] = auth_token
         return self.start_status
 
     def stop(self, manifest):
-        del manifest
         self.calls.append("stop")
         if self.stop_error:
             raise self.stop_error
+        self.status_values[manifest.service_id] = self.stop_status
+        if not self.stop_status.running:
+            self.auth_tokens.pop(manifest.service_id, None)
         return self.stop_status
 
     def status(self, manifest, deep=True):
-        del manifest
         self.calls.append("status")
         self.status_deep_values.append(deep)
-        return self.status_value
+        return self.status_values.get(manifest.service_id, self.status_value)
+
+    def current_auth_token(self, service_id):
+        return self.auth_tokens.get(service_id)
 
 
 class _RecordingController:
@@ -3111,24 +4445,22 @@ class _DeferredFakeThread:
 class _DeferredFakeServiceToggleWorker:
     def __init__(
         self,
-        controller,
-        logger,
+        manager,
         manifest,
         enabled,
         was_running,
-        bridge_url,
-        extra_env,
+        auth_token,
         unhealthy_message,
         unknown_state_message,
         shutdown_requested=None,
     ):
-        self.controller = controller
-        self.logger = logger
+        self.manager = manager
+        self.controller = manager.controller
+        self.logger = manager.logger
         self.manifest = manifest
         self.enabled = enabled
         self.was_running = was_running
-        self.bridge_url = bridge_url
-        self.extra_env = extra_env
+        self.auth_token = auth_token
         self.unhealthy_message = unhealthy_message
         self.unknown_state_message = unknown_state_message
         self.shutdown_requested = shutdown_requested
@@ -3184,6 +4516,14 @@ def _install_manager_import_stubs():
         @staticmethod
         def translate(_context, message):
             return message
+
+        @staticmethod
+        def applicationFilePath():
+            return ""
+
+        @staticmethod
+        def instance():
+            return None
 
     class FakeQt:
         class AlignmentFlag:
@@ -3287,6 +4627,7 @@ def _install_manager_import_stubs():
     qtcore.QSize = FakeQSize
     qtcore.Qt = FakeQt
     qtcore.pyqtSignal = lambda *args, **kwargs: FakeSignal()
+    qtcore.pyqtSlot = lambda *args, **kwargs: (lambda function: function)
     qtgui = types.ModuleType("qgis.PyQt.QtGui")
     qtgui.QColor = FakeWidget
     qtgui.QIcon = FakeWidget

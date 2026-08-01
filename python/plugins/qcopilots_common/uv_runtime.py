@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import threading
+import time
 from pathlib import Path
 
 from qcopilots_common.constants import UV_EXECUTABLE_ENV, runtime_root
@@ -22,7 +24,12 @@ class UvRuntime:
     def __init__(self, root: str | Path | None = None):
         self.root = Path(root) if root else runtime_root()
 
-    def ensure_runtime(self, manifest: ServiceManifest, python_executable: str | None = None) -> Path:
+    def ensure_runtime(
+        self,
+        manifest: ServiceManifest,
+        python_executable: str | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> Path:
         if not python_executable:
             raise RuntimeError(
                 "QCopilots isolated runtimes require the Python interpreter bundled with the active QGIS package."
@@ -40,19 +47,17 @@ class UvRuntime:
         service_runtime.mkdir(parents=True, exist_ok=True)
 
         if not venv_python.exists():
-            subprocess.run(
+            _run_runtime_command(
                 [*uv_command, "venv", str(venv_path), "--python", str(python_path)],
-                check=True,
                 timeout=600,
-                **hidden_subprocess_kwargs(),
+                cancel_event=cancel_event,
             )
 
         if manifest.requirements_path.exists():
-            subprocess.run(
+            _run_runtime_command(
                 [*uv_command, "pip", "sync", "--python", str(venv_python), str(manifest.requirements_path)],
-                check=True,
                 timeout=600,
-                **hidden_subprocess_kwargs(),
+                cancel_event=cancel_event,
             )
 
         return venv_python
@@ -91,6 +96,66 @@ class UvRuntime:
         if uv:
             return [uv]
         return None
+
+
+def _run_runtime_command(
+    command: list[str],
+    *,
+    timeout: float,
+    cancel_event: threading.Event | None,
+) -> None:
+    if cancel_event is None:
+        subprocess.run(
+            command,
+            check=True,
+            timeout=timeout,
+            **hidden_subprocess_kwargs(),
+        )
+        return
+    if cancel_event.is_set():
+        raise RuntimeError("QCopilots runtime preparation cancelled")
+
+    kwargs = hidden_subprocess_kwargs()
+    if os.name != "nt":
+        kwargs["start_new_session"] = True
+    process = subprocess.Popen(command, **kwargs)
+    deadline = time.monotonic() + timeout
+    while process.poll() is None:
+        if cancel_event.wait(min(0.1, max(0.0, deadline - time.monotonic()))):
+            _terminate_runtime_process(process)
+            raise RuntimeError("QCopilots runtime preparation cancelled")
+        if time.monotonic() >= deadline:
+            _terminate_runtime_process(process)
+            raise subprocess.TimeoutExpired(command, timeout)
+    if process.returncode:
+        raise subprocess.CalledProcessError(process.returncode, command)
+
+
+def _terminate_runtime_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                check=False,
+                **hidden_subprocess_kwargs(),
+            )
+        except subprocess.TimeoutExpired:
+            pass
+    else:
+        try:
+            os.killpg(process.pid, 15)
+        except OSError:
+            process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2)
 
 
 def _venv_python(venv_path: Path) -> Path:

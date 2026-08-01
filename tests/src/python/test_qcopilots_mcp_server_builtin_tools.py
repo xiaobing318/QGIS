@@ -786,18 +786,21 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 "alpha\nneedle\n",
             )
 
-    def test_builtin_http_tools_allow_local_llama_ui_without_auth_header(self):
+    def test_builtin_http_tools_allow_local_client_with_bearer_auth(self):
         from qcopilots_common.builtin_tools import build_builtin_tools
         from qcopilots_common.mcp_http import McpHttpServer
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            auth_token = "builtin-http-test-token"
+            authorization_headers = {"Authorization": f"Bearer {auth_token}"}
             server = McpHttpServer(
                 name="qcopilots-builtin-http-test",
                 version="1.0.0",
                 tools=build_builtin_tools(root_path=root),
                 host="127.0.0.1",
                 port=0,
+                auth_token=auth_token,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -809,11 +812,17 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         port,
                         "write_file",
                         {"path": "notes.txt", "content": "alpha\nneedle\n"},
+                        headers=authorization_headers,
                     )["bytes_written"],
                     13,
                 )
                 self.assertEqual(
-                    self._post_tool(port, "read_file", {"path": "notes.txt"})["content"],
+                    self._post_tool(
+                        port,
+                        "read_file",
+                        {"path": "notes.txt"},
+                        headers=authorization_headers,
+                    )["content"],
                     "alpha\nneedle\n",
                 )
                 self.assertEqual(
@@ -821,6 +830,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         port,
                         "file_glob_search",
                         {"path": ".", "include": "*.txt"},
+                        headers=authorization_headers,
                     )["matches"],
                     ["notes.txt"],
                 )
@@ -829,6 +839,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         port,
                         "grep_search",
                         {"path": ".", "pattern": "needle"},
+                        headers=authorization_headers,
                     )["matches"][0]["line_number"],
                     2,
                 )
@@ -837,6 +848,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         port,
                         "edit_file",
                         {"path": "notes.txt", "search": "needle", "replace": "pin"},
+                        headers=authorization_headers,
                     )["replacements"],
                     1,
                 )
@@ -848,19 +860,25 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                             "command": [sys.executable, "-c", "print('qcopilots')"],
                             "cwd": ".",
                         },
+                        headers=authorization_headers,
                     )["stdout"].strip(),
                     "qcopilots",
                 )
                 self.assertIn(
                     "iso",
-                    self._post_tool(port, "get_datetime", {"timezone": "UTC"}),
+                    self._post_tool(
+                        port,
+                        "get_datetime",
+                        {"timezone": "UTC"},
+                        headers=authorization_headers,
+                    ),
                 )
             finally:
                 httpd.shutdown()
                 httpd.server_close()
                 thread.join(timeout=5)
 
-    def test_builtin_http_full_access_write_tools_allow_local_llama_ui_without_auth_header(self):
+    def test_builtin_http_full_access_tools_allow_local_client_with_bearer_auth(self):
         from qcopilots_common.builtin_tools import build_builtin_tools
         from qcopilots_common.mcp_http import McpHttpServer
 
@@ -869,12 +887,15 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             outside = Path(outside_tmp).resolve()
             source = outside / "source.txt"
             source.write_bytes(b"alpha\nneedle\n")
+            auth_token = "builtin-http-full-access-test-token"
+            authorization_headers = {"Authorization": f"Bearer {auth_token}"}
             server = McpHttpServer(
                 name="qcopilots-builtin-http-full-access-test",
                 version="1.0.0",
                 tools=build_builtin_tools(root_path=root),
                 host="127.0.0.1",
                 port=0,
+                auth_token=auth_token,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -882,7 +903,12 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             thread.start()
             try:
                 self.assertEqual(
-                    self._post_tool(port, "read_file", {"path": str(source)})["content"],
+                    self._post_tool(
+                        port,
+                        "read_file",
+                        {"path": str(source)},
+                        headers=authorization_headers,
+                    )["content"],
                     "alpha\nneedle\n",
                 )
                 self.assertEqual(
@@ -890,6 +916,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         port,
                         "write_file",
                         {"path": str(outside / "written.txt"), "content": "new\n"},
+                        headers=authorization_headers,
                     )["path"],
                     (outside / "written.txt").resolve().as_posix(),
                 )
@@ -902,6 +929,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                             "search": "needle",
                             "replace": "pin",
                         },
+                        headers=authorization_headers,
                     )["replacements"],
                     1,
                 )
@@ -933,7 +961,6 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
         ).encode("utf-8")
         request_headers = {
             "Content-Type": "application/json",
-            "Origin": "http://127.0.0.1:8282",
         }
         if headers:
             request_headers.update(headers)

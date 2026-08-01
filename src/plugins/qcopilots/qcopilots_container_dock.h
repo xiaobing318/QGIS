@@ -24,10 +24,14 @@
 
 class QNetworkAccessManager;
 class QNetworkReply;
+class QTimer;
 class QWebEngineDownloadRequest;
 class QWebEngineFileSystemAccessRequest;
 class QWebEnginePage;
 class QWebEngineView;
+class QWebChannel;
+class QgsQCopilotsMcpBridge;
+class QgsQCopilotsMcpCatalog;
 
 class QgsQCopilotsDock : public QDockWidget
 {
@@ -58,8 +62,11 @@ class QgsQCopilotsDock : public QDockWidget
     void handleFileSystemAccessRequested( QWebEngineFileSystemAccessRequest request );
     bool isTrustedWebUiOrigin( const QUrl &origin ) const;
     void appendDiagnosticLog( const QString &message, Qgis::MessageLevel level = Qgis::Info );
+    void beginInitialMcpCatalogWait();
+    void completeInitialMcpCatalogWait( bool timedOut = false );
 
     void resetProbeState();
+    void cancelConnectivityProbe();
     void startConnectivityProbe( const QUrl &url );
     void finalizeConnectivityProbe( QNetworkReply *reply );
     QString httpStatusText() const;
@@ -69,11 +76,17 @@ class QgsQCopilotsDock : public QDockWidget
     QWebEngineView *mWebView = nullptr;
     QNetworkAccessManager *mNetworkAccessManager = nullptr;
     QNetworkReply *mProbeReply = nullptr;
+    QgsQCopilotsMcpCatalog *mMcpCatalog = nullptr;
+    QgsQCopilotsMcpBridge *mMcpBridge = nullptr;
+    QWebChannel *mWebChannel = nullptr;
+    QTimer *mMcpCatalogWaitTimer = nullptr;
 
     QUrl mConfiguredUrl;
     QUrl mPendingUrl;
     QUrl mLastSuccessfulUrl;
+    QUrl mDeferredInitialUrl;
     bool mIsLoading = false;
+    bool mInitialMcpLoadPending = false;
 
     int mLastHttpStatusCode = -1;
     QString mLastHttpReason;

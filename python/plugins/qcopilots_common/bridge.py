@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import errno
+import hmac
 import json
 import math
 import os
@@ -26,18 +27,26 @@ from qcopilots_common.constants import (
     HTTP_ERROR_BODY_DRAIN_TIMEOUT_SECONDS,
     MAX_HTTP_ERROR_BODY_DRAIN_BYTES,
     MAX_HTTP_REQUEST_BODY_BYTES,
+    QGIS_BRIDGE_AUTH_TOKEN_ENV,
 )
 
 
 class BridgeClient:
-    def __init__(self, base_url: str | None):
+    def __init__(self, base_url: str | None, auth_token: str | None = None):
         self.base_url = (base_url or "").rstrip("/")
+        self._auth_token = (
+            os.environ.get(QGIS_BRIDGE_AUTH_TOKEN_ENV, "")
+            if auth_token is None
+            else auth_token
+        )
 
     def call(self, tool: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
         if not self.base_url:
             raise RuntimeError("QCopilots QGIS bridge is not configured")
         payload = json.dumps({"tool": tool, "arguments": arguments or {}}).encode("utf-8")
         headers = {"Content-Type": "application/json"}
+        if self._auth_token:
+            headers["Authorization"] = f"Bearer {self._auth_token}"
         request = Request(
             f"{self.base_url}/call",
             data=payload,
@@ -55,6 +64,16 @@ def _is_address_in_use(error: OSError) -> bool:
     return error.errno == errno.EADDRINUSE or getattr(error, "winerror", None) == 10048
 
 
+def _bridge_bind_host(value: str) -> str:
+    host = value.strip()
+    if host == DEFAULT_HOST:
+        return host
+    raise ValueError(
+        "QCopilots QGIS bridge requires the literal IPv4 loopback host "
+        f"{DEFAULT_HOST}: {host}"
+    )
+
+
 class QgisBridgeHttpServer(ThreadingHTTPServer):
     allow_reuse_address = False
 
@@ -65,21 +84,38 @@ class QgisBridgeController:
         iface: Any,
         host: str = DEFAULT_HOST,
         port: int = DEFAULT_BRIDGE_PORT,
+        auth_token: str | None = None,
     ):
         self.iface = iface
-        self.host = host
+        self.host = _bridge_bind_host(host)
         self.port = port
+        self._auth_token = auth_token or ""
         self._httpd: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
+        self._shutdown_requested = False
         self._dispatcher = _make_main_thread_dispatcher()
 
     @property
     def url(self) -> str:
         return f"http://{self.host}:{self.port}"
 
+    def set_auth_token(self, auth_token: str) -> None:
+        if self._httpd:
+            raise RuntimeError("QCopilots QGIS bridge token cannot change while running")
+        if not auth_token or not auth_token.strip():
+            raise ValueError("QCopilots QGIS bridge requires a non-empty auth token")
+        self._auth_token = auth_token
+
+    def clear_auth_token(self) -> None:
+        self._auth_token = ""
+
     def start(self) -> None:
+        if not self._auth_token or not self._auth_token.strip():
+            raise ValueError("QCopilots QGIS bridge requires a non-empty auth token")
         if self._httpd:
             return
+        if self._dispatcher is None or self._dispatcher.closed:
+            self._dispatcher = _make_main_thread_dispatcher()
 
         controller = self
 
@@ -89,13 +125,26 @@ class QgisBridgeController:
             def log_message(self, fmt: str, *args: Any) -> None:
                 return
 
+            def do_OPTIONS(self) -> None:
+                if not self._request_allowed():
+                    return
+                self._send_json(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    {"ok": False, "error": "method_not_allowed"},
+                    {"Allow": "GET, POST"},
+                )
+
             def do_GET(self) -> None:
+                if not self._request_allowed():
+                    return
                 if self.path.rstrip("/") != "/health":
                     self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
                     return
                 self._send_json(HTTPStatus.OK, {"ok": True, "status": "ok"})
 
             def do_POST(self) -> None:
+                if not self._request_allowed():
+                    return
                 if self.path.rstrip("/") != "/call":
                     self._discard_request_body()
                     self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
@@ -122,9 +171,61 @@ class QgisBridgeController:
                 except Exception as err:
                     self._send_json(HTTPStatus.OK, {"ok": False, "error": str(err)})
 
-            def _send_json(self, status: HTTPStatus, body: dict[str, Any]) -> None:
+            def _request_allowed(self) -> bool:
+                host_headers = self.headers.get_all("Host") or []
+                expected_host = (
+                    f"{controller.host}:{int(self.server.server_address[1])}"
+                )
+                if len(host_headers) != 1 or not hmac.compare_digest(
+                    host_headers[0], expected_host
+                ):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"ok": False, "error": "host_not_allowed"},
+                    )
+                    return False
+
+                if self.headers.get_all("Origin"):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"ok": False, "error": "origin_not_allowed"},
+                    )
+                    return False
+
+                if not self._is_protected_path():
+                    return True
+
+                authorization_headers = self.headers.get_all("Authorization") or []
+                expected_authorization = f"Bearer {controller._auth_token}"
+                if controller._auth_token and len(authorization_headers) == 1 and hmac.compare_digest(
+                    authorization_headers[0], expected_authorization
+                ):
+                    return True
+
+                self.close_connection = True
+                self._send_json(
+                    HTTPStatus.UNAUTHORIZED,
+                    {"ok": False, "error": "unauthorized"},
+                    {"WWW-Authenticate": "Bearer"},
+                )
+                return False
+
+            def _is_protected_path(self) -> bool:
+                normalized_path = self.path.rstrip("/")
+                return normalized_path in ("/call", "/health")
+
+            def _send_json(
+                self,
+                status: HTTPStatus,
+                body: dict[str, Any],
+                extra_headers: dict[str, str] | None = None,
+            ) -> None:
                 data = json.dumps(body, ensure_ascii=False).encode("utf-8")
                 self.send_response(status)
+                for name, value in (extra_headers or {}).items():
+                    self.send_header(name, value)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(data)))
                 if self.close_connection:
@@ -171,19 +272,45 @@ class QgisBridgeController:
                 raise
             self._httpd = QgisBridgeHttpServer((self.host, 0), Handler)
         self.port = int(self._httpd.server_address[1])
+        self._shutdown_requested = False
         self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
         self._thread.start()
 
-    def stop(self) -> None:
+    def stop(self, timeout_seconds: float = 5) -> None:
+        timeout = float(timeout_seconds)
+        if not math.isfinite(timeout) or timeout < 0:
+            raise ValueError(
+                "QCopilots QGIS bridge stop timeout must be finite and non-negative"
+            )
         httpd = self._httpd
         thread = self._thread
+        dispatcher = self._dispatcher
+        if dispatcher:
+            dispatcher.close()
+        if (
+            httpd
+            and thread
+            and thread.is_alive()
+            and not self._shutdown_requested
+        ):
+            self._shutdown_requested = True
+            try:
+                httpd.shutdown()
+            except Exception:
+                self._shutdown_requested = False
+                raise
         if httpd:
-            httpd.shutdown()
             httpd.server_close()
-            self._httpd = None
         if thread and thread.is_alive():
-            thread.join(timeout=5)
+            thread.join(timeout=timeout)
+        if thread and thread.is_alive():
+            raise RuntimeError(
+                "QCopilots QGIS bridge HTTP thread did not stop within "
+                f"{timeout:g} seconds"
+            )
+        self._httpd = None
         self._thread = None
+        self._shutdown_requested = False
 
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         def invoke() -> dict[str, Any]:
@@ -205,27 +332,82 @@ class _QtMainThreadDispatcher:
         self._qthread = QThread
         self._object = DispatcherObject()
         self._object.request.connect(self._dispatch, Qt.ConnectionType.QueuedConnection)
+        self._closed = threading.Event()
+        self._pending_lock = threading.Lock()
+        self._pending: dict[int, dict[str, Any]] = {}
+
+    @property
+    def closed(self) -> bool:
+        return self._closed.is_set()
 
     def call(self, function, timeout_seconds: float = 60):
+        if self._closed.is_set():
+            raise RuntimeError("QCopilots QGIS bridge is stopping")
         if not self._app or self._qthread.currentThread() == self._app.thread():
             return function()
 
         done = threading.Event()
-        payload = {"function": function, "done": done, "result": None, "error": None}
+        payload = {
+            "function": function,
+            "done": done,
+            "result": None,
+            "error": None,
+            "cancelled": False,
+            "started": False,
+        }
+        payload_id = id(payload)
+        with self._pending_lock:
+            if self._closed.is_set():
+                raise RuntimeError("QCopilots QGIS bridge is stopping")
+            self._pending[payload_id] = payload
         self._object.request.emit(payload)
         if not done.wait(timeout_seconds):
+            with self._pending_lock:
+                self._pending.pop(payload_id, None)
+                payload["cancelled"] = True
             raise TimeoutError("QCopilots QGIS bridge call timed out")
         if payload["error"]:
             raise payload["error"]
         return payload["result"]
 
     def _dispatch(self, payload: dict[str, Any]) -> None:
+        payload_id = id(payload)
+        with self._pending_lock:
+            if payload["cancelled"] or self._closed.is_set():
+                self._pending.pop(payload_id, None)
+                payload["cancelled"] = True
+                if payload["error"] is None:
+                    payload["error"] = RuntimeError(
+                        "QCopilots QGIS bridge request was cancelled"
+                    )
+                payload["done"].set()
+                return
+            payload["started"] = True
+
+        result = None
+        error = None
         try:
-            payload["result"] = payload["function"]()
+            result = payload["function"]()
         except Exception as err:
-            payload["error"] = err
+            error = err
         finally:
+            with self._pending_lock:
+                self._pending.pop(payload_id, None)
+                if not payload["cancelled"]:
+                    payload["result"] = result
+                    payload["error"] = error
             payload["done"].set()
+
+    def close(self) -> None:
+        self._closed.set()
+        cancellation_error = RuntimeError("QCopilots QGIS bridge is stopping")
+        with self._pending_lock:
+            pending = list(self._pending.values())
+            self._pending.clear()
+            for payload in pending:
+                payload["cancelled"] = True
+                payload["error"] = cancellation_error
+                payload["done"].set()
 
 
 def _make_main_thread_dispatcher():

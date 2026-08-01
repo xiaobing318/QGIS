@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import base64
+import inspect
 import json
 import math
 import os
@@ -20,7 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from qcopilots_common.constants import (
     BRIDGE_URL_ENV,
@@ -29,6 +30,8 @@ from qcopilots_common.constants import (
     DEFAULT_HOST,
     DEFAULT_MCP_PATH,
     DEFAULT_SERVICE_PORTS,
+    MCP_AUTH_TOKEN_ENV,
+    QGIS_BRIDGE_AUTH_TOKEN_ENV,
     SERVICE_DESCRIPTION_ENV,
     SERVICE_ICON_ENV,
     SERVICE_TITLE_ENV,
@@ -119,80 +122,152 @@ class ProcessController:
             startup_poll_interval_seconds,
             "startup_poll_interval_seconds",
         )
+        self._service_locks_guard = threading.Lock()
+        self._service_locks: dict[str, threading.RLock] = {}
+        self._processes_lock = threading.RLock()
+        self._runtime_lock = threading.Lock()
+        self._reserved_ports_lock = threading.Lock()
+        self._reserved_ports: dict[tuple[str, int], str] = {}
+        self._service_reserved_ports: dict[str, tuple[str, int]] = {}
+        self._health_tokens_lock = threading.RLock()
+        self._health_auth_tokens: dict[tuple[str, int], str] = {}
+        self._service_auth_tokens: dict[str, str] = {}
+        self._service_health_endpoints: dict[str, tuple[str, int]] = {}
         self._lock = threading.RLock()
 
+    def _operation_lock(self, manifest: ServiceManifest | None):
+        if manifest is None:
+            return self._lock
+        return self._service_lock(manifest.service_id)
+
+    def _service_lock(self, service_id: str):
+        with self._service_locks_guard:
+            lock = self._service_locks.get(service_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._service_locks[service_id] = lock
+            return lock
+
+    def _acquire_runtime_lock(
+        self,
+        cancel_event: threading.Event | None,
+    ) -> bool:
+        while not _cancel_requested(cancel_event):
+            if self._runtime_lock.acquire(timeout=0.1):
+                return True
+        return False
+
+    def current_auth_token(self, service_id: str) -> str | None:
+        """Return the in-memory token for a service owned by this controller."""
+
+        with self._health_tokens_lock:
+            return self._service_auth_tokens.get(service_id)
+
     def status(self, manifest: ServiceManifest, deep: bool = True) -> ServiceStatus:
-        with self._lock:
-            state = self._read_state(manifest)
-            pid = state.get("pid")
-            port = int(state.get("port") or manifest.default_port)
-            owner_match = bool(state.get("owner_token") and state.get("owner_token") == self.owner_token)
-            tracked_process = self._tracked_manifest_process(manifest)
-            tracked_process_live = bool(
-                tracked_process is not None and tracked_process.poll() is None
-            )
-            tracked_pid_matches = bool(
-                pid
-                and tracked_process is not None
-                and tracked_process.pid == int(pid)
-            )
-            owns_live_handle = tracked_pid_matches and tracked_process_live
-            running = bool(
-                pid
-                and (
-                    owns_live_handle
-                    or is_process_running(int(pid))
+        with self._service_lock(manifest.service_id):
+            return self._status_from_state(manifest, self._read_state(manifest), deep=deep)
+
+    def status_snapshot(self, manifest: ServiceManifest) -> ServiceStatus:
+        """Return a lightweight status without waiting for an active operation.
+
+        The state file is atomically replaced by writers, so it is safe to use as
+        a best-effort GUI snapshot while another thread owns the per-service
+        operation lock. When the lock is immediately available, the regular
+        lightweight status path is used instead.
+        """
+
+        lock = self._service_lock(manifest.service_id)
+        if lock.acquire(blocking=False):
+            try:
+                return self._status_from_state(
+                    manifest,
+                    self._read_state(manifest),
+                    deep=False,
                 )
-            )
-            if (
-                deep
-                and running
-                and state.get("process_identity")
-                and not owns_live_handle
-                and not process_matches_state(int(pid), state)
-            ):
-                running = False
-            if (
-                deep
-                and running
-                and not owner_match
-                and not owns_live_handle
-                and not process_matches_state(int(pid), state)
-            ):
-                running = False
-            process_tree = process_tree_pids(int(pid)) if deep and running and pid else []
-            configuration_match = _service_configuration_matches_state(manifest, state)
-            startup_failure = str(state.get("startup_failure") or "")
-            health = startup_failure or "stopped"
-            if running:
-                if startup_failure:
-                    health = startup_failure
-                else:
-                    health = "starting"
-                    if not deep:
-                        health = "running"
-                    elif self._health_ok(manifest.host, port):
-                        health = "ok"
-                if not configuration_match:
-                    health = "configuration-mismatch"
-                elif state.get("stop_refused"):
-                    health = "owner-mismatch"
-            return ServiceStatus(
-                service_id=manifest.service_id,
-                running=running,
-                pid=int(pid) if pid else None,
-                port=port,
-                url=_status_url(manifest, state, port, running, configuration_match),
-                log_file=str(state.get("log_file") or service_log_file(manifest.service_id)),
-                health=health,
-                process_tree=process_tree,
-                owner_match=owner_match,
-                runtime_python=str(state.get("runtime_python", "")),
-                startup_phase=str(state.get("startup_phase") or ""),
-                diagnostic=str(state.get("diagnostic") or ""),
-                exit_code=_optional_int(state.get("exit_code")),
-                log_tail=str(state.get("log_tail") or ""),
-            )
+            finally:
+                lock.release()
+        return self._status_from_state(
+            manifest,
+            self._read_state(manifest),
+            deep=False,
+            include_tracked_process=False,
+        )
+
+    def _status_from_state(
+        self,
+        manifest: ServiceManifest,
+        state: dict[str, Any],
+        *,
+        deep: bool,
+        include_tracked_process: bool = True,
+    ) -> ServiceStatus:
+        pid = state.get("pid")
+        port = int(state.get("port") or manifest.default_port)
+        owner_match = bool(
+            state.get("owner_token") and state.get("owner_token") == self.owner_token
+        )
+        tracked_process = (
+            self._tracked_manifest_process(manifest) if include_tracked_process else None
+        )
+        tracked_process_live = bool(
+            tracked_process is not None and tracked_process.poll() is None
+        )
+        tracked_pid_matches = bool(
+            pid and tracked_process is not None and tracked_process.pid == int(pid)
+        )
+        owns_live_handle = tracked_pid_matches and tracked_process_live
+        running = bool(
+            pid and (owns_live_handle or is_process_running(int(pid)))
+        )
+        if (
+            deep
+            and running
+            and state.get("process_identity")
+            and not owns_live_handle
+            and not process_matches_state(int(pid), state)
+        ):
+            running = False
+        if (
+            deep
+            and running
+            and not owner_match
+            and not owns_live_handle
+            and not process_matches_state(int(pid), state)
+        ):
+            running = False
+        process_tree = process_tree_pids(int(pid)) if deep and running and pid else []
+        configuration_match = _service_configuration_matches_state(manifest, state)
+        startup_failure = str(state.get("startup_failure") or "")
+        health = startup_failure or "stopped"
+        if running:
+            if startup_failure:
+                health = startup_failure
+            else:
+                health = "starting"
+                if not deep:
+                    health = "running"
+                elif self._health_ok(manifest.host, port):
+                    health = "ok"
+            if not configuration_match:
+                health = "configuration-mismatch"
+            elif state.get("stop_refused"):
+                health = "owner-mismatch"
+        return ServiceStatus(
+            service_id=manifest.service_id,
+            running=running,
+            pid=int(pid) if pid else None,
+            port=port,
+            url=_status_url(manifest, state, port, running, configuration_match),
+            log_file=str(state.get("log_file") or service_log_file(manifest.service_id)),
+            health=health,
+            process_tree=process_tree,
+            owner_match=owner_match,
+            runtime_python=str(state.get("runtime_python", "")),
+            startup_phase=str(state.get("startup_phase") or ""),
+            diagnostic=str(state.get("diagnostic") or ""),
+            exit_code=_optional_int(state.get("exit_code")),
+            log_tail=str(state.get("log_tail") or ""),
+        )
 
     def start(
         self,
@@ -200,11 +275,21 @@ class ProcessController:
         bridge_url: str | None = None,
         extra_env: dict[str, str] | None = None,
         startup_timeout_seconds: float | None = None,
+        auth_token: str | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> ServiceStatus | None:
-        with self._lock:
+        with self._operation_lock(manifest):
             if manifest is None:
                 self._start_command()
                 return None
+
+            if _cancel_requested(cancel_event):
+                return self.status(manifest, deep=False)
+
+            _validate_service_manifest_security(manifest)
+            effective_auth_token = auth_token
+            if effective_auth_token is None and extra_env is not None:
+                effective_auth_token = extra_env.get(MCP_AUTH_TOKEN_ENV)
 
             state = self._read_state(manifest)
             self._reconcile_manifest_process_before_start(manifest, state)
@@ -224,7 +309,12 @@ class ProcessController:
                 else:
                     return current
 
-            port = find_available_port(manifest.host, manifest.default_port)
+            port = self._reserve_available_port(manifest)
+            self._remember_health_auth_token(
+                manifest,
+                port,
+                effective_auth_token or "",
+            )
             log_file = service_log_file(manifest.service_id)
             log_file.parent.mkdir(parents=True, exist_ok=True)
             rotate_log_file(log_file)
@@ -248,6 +338,12 @@ class ProcessController:
                 "startup_phase": "process-preparation",
             }
             self._write_state(manifest, state)
+            if _cancel_requested(cancel_event):
+                return self.stop(
+                    manifest,
+                    timeout_seconds=5,
+                    cancel_event=cancel_event,
+                )
             try:
                 service_python = resolve_service_python_executable(self.qgis_executable)
             except Exception as err:
@@ -262,27 +358,72 @@ class ProcessController:
                 )
 
             state["service_python"] = str(service_python)
+            if not self._acquire_runtime_lock(cancel_event):
+                return self.stop(
+                    manifest,
+                    timeout_seconds=5,
+                    cancel_event=cancel_event,
+                )
+            runtime_cancelled = False
+            runtime_error = None
             try:
-                if hasattr(self.runtime, "service_command"):
+                if _cancel_requested(cancel_event):
+                    runtime_cancelled = True
+                elif hasattr(self.runtime, "service_command"):
                     command = self.runtime.service_command(manifest, service_python)
                     runtime_python = service_python
                 else:
                     state["startup_phase"] = "dependency-preparation"
                     self._write_state(manifest, state)
-                    runtime_python = self.runtime.ensure_runtime(manifest, str(service_python))
+                    runtime_python = _ensure_runtime(
+                        self.runtime,
+                        manifest,
+                        str(service_python),
+                        cancel_event=cancel_event,
+                    )
                     command = [str(runtime_python), str(manifest.entry_path)]
             except Exception as err:
-                _append_startup_log(log_file, f"Dependency preparation failed: {err}")
+                runtime_error = err
+            finally:
+                self._runtime_lock.release()
+
+            if runtime_cancelled:
+                return self.stop(
+                    manifest,
+                    timeout_seconds=5,
+                    cancel_event=cancel_event,
+                )
+            if runtime_error is not None:
+                if _cancel_requested(cancel_event):
+                    return self.stop(
+                        manifest,
+                        timeout_seconds=5,
+                        cancel_event=cancel_event,
+                    )
+                _append_startup_log(
+                    log_file,
+                    f"Dependency preparation failed: {runtime_error}",
+                )
                 return self._record_startup_failure(
                     manifest,
                     state,
                     DEPENDENCY_PREPARATION_FAILED,
                     log_file,
-                    exit_code=_exception_exit_code(err),
+                    exit_code=_exception_exit_code(runtime_error),
                     summary="Dependency preparation failed",
                 )
 
+            if _cancel_requested(cancel_event):
+                return self.stop(
+                    manifest,
+                    timeout_seconds=5,
+                    cancel_event=cancel_event,
+                )
+
             env = os.environ.copy()
+            env.pop(MCP_AUTH_TOKEN_ENV, None)
+            env.pop(BRIDGE_URL_ENV, None)
+            env.pop(QGIS_BRIDGE_AUTH_TOKEN_ENV, None)
             cors_origins = _merged_cors_origins(manifest.cors_origins or DEFAULT_CORS_ORIGINS)
             env.update(
                 {
@@ -303,6 +444,10 @@ class ProcessController:
                 env[BRIDGE_URL_ENV] = bridge_url
             if extra_env:
                 env.update(extra_env)
+            if effective_auth_token:
+                env[MCP_AUTH_TOKEN_ENV] = effective_auth_token
+            else:
+                env.pop(MCP_AUTH_TOKEN_ENV, None)
 
             creationflags = _service_creationflags()
             preexec_fn = None if os.name == "nt" else os.setsid
@@ -339,8 +484,7 @@ class ProcessController:
                     summary="Service process launch failed",
                 )
 
-            self.process = process
-            self._manifest_processes[manifest.service_id] = process
+            self._track_manifest_process(manifest, process)
             self.exit_code = None
             state.update(
                 {
@@ -358,6 +502,12 @@ class ProcessController:
             self._write_state(manifest, state)
             deadline = time.monotonic() + timeout_seconds
             while True:
+                if _cancel_requested(cancel_event):
+                    return self.stop(
+                        manifest,
+                        timeout_seconds=5,
+                        cancel_event=cancel_event,
+                    )
                 exit_code = process.poll()
                 if exit_code is not None:
                     self.exit_code = int(exit_code)
@@ -394,6 +544,7 @@ class ProcessController:
                         )
                     _clear_startup_failure(state)
                     self._write_state(manifest, state)
+                    self._release_reserved_port(manifest, port)
                     return self.status(manifest)
 
                 remaining_seconds = deadline - time.monotonic()
@@ -405,17 +556,30 @@ class ProcessController:
                         log_file,
                         timeout_seconds=timeout_seconds,
                     )
-                time.sleep(min(self.startup_poll_interval_seconds, remaining_seconds))
+                wait_seconds = min(self.startup_poll_interval_seconds, remaining_seconds)
+                if cancel_event is not None:
+                    cancel_event.wait(wait_seconds)
+                else:
+                    time.sleep(wait_seconds)
 
-    def stop(self, manifest: ServiceManifest | None = None, timeout_seconds: float = 5) -> ServiceStatus | None:
-        with self._lock:
+    def stop(
+        self,
+        manifest: ServiceManifest | None = None,
+        timeout_seconds: float = 5,
+        cancel_event: threading.Event | None = None,
+    ) -> ServiceStatus | None:
+        timeout_seconds = _positive_timeout(
+            timeout_seconds,
+            "process stop timeout_seconds",
+        )
+        with self._operation_lock(manifest):
             if manifest is None:
                 self._stop_command(timeout_seconds)
                 return None
 
             state = self._read_state(manifest)
             tracked_process = self._tracked_manifest_process(manifest)
-            legacy_process = self.process if not self._manifest_processes else None
+            legacy_process = self._legacy_manifest_process()
             pid = state.get("pid")
             tracked_process_live = bool(
                 tracked_process is not None and tracked_process.poll() is None
@@ -452,15 +616,20 @@ class ProcessController:
                     state["pid"] = None
                     state.pop("stop_refused", None)
                     self._write_state(manifest, state)
-                return self.status(manifest)
+                return self._status_after_stop(manifest)
             if pid_int and tracked_process is not None and tracked_process.pid != pid_int:
-                self._stop_unrecorded_manifest_process(manifest, tracked_process, timeout_seconds)
+                self._stop_unrecorded_manifest_process(
+                    manifest,
+                    tracked_process,
+                    timeout_seconds,
+                    cancel_event=cancel_event,
+                )
                 if not pid_running:
                     state["stopped_at"] = time.time()
                     state["pid"] = None
                     state.pop("stop_refused", None)
                     self._write_state(manifest, state)
-                return self.status(manifest)
+                return self._status_after_stop(manifest)
             if (
                 pid_int
                 and pid_running
@@ -505,7 +674,10 @@ class ProcessController:
 
                 if pid_running or owns_live_handle:
                     self._terminate_process_tree_and_reap(
-                        pid_int, matching_process, timeout_seconds
+                        pid_int,
+                        matching_process,
+                        timeout_seconds,
+                        cancel_event=cancel_event,
                     )
                 elif matching_process is not None:
                     self._reap_process_handle(matching_process, timeout_seconds)
@@ -515,7 +687,10 @@ class ProcessController:
             elif tracked_process is not None:
                 if tracked_process_live:
                     self._terminate_process_tree_and_reap(
-                        tracked_process.pid, tracked_process, timeout_seconds
+                        tracked_process.pid,
+                        tracked_process,
+                        timeout_seconds,
+                        cancel_event=cancel_event,
                     )
                 else:
                     self.exit_code = tracked_process.returncode
@@ -523,7 +698,10 @@ class ProcessController:
             elif legacy_process is not None:
                 if legacy_process_live:
                     self._terminate_process_tree_and_reap(
-                        legacy_process.pid, legacy_process, timeout_seconds
+                        legacy_process.pid,
+                        legacy_process,
+                        timeout_seconds,
+                        cancel_event=cancel_event,
                     )
                 else:
                     self.exit_code = legacy_process.returncode
@@ -531,7 +709,47 @@ class ProcessController:
             state["pid"] = None
             state.pop("stop_refused", None)
             self._write_state(manifest, state)
-            return self.status(manifest)
+            return self._status_after_stop(manifest)
+
+    def _status_after_stop(self, manifest: ServiceManifest) -> ServiceStatus:
+        status = self.status(manifest)
+        if not status.running:
+            self._forget_health_auth_token(manifest)
+            self._release_reserved_port(manifest)
+        return status
+
+    def _reserve_available_port(self, manifest: ServiceManifest) -> int:
+        bind_host = _bind_check_host(manifest.host)
+        with self._reserved_ports_lock:
+            previous = self._service_reserved_ports.pop(manifest.service_id, None)
+            if previous is not None:
+                self._reserved_ports.pop(previous, None)
+
+            candidate = manifest.default_port
+            for _attempt in range(200):
+                port = find_available_port(bind_host, candidate)
+                endpoint = (bind_host, port)
+                if endpoint not in self._reserved_ports:
+                    self._reserved_ports[endpoint] = manifest.service_id
+                    self._service_reserved_ports[manifest.service_id] = endpoint
+                    return port
+                candidate = 0 if manifest.default_port <= 0 else port + 1
+            raise RuntimeError(
+                f"No unreserved port available for {manifest.service_id}"
+            )
+
+    def _release_reserved_port(
+        self,
+        manifest: ServiceManifest,
+        port: int | None = None,
+    ) -> None:
+        with self._reserved_ports_lock:
+            endpoint = self._service_reserved_ports.get(manifest.service_id)
+            if endpoint is None or (port is not None and endpoint[1] != port):
+                return
+            self._service_reserved_ports.pop(manifest.service_id, None)
+            if self._reserved_ports.get(endpoint) == manifest.service_id:
+                self._reserved_ports.pop(endpoint, None)
 
     def wait(self, timeout_seconds: float | None = None) -> int | None:
         if not self.process:
@@ -613,10 +831,7 @@ class ProcessController:
 
     def _reap_process_handle(self, process: subprocess.Popen, timeout_seconds: float) -> None:
         try:
-            if process.poll() is None:
-                self.exit_code = process.wait(timeout=timeout_seconds)
-            else:
-                self.exit_code = process.returncode
+            self.exit_code = process.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
             process.kill()
             self.exit_code = process.wait(timeout=timeout_seconds)
@@ -626,32 +841,93 @@ class ProcessController:
         pid: int,
         process: subprocess.Popen | None,
         timeout_seconds: float,
+        cancel_event: threading.Event | None = None,
     ) -> None:
-        terminate_process_tree(pid, force=False)
-        if is_process_running(pid):
-            terminate_process_tree(pid, force=True)
+        process_tree = set(process_tree_pids(pid))
+        process_tree.add(pid)
+        termination_results: list[tuple[str, bool | None]] = []
+        if not _cancel_requested(cancel_event):
+            termination_results.append(
+                (
+                    "graceful",
+                    _terminate_process_tree_bounded(
+                        pid,
+                        force=False,
+                        timeout_seconds=timeout_seconds,
+                    ),
+                )
+            )
+        for candidate_pid in sorted(process_tree):
+            if not is_process_running(candidate_pid):
+                continue
+            termination_results.append(
+                (
+                    f"forced:{candidate_pid}",
+                    _terminate_process_tree_bounded(
+                        candidate_pid,
+                        force=True,
+                        timeout_seconds=timeout_seconds,
+                    ),
+                )
+            )
         if process is not None and process.pid == pid:
             self._reap_process_handle(process, timeout_seconds)
+
+        live_pids = _wait_for_process_tree_exit(
+            process_tree,
+            timeout_seconds,
+            process=process if process is not None and process.pid == pid else None,
+        )
+        if live_pids:
+            result_summary = ", ".join(
+                f"{mode}={result!r}" for mode, result in termination_results
+            ) or "no termination command was issued"
+            raise RuntimeError(
+                "QCopilots MCP process tree did not stop within "
+                f"{timeout_seconds:g} seconds for PID {pid}. "
+                f"Still running: {live_pids}. Termination results: {result_summary}"
+            )
 
     def _stop_unrecorded_manifest_process(
         self,
         manifest: ServiceManifest,
         process: subprocess.Popen,
         timeout_seconds: float,
+        cancel_event: threading.Event | None = None,
     ) -> None:
         if process.poll() is None:
-            self._terminate_process_tree_and_reap(process.pid, process, timeout_seconds)
+            self._terminate_process_tree_and_reap(
+                process.pid,
+                process,
+                timeout_seconds,
+                cancel_event=cancel_event,
+            )
         else:
             self.exit_code = process.returncode
         self._forget_manifest_process(manifest)
 
     def _tracked_manifest_process(self, manifest: ServiceManifest) -> subprocess.Popen | None:
-        return self._manifest_processes.get(manifest.service_id)
+        with self._processes_lock:
+            return self._manifest_processes.get(manifest.service_id)
+
+    def _legacy_manifest_process(self) -> subprocess.Popen | None:
+        with self._processes_lock:
+            return self.process if not self._manifest_processes else None
+
+    def _track_manifest_process(
+        self,
+        manifest: ServiceManifest,
+        process: subprocess.Popen,
+    ) -> None:
+        with self._processes_lock:
+            self.process = process
+            self._manifest_processes[manifest.service_id] = process
 
     def _forget_manifest_process(self, manifest: ServiceManifest) -> None:
-        process = self._manifest_processes.pop(manifest.service_id, None)
-        if process is not None and self.process is process:
-            self.process = None
+        with self._processes_lock:
+            process = self._manifest_processes.pop(manifest.service_id, None)
+            if process is not None and self.process is process:
+                self.process = None
 
     def _reconcile_manifest_process_before_start(
         self,
@@ -725,6 +1001,9 @@ class ProcessController:
             summary=summary,
         )
         self._write_state(manifest, state)
+        if not state.get("pid"):
+            self._forget_health_auth_token(manifest)
+            self._release_reserved_port(manifest)
         return self.status(manifest)
 
     def _state_path(self, manifest: ServiceManifest) -> Path:
@@ -756,10 +1035,52 @@ class ProcessController:
         finally:
             temp_path.unlink(missing_ok=True)
 
+    def _remember_health_auth_token(
+        self,
+        manifest: ServiceManifest,
+        port: int,
+        auth_token: str,
+    ) -> None:
+        endpoint = (_health_check_host(manifest.host), port)
+        with self._health_tokens_lock:
+            previous_endpoint = self._service_health_endpoints.pop(
+                manifest.service_id,
+                None,
+            )
+            if previous_endpoint is not None:
+                self._health_auth_tokens.pop(previous_endpoint, None)
+            self._service_auth_tokens.pop(manifest.service_id, None)
+            if auth_token:
+                self._service_health_endpoints[manifest.service_id] = endpoint
+                self._health_auth_tokens[endpoint] = auth_token
+                self._service_auth_tokens[manifest.service_id] = auth_token
+
+    def _forget_health_auth_token(self, manifest: ServiceManifest) -> None:
+        with self._health_tokens_lock:
+            endpoint = self._service_health_endpoints.pop(
+                manifest.service_id,
+                None,
+            )
+            if endpoint is not None:
+                self._health_auth_tokens.pop(endpoint, None)
+            self._service_auth_tokens.pop(manifest.service_id, None)
+
+    def _health_auth_token(self, host: str, port: int) -> str:
+        endpoint = (_health_check_host(host), port)
+        with self._health_tokens_lock:
+            return self._health_auth_tokens.get(endpoint, "")
+
     def _health_ok(self, host: str, port: int) -> bool:
         try:
             health_url = f"http://{_health_check_host(host)}:{port}/health"
-            with urlopen(health_url, timeout=1.5) as response:
+            auth_token = self._health_auth_token(host, port)
+            request: str | Request = health_url
+            if auth_token:
+                request = Request(
+                    health_url,
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                )
+            with urlopen(request, timeout=1.5) as response:
                 return response.status == 200
         except Exception:
             return False
@@ -775,6 +1096,45 @@ def _configured_startup_timeout(value: float | None) -> float:
         return _positive_timeout(float(configured), STARTUP_TIMEOUT_ENV)
     except (TypeError, ValueError):
         return DEFAULT_STARTUP_TIMEOUT_SECONDS
+
+
+def _cancel_requested(cancel_event: threading.Event | None) -> bool:
+    return bool(cancel_event is not None and cancel_event.is_set())
+
+
+def _callable_accepts_keyword(callback: Any, keyword: str) -> bool:
+    try:
+        parameters = inspect.signature(callback).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        or (
+            parameter.name == keyword
+            and parameter.kind
+            in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+        )
+        for parameter in parameters
+    )
+
+
+def _ensure_runtime(
+    runtime: Any,
+    manifest: ServiceManifest,
+    python_executable: str,
+    *,
+    cancel_event: threading.Event | None,
+) -> Path:
+    kwargs: dict[str, Any] = {}
+    if cancel_event is not None and _callable_accepts_keyword(
+        runtime.ensure_runtime,
+        "cancel_event",
+    ):
+        kwargs["cancel_event"] = cancel_event
+    return runtime.ensure_runtime(manifest, python_executable, **kwargs)
 
 
 def _positive_timeout(value: float, label: str) -> float:
@@ -920,6 +1280,23 @@ def _health_check_host(host: str) -> str:
     if candidate == "0.0.0.0":
         return DEFAULT_HOST
     return candidate
+
+
+def _validate_service_manifest_security(manifest: ServiceManifest) -> None:
+    if manifest.host != DEFAULT_HOST:
+        raise ValueError(
+            "QCopilots MCP services require the literal IPv4 loopback host "
+            f"{DEFAULT_HOST}: {manifest.host}"
+        )
+    if manifest.advertised_host not in ("", DEFAULT_HOST):
+        raise ValueError(
+            "QCopilots MCP services do not allow a non-loopback advertised host: "
+            f"{manifest.advertised_host}"
+        )
+    if "*" in _merged_cors_origins(
+        manifest.cors_origins or DEFAULT_CORS_ORIGINS
+    ):
+        raise ValueError("QCopilots MCP services do not allow wildcard CORS.")
 
 
 def _status_url(
@@ -1300,23 +1677,77 @@ def _hidden_subprocess_kwargs() -> dict[str, int]:
     return hidden_subprocess_kwargs()
 
 
-def terminate_process_tree(pid: int, force: bool = False) -> None:
+def _terminate_process_tree_bounded(
+    pid: int,
+    *,
+    force: bool,
+    timeout_seconds: float,
+) -> bool | None:
+    try:
+        return terminate_process_tree(
+            pid,
+            force=force,
+            timeout_seconds=timeout_seconds,
+        )
+    except TypeError as err:
+        if "timeout_seconds" not in str(err):
+            raise
+        return terminate_process_tree(pid, force=force)
+
+
+def _wait_for_process_tree_exit(
+    pids: set[int],
+    timeout_seconds: float,
+    *,
+    process: subprocess.Popen | None = None,
+) -> list[int]:
+    deadline = time.monotonic() + _positive_timeout(
+        timeout_seconds,
+        "process stop timeout_seconds",
+    )
+    while True:
+        live_pids = [
+            candidate
+            for candidate in sorted(pids)
+            if not (
+                process is not None
+                and candidate == process.pid
+                and process.poll() is not None
+            )
+            and is_process_running(candidate)
+        ]
+        if not live_pids:
+            return []
+        remaining_seconds = deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            return live_pids
+        time.sleep(min(0.05, remaining_seconds))
+
+
+def terminate_process_tree(
+    pid: int,
+    force: bool = False,
+    timeout_seconds: float = 30,
+) -> bool:
     if not is_process_running(pid):
-        return
+        return True
 
     if os.name == "nt":
         command = ["taskkill", "/PID", str(pid), "/T"]
         if force:
             command.append("/F")
-        subprocess.run(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=30,
-            check=False,
-            **_hidden_subprocess_kwargs(),
-        )
-        return
+        try:
+            completed = subprocess.run(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=timeout_seconds,
+                check=False,
+                **_hidden_subprocess_kwargs(),
+            )
+        except subprocess.TimeoutExpired:
+            return False
+        return getattr(completed, "returncode", 1) == 0
 
     try:
         os.killpg(pid, 9 if force else 15)
@@ -1324,4 +1755,5 @@ def terminate_process_tree(pid: int, force: bool = False) -> None:
         try:
             os.kill(pid, 9 if force else 15)
         except OSError:
-            return
+            return not is_process_running(pid)
+    return True

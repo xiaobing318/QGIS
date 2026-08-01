@@ -67,18 +67,59 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             else:
                 os.environ[CORS_ORIGINS_ENV] = old_origins
 
-    def test_start_passes_lan_network_settings_to_service_environment(self):
+    def test_start_rejects_non_loopback_and_wildcard_network_settings(self):
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = root / "qcopilots_dummy_service"
+            plugin_dir.mkdir()
+            controller = ProcessController(root / "state")
+            cases = (
+                ("0.0.0.0", "", []),
+                ("192.168.1.50", "", []),
+                ("127.0.0.1", "qgis-client-01.local", []),
+                ("127.0.0.1", "", ["*"]),
+            )
+            for index, (host, advertised_host, cors_origins) in enumerate(cases):
+                with self.subTest(
+                    host=host,
+                    advertised_host=advertised_host,
+                    cors_origins=cors_origins,
+                ):
+                    manifest = ServiceManifest(
+                        service_id=f"qcopilots.dummy_service_{index}",
+                        display_name="QCopilots Dummy Service",
+                        description="Dummy service for ProcessController tests.",
+                        plugin_name="qcopilots_dummy_service",
+                        plugin_dir=plugin_dir,
+                        manifest_path=plugin_dir / "qcopilots_service.json",
+                        transport=ServiceTransport(
+                            host=host,
+                            port=49531,
+                            path="/mcp",
+                            advertised_host=advertised_host,
+                        ),
+                        cors_origins=cors_origins,
+                    )
+                    with self.assertRaises(ValueError):
+                        controller.start(manifest)
+
+    def test_start_keeps_auth_tokens_out_of_state_and_logs(self):
         import json
 
         import qcopilots_common.process_controller as process_controller
-        from qcopilots_common.constants import CORS_ORIGINS_ENV
+        from qcopilots_common.constants import (
+            MCP_AUTH_TOKEN_ENV,
+            QGIS_BRIDGE_AUTH_TOKEN_ENV,
+        )
         from qcopilots_common.manifest import ServiceManifest, ServiceTransport
         from qcopilots_common.process_controller import ProcessController
 
         class FakeProcess:
-            def __init__(self, pid):
-                self.pid = pid
-                self.returncode = None
+            pid = 501
+            returncode = None
 
             def poll(self):
                 return self.returncode
@@ -87,49 +128,45 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             def service_command(self, manifest, python_executable):
                 return [str(python_executable), str(manifest.entry_path)]
 
-        original_popen = process_controller.subprocess.Popen
-        original_find_available_port = process_controller.find_available_port
-        original_process_identity = process_controller.process_identity
-        original_process_matches_state = process_controller.process_matches_state
-        original_is_process_running = process_controller.is_process_running
-        original_process_tree_pids = process_controller.process_tree_pids
-        original_health_ok = process_controller.ProcessController._health_ok
-        original_service_log_file = process_controller.service_log_file
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "find_available_port": process_controller.find_available_port,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
         captured = {}
-
+        mcp_token = "unit-test-mcp-secret"
+        bridge_token = "unit-test-bridge-secret"
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 plugin_dir = root / "qcopilots_dummy_service"
                 plugin_dir.mkdir()
-                qgis_exe, _ = _write_qgis_package_layout(root / "QGIS40200-RelWithDebInfo")
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
                 manifest = ServiceManifest(
-                    service_id="qcopilots.dummy_service",
-                    display_name="QCopilots Dummy Service",
-                    description="Dummy service for ProcessController tests.",
-                    plugin_name="qcopilots_dummy_service",
+                    service_id="qcopilots.auth_service",
+                    display_name="QCopilots Auth Service",
+                    description="Auth token ProcessController test.",
+                    plugin_name="qcopilots_auth_service",
                     plugin_dir=plugin_dir,
                     manifest_path=plugin_dir / "qcopilots_service.json",
                     transport=ServiceTransport(
-                        host="0.0.0.0",
+                        host="127.0.0.1",
                         port=49531,
                         path="/mcp",
-                        advertised_host="192.168.1.50",
                     ),
-                    cors_origins=["*"],
-                )
-                controller = ProcessController(
-                    root / "state",
-                    runtime=FakeRuntime(),
-                    qgis_executable=qgis_exe,
                 )
 
                 def fake_popen(command, *args, **kwargs):
                     del args
                     captured["command"] = command
-                    captured["cwd"] = kwargs["cwd"]
                     captured["env"] = kwargs["env"]
-                    return FakeProcess(501)
+                    return FakeProcess()
 
                 process_controller.subprocess.Popen = fake_popen
                 process_controller.find_available_port = lambda host, port: port
@@ -137,35 +174,227 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                     "pid": str(pid),
                     "creation_date": f"created-{pid}",
                 }
-                process_controller.process_matches_state = lambda pid, state: pid == 501
                 process_controller.is_process_running = lambda pid: pid == 501
                 process_controller.process_tree_pids = lambda pid: [pid]
-                process_controller.ProcessController._health_ok = lambda self, host, port: True
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
+                log_file = root / "logs" / "auth-service.log"
+                process_controller.service_log_file = lambda service_id: log_file
+                controller = ProcessController(
+                    root / "state",
+                    runtime=FakeRuntime(),
+                    qgis_executable=qgis_exe,
+                )
+
+                status = controller.start(
+                    manifest,
+                    extra_env={QGIS_BRIDGE_AUTH_TOKEN_ENV: bridge_token},
+                    auth_token=mcp_token,
+                )
+
+                self.assertTrue(status.running)
+                self.assertEqual(captured["env"][MCP_AUTH_TOKEN_ENV], mcp_token)
+                self.assertEqual(
+                    captured["env"][QGIS_BRIDGE_AUTH_TOKEN_ENV],
+                    bridge_token,
+                )
+                self.assertEqual(
+                    controller.current_auth_token(manifest.service_id),
+                    mcp_token,
+                )
+                persisted_state = controller._state_path(manifest).read_text(
+                    encoding="utf-8"
+                )
+                persisted_log = log_file.read_text(encoding="utf-8")
+                command_text = json.dumps(captured["command"])
+                for token in (mcp_token, bridge_token):
+                    self.assertNotIn(token, persisted_state)
+                    self.assertNotIn(token, persisted_log)
+                    self.assertNotIn(token, command_text)
+        finally:
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.find_available_port = originals["find_available_port"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
+
+    def test_start_scrubs_inherited_bridge_credentials_for_non_bridge_service(self):
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.constants import (
+            BRIDGE_URL_ENV,
+            QGIS_BRIDGE_AUTH_TOKEN_ENV,
+        )
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        class FakeProcess:
+            pid = 502
+            returncode = None
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                del timeout
+                if self.returncode is None:
+                    self.returncode = 0
+                return self.returncode
+
+        class FakeRuntime:
+            def service_command(self, manifest, python_executable):
+                return [str(python_executable), str(manifest.entry_path)]
+
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "find_available_port": process_controller.find_available_port,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
+        old_bridge_url = os.environ.get(BRIDGE_URL_ENV)
+        old_bridge_token = os.environ.get(QGIS_BRIDGE_AUTH_TOKEN_ENV)
+        captured = {}
+        fake_process = FakeProcess()
+        try:
+            os.environ[BRIDGE_URL_ENV] = "http://127.0.0.1:49998"
+            os.environ[QGIS_BRIDGE_AUTH_TOKEN_ENV] = "stale-parent-bridge-token"
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_non_bridge_service"
+                plugin_dir.mkdir()
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
+                manifest = ServiceManifest(
+                    service_id="qcopilots.non_bridge_service",
+                    display_name="QCopilots Non Bridge Service",
+                    description="Inherited bridge credential scrub test.",
+                    plugin_name="qcopilots_non_bridge_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=49531,
+                        path="/mcp",
+                    ),
+                )
+
+                def fake_popen(command, *args, **kwargs):
+                    del command, args
+                    captured["env"] = dict(kwargs["env"])
+                    return fake_process
+
+                process_controller.subprocess.Popen = fake_popen
+                process_controller.find_available_port = lambda host, port: port
+                process_controller.process_identity = lambda pid: {
+                    "pid": str(pid),
+                    "creation_date": f"created-{pid}",
+                }
+                process_controller.is_process_running = (
+                    lambda pid: pid == fake_process.pid
+                    and fake_process.returncode is None
+                )
+                process_controller.process_tree_pids = lambda pid: [pid]
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
                 process_controller.service_log_file = (
                     lambda service_id: root / "logs" / f"{service_id}.log"
                 )
+                controller = ProcessController(
+                    root / "state",
+                    runtime=FakeRuntime(),
+                    qgis_executable=qgis_exe,
+                )
 
-                status = controller.start(manifest)
+                status = controller.start(manifest, auth_token="service-token")
 
                 self.assertTrue(status.running)
-                self.assertEqual(captured["env"]["QCOPILOTS_SERVICE_HOST"], "0.0.0.0")
-                self.assertEqual(captured["env"]["QCOPILOTS_SERVICE_PORT"], "49531")
-                self.assertEqual(captured["env"]["QCOPILOTS_MCP_PATH"], "/mcp")
-                self.assertEqual(captured["env"][CORS_ORIGINS_ENV], "*")
-                state_path = root / "state" / "qcopilots_dummy_service.json"
-                state = json.loads(state_path.read_text(encoding="utf-8"))
-                self.assertEqual(state["manifest"]["bind_host"], "0.0.0.0")
-                self.assertEqual(state["manifest"]["advertised_host"], "192.168.1.50")
-                self.assertEqual(state["manifest"]["cors_origins"], ["*"])
+                self.assertNotIn(BRIDGE_URL_ENV, captured["env"])
+                self.assertNotIn(QGIS_BRIDGE_AUTH_TOKEN_ENV, captured["env"])
+
+                fake_process.returncode = 0
+                stopped = controller.stop(manifest)
+                self.assertFalse(stopped.running)
         finally:
-            process_controller.subprocess.Popen = original_popen
-            process_controller.find_available_port = original_find_available_port
-            process_controller.process_identity = original_process_identity
-            process_controller.process_matches_state = original_process_matches_state
-            process_controller.is_process_running = original_is_process_running
-            process_controller.process_tree_pids = original_process_tree_pids
-            process_controller.ProcessController._health_ok = original_health_ok
-            process_controller.service_log_file = original_service_log_file
+            if old_bridge_url is None:
+                os.environ.pop(BRIDGE_URL_ENV, None)
+            else:
+                os.environ[BRIDGE_URL_ENV] = old_bridge_url
+            if old_bridge_token is None:
+                os.environ.pop(QGIS_BRIDGE_AUTH_TOKEN_ENV, None)
+            else:
+                os.environ[QGIS_BRIDGE_AUTH_TOKEN_ENV] = old_bridge_token
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.find_available_port = originals["find_available_port"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
+
+    def test_health_check_uses_in_memory_bearer_token(self):
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        class FakeResponse:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                del exc_type, exc_value, traceback
+
+        original_urlopen = process_controller.urlopen
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_health_auth"
+                plugin_dir.mkdir()
+                manifest = ServiceManifest(
+                    service_id="qcopilots.health_auth",
+                    display_name="QCopilots Health Auth",
+                    description="Health auth test.",
+                    plugin_name="qcopilots_health_auth",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=49531,
+                        path="/mcp",
+                    ),
+                )
+                controller = ProcessController(root / "state")
+                controller._remember_health_auth_token(
+                    manifest,
+                    49531,
+                    "unit-test-health-secret",
+                )
+                captured = []
+
+                def fake_urlopen(request, timeout):
+                    captured.append((request, timeout))
+                    return FakeResponse()
+
+                process_controller.urlopen = fake_urlopen
+
+                self.assertTrue(controller._health_ok("127.0.0.1", 49531))
+                request, timeout = captured[0]
+                self.assertEqual(request.full_url, "http://127.0.0.1:49531/health")
+                self.assertEqual(
+                    request.get_header("Authorization"),
+                    "Bearer unit-test-health-secret",
+                )
+                self.assertEqual(timeout, 1.5)
+        finally:
+            process_controller.urlopen = original_urlopen
 
     def test_status_uses_advertised_url_and_wildcard_health_check_host(self):
         import json
@@ -753,6 +982,69 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
         finally:
             uv_runtime.subprocess.run = original_run
 
+    def test_uv_runtime_long_preparation_honors_cancellation(self):
+        import threading
+        import time
+
+        from qcopilots_common.uv_runtime import _run_runtime_command
+
+        cancel_event = threading.Event()
+        timer = threading.Timer(0.1, cancel_event.set)
+        self.addCleanup(timer.cancel)
+        timer.start()
+
+        started_at = time.monotonic()
+        with self.assertRaisesRegex(RuntimeError, "cancelled"):
+            _run_runtime_command(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                timeout=30,
+                cancel_event=cancel_event,
+            )
+
+        self.assertLess(time.monotonic() - started_at, 5)
+
+    def test_runtime_cancellation_is_forwarded_without_breaking_legacy_runtime(self):
+        import threading
+
+        from qcopilots_common.process_controller import _ensure_runtime
+
+        cancel_event = threading.Event()
+        modern_calls = []
+        legacy_calls = []
+
+        class ModernRuntime:
+            def ensure_runtime(self, manifest, python_executable, cancel_event=None):
+                modern_calls.append((manifest, python_executable, cancel_event))
+                return Path(python_executable)
+
+        class LegacyRuntime:
+            def ensure_runtime(self, manifest, python_executable):
+                legacy_calls.append((manifest, python_executable))
+                return Path(python_executable)
+
+        manifest = object()
+        expected = Path(sys.executable)
+        self.assertEqual(
+            _ensure_runtime(
+                ModernRuntime(),
+                manifest,
+                sys.executable,
+                cancel_event=cancel_event,
+            ),
+            expected,
+        )
+        self.assertEqual(
+            _ensure_runtime(
+                LegacyRuntime(),
+                manifest,
+                sys.executable,
+                cancel_event=cancel_event,
+            ),
+            expected,
+        )
+        self.assertEqual(modern_calls, [(manifest, sys.executable, cancel_event)])
+        self.assertEqual(legacy_calls, [(manifest, sys.executable)])
+
     def test_uv_runtime_requires_python_executable(self):
         from qcopilots_common.manifest import ServiceManifest, ServiceTransport
         from qcopilots_common.uv_runtime import UvRuntime
@@ -1019,7 +1311,68 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             process_controller.process_matches_state = original_process_matches_state
             process_controller.process_tree_pids = original_process_tree_pids
 
+    def test_manifest_controller_status_snapshot_does_not_wait_for_active_start_lock(self):
+        import json
+        import threading
+        import time
+
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = root / "qcopilots_dummy_service"
+            plugin_dir.mkdir()
+            manifest = ServiceManifest(
+                service_id="qcopilots.dummy_service",
+                display_name="QCopilots Dummy Service",
+                description="Dummy service for ProcessController tests.",
+                plugin_name="qcopilots_dummy_service",
+                plugin_dir=plugin_dir,
+                manifest_path=plugin_dir / "qcopilots_service.json",
+                transport=ServiceTransport(host="127.0.0.1", port=49531, path="/mcp"),
+            )
+            controller = ProcessController(root / "state")
+            state_path = root / "state" / "qcopilots_dummy_service.json"
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "pid": None,
+                        "port": 49531,
+                        "owner_token": controller.owner_token,
+                        "startup_phase": "dependency-preparation",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            lock_acquired = threading.Event()
+            release_lock = threading.Event()
+
+            def hold_service_lock():
+                with controller._service_lock(manifest.service_id):
+                    lock_acquired.set()
+                    release_lock.wait(5)
+
+            thread = threading.Thread(target=hold_service_lock, daemon=True)
+            thread.start()
+            self.assertTrue(lock_acquired.wait(2))
+            try:
+                started_at = time.monotonic()
+                status = controller.status_snapshot(manifest)
+                elapsed = time.monotonic() - started_at
+            finally:
+                release_lock.set()
+                thread.join(2)
+
+            self.assertFalse(thread.is_alive())
+            self.assertLess(elapsed, 0.5)
+            self.assertFalse(status.running)
+            self.assertEqual(status.startup_phase, "dependency-preparation")
+
     def test_manifest_controller_keeps_separate_process_handles_per_service(self):
+        import threading
+
         import qcopilots_common.process_controller as process_controller
         from qcopilots_common.manifest import ServiceManifest, ServiceTransport
         from qcopilots_common.process_controller import ProcessController
@@ -1046,8 +1399,7 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
 
         class FakeRuntime:
             def service_command(self, manifest, python_executable):
-                del manifest
-                return [str(python_executable), "-c", "print('ready')"]
+                return [str(python_executable), manifest.service_id]
 
         original_popen = process_controller.subprocess.Popen
         original_find_available_port = process_controller.find_available_port
@@ -1084,12 +1436,19 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                         transport=ServiceTransport(host="127.0.0.1", port=49532, path="/mcp"),
                     ),
                 ]
-                fake_processes = [FakeProcess(101), FakeProcess(102)]
-                process_by_pid = {process.pid: process for process in fake_processes}
+                process_by_service = {
+                    "qcopilots.service_one": FakeProcess(101),
+                    "qcopilots.service_two": FakeProcess(102),
+                }
+                process_by_pid = {
+                    process.pid: process for process in process_by_service.values()
+                }
+                launch_barrier = threading.Barrier(2)
 
                 def fake_popen(command, *args, **kwargs):
-                    del command, args, kwargs
-                    return fake_processes.pop(0)
+                    del args, kwargs
+                    launch_barrier.wait(timeout=5)
+                    return process_by_service[command[1]]
 
                 process_controller.subprocess.Popen = fake_popen
                 process_controller.find_available_port = lambda host, port: port
@@ -1111,9 +1470,42 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
 
                 qgis_exe, _ = _write_qgis_package_layout(root / "QGIS40200-RelWithDebInfo")
                 controller = ProcessController(root / "state", runtime=FakeRuntime(), qgis_executable=qgis_exe)
-                for manifest in manifests:
-                    status = controller.start(manifest)
-                    self.assertTrue(status.running)
+                results = {}
+                errors = []
+
+                def start_manifest(manifest, auth_token):
+                    try:
+                        results[manifest.service_id] = controller.start(
+                            manifest,
+                            auth_token=auth_token,
+                        )
+                    except Exception as err:
+                        errors.append(err)
+
+                threads = [
+                    threading.Thread(
+                        target=start_manifest,
+                        args=(manifest, f"token-{index}"),
+                    )
+                    for index, manifest in enumerate(manifests)
+                ]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(timeout=10)
+                    self.assertFalse(thread.is_alive())
+
+                self.assertEqual(errors, [])
+                self.assertEqual(set(results), {item.service_id for item in manifests})
+                self.assertTrue(all(status.running for status in results.values()))
+                self.assertEqual(
+                    controller.current_auth_token("qcopilots.service_one"),
+                    "token-0",
+                )
+                self.assertEqual(
+                    controller.current_auth_token("qcopilots.service_two"),
+                    "token-1",
+                )
 
                 self.assertEqual(
                     set(controller._manifest_processes),
@@ -1124,12 +1516,18 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                 self.assertFalse(stopped_one.running)
                 self.assertNotIn("qcopilots.service_one", controller._manifest_processes)
                 self.assertIn("qcopilots.service_two", controller._manifest_processes)
+                self.assertIsNone(
+                    controller.current_auth_token("qcopilots.service_one")
+                )
                 self.assertEqual(process_by_pid[101].wait_calls, 1)
                 self.assertEqual(process_by_pid[102].wait_calls, 0)
 
                 stopped_two = controller.stop(manifests[1], timeout_seconds=1)
                 self.assertFalse(stopped_two.running)
                 self.assertEqual(controller._manifest_processes, {})
+                self.assertIsNone(
+                    controller.current_auth_token("qcopilots.service_two")
+                )
                 self.assertEqual(process_by_pid[102].wait_calls, 1)
                 self.assertEqual(
                     terminated,
@@ -1144,6 +1542,755 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             process_controller.terminate_process_tree = original_terminate_process_tree
             process_controller.ProcessController._health_ok = original_health_ok
             process_controller.service_log_file = original_service_log_file
+
+    def test_concurrent_services_reserve_distinct_fallback_ports_and_tokens(self):
+        import socket
+        import threading
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.constants import MCP_AUTH_TOKEN_ENV
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        class FakeProcess:
+            def __init__(self, pid):
+                self.pid = pid
+                self.returncode = None
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                del timeout
+                if self.returncode is None:
+                    self.returncode = 0
+                return self.returncode
+
+            def kill(self):
+                self.returncode = -9
+
+        class FakeRuntime:
+            def service_command(self, manifest, python_executable):
+                return [str(python_executable), manifest.service_id]
+
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "terminate_process_tree": process_controller.terminate_process_tree,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
+        occupied_socket = None
+        try:
+            for candidate_port in range(49100, 49200):
+                candidate_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                try:
+                    candidate_socket.bind(("127.0.0.1", candidate_port))
+                except OSError:
+                    candidate_socket.close()
+                    continue
+                occupied_socket = candidate_socket
+                preferred_port = candidate_port
+                break
+            self.assertIsNotNone(occupied_socket, "Could not reserve a busy test port")
+            occupied_socket.listen(1)
+
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "plugin"
+                plugin_dir.mkdir()
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
+                manifests = [
+                    ServiceManifest(
+                        service_id="qcopilots.same_port_one",
+                        display_name="QCopilots Same Port One",
+                        description="First shared preferred port service.",
+                        plugin_name="qcopilots_same_port_one",
+                        plugin_dir=plugin_dir,
+                        manifest_path=plugin_dir / "same_port_one.json",
+                        transport=ServiceTransport(
+                            host="127.0.0.1",
+                            port=preferred_port,
+                            path="/mcp",
+                        ),
+                    ),
+                    ServiceManifest(
+                        service_id="qcopilots.same_port_two",
+                        display_name="QCopilots Same Port Two",
+                        description="Second shared preferred port service.",
+                        plugin_name="qcopilots_same_port_two",
+                        plugin_dir=plugin_dir,
+                        manifest_path=plugin_dir / "same_port_two.json",
+                        transport=ServiceTransport(
+                            host="127.0.0.1",
+                            port=preferred_port,
+                            path="/mcp",
+                        ),
+                    ),
+                ]
+                process_by_service = {
+                    manifests[0].service_id: FakeProcess(701),
+                    manifests[1].service_id: FakeProcess(702),
+                }
+                process_by_pid = {
+                    process.pid: process for process in process_by_service.values()
+                }
+                launch_barrier = threading.Barrier(2)
+                capture_lock = threading.Lock()
+                captured_env = {}
+
+                def fake_popen(command, *args, **kwargs):
+                    del args
+                    service_id = command[1]
+                    with capture_lock:
+                        captured_env[service_id] = dict(kwargs["env"])
+                    launch_barrier.wait(timeout=5)
+                    return process_by_service[service_id]
+
+                process_controller.subprocess.Popen = fake_popen
+                process_controller.process_identity = lambda pid: {
+                    "pid": str(pid),
+                    "creation_date": f"created-{pid}",
+                }
+                process_controller.is_process_running = (
+                    lambda pid: pid in process_by_pid
+                    and process_by_pid[pid].returncode is None
+                )
+                process_controller.process_tree_pids = lambda pid: [pid]
+                process_controller.terminate_process_tree = lambda pid, force=False: None
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
+                process_controller.service_log_file = (
+                    lambda service_id: root / "logs" / f"{service_id}.log"
+                )
+                controller = ProcessController(
+                    root / "state",
+                    runtime=FakeRuntime(),
+                    qgis_executable=qgis_exe,
+                )
+                results = {}
+                errors = []
+                tokens = {
+                    manifests[0].service_id: "independent-token-one",
+                    manifests[1].service_id: "independent-token-two",
+                }
+
+                def start_manifest(manifest):
+                    try:
+                        results[manifest.service_id] = controller.start(
+                            manifest,
+                            auth_token=tokens[manifest.service_id],
+                        )
+                    except Exception as err:
+                        errors.append(err)
+
+                threads = [
+                    threading.Thread(target=start_manifest, args=(manifest,))
+                    for manifest in manifests
+                ]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(timeout=10)
+                    self.assertFalse(thread.is_alive())
+
+                self.assertEqual(errors, [])
+                self.assertEqual(set(results), {item.service_id for item in manifests})
+                selected_ports = {
+                    int(captured_env[manifest.service_id]["QCOPILOTS_SERVICE_PORT"])
+                    for manifest in manifests
+                }
+                self.assertEqual(len(selected_ports), 2)
+                self.assertNotIn(preferred_port, selected_ports)
+                for manifest in manifests:
+                    service_id = manifest.service_id
+                    self.assertEqual(
+                        captured_env[service_id][MCP_AUTH_TOKEN_ENV],
+                        tokens[service_id],
+                    )
+                    self.assertEqual(
+                        controller.current_auth_token(service_id),
+                        tokens[service_id],
+                    )
+                    self.assertEqual(results[service_id].port, int(
+                        captured_env[service_id]["QCOPILOTS_SERVICE_PORT"]
+                    ))
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+
+                for manifest in manifests:
+                    stopped = controller.stop(manifest, timeout_seconds=1)
+                    self.assertFalse(stopped.running)
+                    self.assertIsNone(
+                        controller.current_auth_token(manifest.service_id)
+                    )
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+        finally:
+            if occupied_socket is not None:
+                occupied_socket.close()
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.terminate_process_tree = originals[
+                "terminate_process_tree"
+            ]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
+
+    def test_cancelled_service_waiting_for_runtime_lock_skips_legacy_runtime(self):
+        import threading
+        import time
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        runtime_entered = threading.Event()
+        release_runtime = threading.Event()
+
+        class BlockingLegacyRuntime:
+            def __init__(self):
+                self.calls = []
+
+            def ensure_runtime(self, manifest, python_executable):
+                self.calls.append(manifest.service_id)
+                runtime_entered.set()
+                if not release_runtime.wait(timeout=5):
+                    raise TimeoutError("Legacy runtime release was not signaled")
+                return python_executable
+
+        class FakeProcess:
+            def __init__(self, pid):
+                self.pid = pid
+                self.returncode = None
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                del timeout
+                self.returncode = 0
+                return self.returncode
+
+            def kill(self):
+                self.returncode = -9
+
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "find_available_port": process_controller.find_available_port,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "terminate_process_tree": process_controller.terminate_process_tree,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
+        first_thread = None
+        second_thread = None
+        first_cancel = threading.Event()
+        second_cancel = threading.Event()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
+                manifests = []
+                for index in range(2):
+                    plugin_dir = root / f"plugin_{index}"
+                    plugin_dir.mkdir()
+                    (plugin_dir / "server.py").write_text(
+                        "raise SystemExit(0)\n",
+                        encoding="utf-8",
+                    )
+                    manifests.append(
+                        ServiceManifest(
+                            service_id=f"qcopilots.runtime_queue_{index}",
+                            display_name=f"QCopilots Runtime Queue {index}",
+                            description="Runtime lock cancellation test service.",
+                            plugin_name=f"qcopilots_runtime_queue_{index}",
+                            plugin_dir=plugin_dir,
+                            manifest_path=plugin_dir / "qcopilots_service.json",
+                            transport=ServiceTransport(
+                                host="127.0.0.1",
+                                port=49610 + index,
+                                path="/mcp",
+                            ),
+                        )
+                    )
+
+                runtime = BlockingLegacyRuntime()
+                processes = []
+
+                def fake_popen(command, *args, **kwargs):
+                    del command, args, kwargs
+                    process = FakeProcess(810 + len(processes))
+                    processes.append(process)
+                    return process
+
+                process_controller.subprocess.Popen = fake_popen
+                process_controller.find_available_port = lambda host, port: port
+                process_controller.process_identity = lambda pid: {
+                    "pid": str(pid),
+                    "creation_date": f"created-{pid}",
+                }
+                process_controller.is_process_running = lambda pid: any(
+                    process.pid == pid and process.returncode is None
+                    for process in processes
+                )
+                process_controller.process_tree_pids = lambda pid: [pid]
+                process_controller.terminate_process_tree = lambda pid, force=False: None
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
+                process_controller.service_log_file = (
+                    lambda service_id: root / "logs" / f"{service_id}.log"
+                )
+                controller = ProcessController(
+                    root / "state",
+                    runtime=runtime,
+                    qgis_executable=qgis_exe,
+                )
+                results = {}
+                errors = []
+
+                def start_manifest(manifest, cancel_event):
+                    try:
+                        results[manifest.service_id] = controller.start(
+                            manifest,
+                            cancel_event=cancel_event,
+                        )
+                    except Exception as err:
+                        errors.append(err)
+
+                first_thread = threading.Thread(
+                    target=start_manifest,
+                    args=(manifests[0], first_cancel),
+                )
+                first_thread.start()
+                self.assertTrue(runtime_entered.wait(timeout=3))
+
+                second_thread = threading.Thread(
+                    target=start_manifest,
+                    args=(manifests[1], second_cancel),
+                )
+                second_thread.start()
+                time.sleep(0.2)
+                self.assertTrue(second_thread.is_alive())
+
+                second_cancel.set()
+                second_thread.join(timeout=3)
+                self.assertFalse(second_thread.is_alive())
+                self.assertTrue(first_thread.is_alive())
+                self.assertEqual(runtime.calls, [manifests[0].service_id])
+                self.assertFalse(results[manifests[1].service_id].running)
+
+                release_runtime.set()
+                first_thread.join(timeout=5)
+                self.assertFalse(first_thread.is_alive())
+                self.assertEqual(errors, [])
+                self.assertTrue(results[manifests[0].service_id].running)
+                self.assertEqual(len(processes), 1)
+                self.assertFalse(controller.stop(manifests[0], timeout_seconds=1).running)
+        finally:
+            first_cancel.set()
+            second_cancel.set()
+            release_runtime.set()
+            for thread in (first_thread, second_thread):
+                if thread is not None:
+                    thread.join(timeout=5)
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.find_available_port = originals["find_available_port"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.terminate_process_tree = originals[
+                "terminate_process_tree"
+            ]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
+
+    def test_failed_start_releases_token_and_port_reservation(self):
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.constants import MCP_AUTH_TOKEN_ENV
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import (
+            HTTP_HEALTH_TIMEOUT,
+            PROCESS_LAUNCH_FAILED,
+            ProcessController,
+        )
+
+        class FakeProcess:
+            pid = 703
+            returncode = None
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                del timeout
+                if self.returncode is None:
+                    self.returncode = 0
+                return self.returncode
+
+        class FakeRuntime:
+            def service_command(self, manifest, python_executable):
+                return [str(python_executable), manifest.service_id]
+
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "find_available_port": process_controller.find_available_port,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "terminate_process_tree": process_controller.terminate_process_tree,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
+        fake_process = FakeProcess()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "plugin"
+                plugin_dir.mkdir()
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
+                preferred_port = 49531
+                failed_manifest = ServiceManifest(
+                    service_id="qcopilots.failed_reservation",
+                    display_name="QCopilots Failed Reservation",
+                    description="Failed reservation cleanup service.",
+                    plugin_name="qcopilots_failed_reservation",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "failed.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=preferred_port,
+                        path="/mcp",
+                    ),
+                )
+                retry_manifest = ServiceManifest(
+                    service_id="qcopilots.reused_reservation",
+                    display_name="QCopilots Reused Reservation",
+                    description="Reused reservation service.",
+                    plugin_name="qcopilots_reused_reservation",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "reused.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=preferred_port,
+                        path="/mcp",
+                    ),
+                )
+                timeout_manifest = ServiceManifest(
+                    service_id="qcopilots.timeout_reservation",
+                    display_name="QCopilots Timeout Reservation",
+                    description="Timed out reservation cleanup service.",
+                    plugin_name="qcopilots_timeout_reservation",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "timeout.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=preferred_port,
+                        path="/mcp",
+                    ),
+                )
+                captured_env = {}
+
+                def fake_popen(command, *args, **kwargs):
+                    del args
+                    service_id = command[1]
+                    captured_env[service_id] = dict(kwargs["env"])
+                    if service_id == failed_manifest.service_id:
+                        raise OSError("intentional process launch failure")
+                    return fake_process
+
+                process_controller.subprocess.Popen = fake_popen
+                process_controller.find_available_port = lambda host, port: port
+                process_controller.process_identity = lambda pid: {
+                    "pid": str(pid),
+                    "creation_date": f"created-{pid}",
+                }
+                process_controller.is_process_running = (
+                    lambda pid: pid == fake_process.pid
+                    and fake_process.returncode is None
+                )
+                process_controller.process_tree_pids = lambda pid: [pid]
+                process_controller.terminate_process_tree = lambda pid, force=False: None
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
+                process_controller.service_log_file = (
+                    lambda service_id: root / "logs" / f"{service_id}.log"
+                )
+                controller = ProcessController(
+                    root / "state",
+                    runtime=FakeRuntime(),
+                    qgis_executable=qgis_exe,
+                )
+
+                failed = controller.start(
+                    failed_manifest,
+                    auth_token="failed-service-token",
+                )
+
+                self.assertFalse(failed.running)
+                self.assertEqual(
+                    controller._read_state(failed_manifest)["startup_failure"],
+                    PROCESS_LAUNCH_FAILED,
+                )
+                self.assertIsNone(
+                    controller.current_auth_token(failed_manifest.service_id)
+                )
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+
+                retried = controller.start(
+                    retry_manifest,
+                    auth_token="retry-service-token",
+                )
+
+                self.assertTrue(retried.running)
+                self.assertEqual(
+                    int(
+                        captured_env[failed_manifest.service_id][
+                            "QCOPILOTS_SERVICE_PORT"
+                        ]
+                    ),
+                    preferred_port,
+                )
+                self.assertEqual(
+                    int(
+                        captured_env[retry_manifest.service_id][
+                            "QCOPILOTS_SERVICE_PORT"
+                        ]
+                    ),
+                    preferred_port,
+                )
+                self.assertEqual(
+                    captured_env[retry_manifest.service_id][MCP_AUTH_TOKEN_ENV],
+                    "retry-service-token",
+                )
+                self.assertEqual(
+                    controller.current_auth_token(retry_manifest.service_id),
+                    "retry-service-token",
+                )
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+
+                fake_process.returncode = 0
+                stopped = controller.stop(retry_manifest)
+                self.assertFalse(stopped.running)
+                self.assertIsNone(
+                    controller.current_auth_token(retry_manifest.service_id)
+                )
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+
+                fake_process.returncode = None
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: False
+                )
+                timed_out = controller.start(
+                    timeout_manifest,
+                    auth_token="timeout-service-token",
+                    startup_timeout_seconds=0.01,
+                )
+
+                self.assertTrue(timed_out.running)
+                self.assertEqual(
+                    controller._read_state(timeout_manifest)["startup_failure"],
+                    HTTP_HEALTH_TIMEOUT,
+                )
+                self.assertEqual(
+                    controller.current_auth_token(timeout_manifest.service_id),
+                    "timeout-service-token",
+                )
+                self.assertEqual(
+                    controller._service_reserved_ports[timeout_manifest.service_id][1],
+                    preferred_port,
+                )
+                self.assertEqual(len(controller._reserved_ports), 1)
+
+                stopped = controller.stop(timeout_manifest, timeout_seconds=1)
+                self.assertFalse(stopped.running)
+                self.assertIsNone(
+                    controller.current_auth_token(timeout_manifest.service_id)
+                )
+                self.assertEqual(controller._reserved_ports, {})
+                self.assertEqual(controller._service_reserved_ports, {})
+        finally:
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.find_available_port = originals["find_available_port"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.terminate_process_tree = originals[
+                "terminate_process_tree"
+            ]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
+
+    def test_same_service_concurrent_start_is_idempotent_and_keeps_original_token(self):
+        import threading
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        class FakeProcess:
+            pid = 301
+            returncode = None
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                del timeout
+                self.returncode = 0
+                return 0
+
+        class FakeRuntime:
+            def service_command(self, manifest, python_executable):
+                return [str(python_executable), manifest.service_id]
+
+        originals = {
+            "popen": process_controller.subprocess.Popen,
+            "find_available_port": process_controller.find_available_port,
+            "process_identity": process_controller.process_identity,
+            "is_process_running": process_controller.is_process_running,
+            "process_tree_pids": process_controller.process_tree_pids,
+            "health_ok": process_controller.ProcessController._health_ok,
+            "service_log_file": process_controller.service_log_file,
+        }
+        release_popen = threading.Event()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_idempotent_service"
+                plugin_dir.mkdir()
+                qgis_exe, _ = _write_qgis_package_layout(
+                    root / "QGIS40200-RelWithDebInfo"
+                )
+                manifest = ServiceManifest(
+                    service_id="qcopilots.idempotent_service",
+                    display_name="QCopilots Idempotent Service",
+                    description="Concurrent start idempotency test.",
+                    plugin_name="qcopilots_idempotent_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=49531,
+                        path="/mcp",
+                    ),
+                )
+                fake_process = FakeProcess()
+                popen_entered = threading.Event()
+                popen_calls = []
+
+                def fake_popen(command, *args, **kwargs):
+                    del args, kwargs
+                    popen_calls.append(command)
+                    popen_entered.set()
+                    if not release_popen.wait(timeout=5):
+                        raise TimeoutError("Popen release was not signaled")
+                    return fake_process
+
+                process_controller.subprocess.Popen = fake_popen
+                process_controller.find_available_port = lambda host, port: port
+                process_controller.process_identity = lambda pid: {
+                    "pid": str(pid),
+                    "creation_date": f"created-{pid}",
+                }
+                process_controller.is_process_running = (
+                    lambda pid: pid == fake_process.pid
+                    and fake_process.returncode is None
+                )
+                process_controller.process_tree_pids = lambda pid: [pid]
+                process_controller.ProcessController._health_ok = (
+                    lambda self, host, port: True
+                )
+                process_controller.service_log_file = (
+                    lambda service_id: root / "logs" / f"{service_id}.log"
+                )
+                controller = ProcessController(
+                    root / "state",
+                    runtime=FakeRuntime(),
+                    qgis_executable=qgis_exe,
+                )
+                results = []
+                errors = []
+                second_started = threading.Event()
+
+                def start_service(auth_token, started_event=None):
+                    if started_event is not None:
+                        started_event.set()
+                    try:
+                        results.append(
+                            controller.start(manifest, auth_token=auth_token)
+                        )
+                    except Exception as err:
+                        errors.append(err)
+
+                first_thread = threading.Thread(
+                    target=start_service,
+                    args=("original-token",),
+                )
+                first_thread.start()
+                self.assertTrue(popen_entered.wait(timeout=5))
+                second_thread = threading.Thread(
+                    target=start_service,
+                    args=("replacement-token", second_started),
+                )
+                second_thread.start()
+                self.assertTrue(second_started.wait(timeout=5))
+                release_popen.set()
+                for thread in (first_thread, second_thread):
+                    thread.join(timeout=10)
+                    self.assertFalse(thread.is_alive())
+
+                self.assertEqual(errors, [])
+                self.assertEqual(len(popen_calls), 1)
+                self.assertEqual(len(results), 2)
+                self.assertTrue(all(status.running for status in results))
+                self.assertEqual(
+                    {status.pid for status in results},
+                    {fake_process.pid},
+                )
+                self.assertEqual(
+                    controller.current_auth_token(manifest.service_id),
+                    "original-token",
+                )
+                persisted_state = controller._state_path(manifest).read_text(
+                    encoding="utf-8"
+                )
+                self.assertNotIn("original-token", persisted_state)
+                self.assertNotIn("replacement-token", persisted_state)
+
+                fake_process.returncode = 0
+                stopped = controller.stop(manifest)
+                self.assertFalse(stopped.running)
+                self.assertIsNone(
+                    controller.current_auth_token(manifest.service_id)
+                )
+        finally:
+            release_popen.set()
+            process_controller.subprocess.Popen = originals["popen"]
+            process_controller.find_available_port = originals["find_available_port"]
+            process_controller.process_identity = originals["process_identity"]
+            process_controller.is_process_running = originals["is_process_running"]
+            process_controller.process_tree_pids = originals["process_tree_pids"]
+            process_controller.ProcessController._health_ok = originals["health_ok"]
+            process_controller.service_log_file = originals["service_log_file"]
 
     def test_manifest_controller_startup_timeout_defaults_to_30_seconds_and_is_configurable(self):
         import qcopilots_common.process_controller as process_controller
@@ -1245,7 +2392,10 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                     startup_poll_interval_seconds=0.001,
                 )
 
-                status = controller.start(manifest)
+                status = controller.start(
+                    manifest,
+                    auth_token="failed-service-token",
+                )
 
                 self.assertFalse(status.running)
                 self.assertEqual(status.health, PROCESS_EXITED_BEFORE_HEALTHY)
@@ -1258,6 +2408,7 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                 self.assertLessEqual(len(status.log_tail), MAX_STARTUP_LOG_TAIL_CHARS)
                 self.assertEqual(health_calls, [])
                 self.assertEqual(controller._manifest_processes, {})
+                self.assertIsNone(controller.current_auth_token(manifest.service_id))
                 state = json.loads(
                     (root / "state" / "qcopilots_early_exit.json").read_text(encoding="utf-8")
                 )
@@ -1338,7 +2489,10 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                     startup_poll_interval_seconds=0.001,
                 )
 
-                status = controller.start(manifest)
+                status = controller.start(
+                    manifest,
+                    auth_token="failed-dependency-token",
+                )
 
                 self.assertFalse(status.running)
                 self.assertEqual(status.health, DEPENDENCY_PREPARATION_FAILED)
@@ -1346,6 +2500,7 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                 self.assertEqual(status.startup_phase, "dependency-preparation")
                 self.assertIn("Dependency preparation failed", status.diagnostic)
                 self.assertIn("PyYAML was not found in the cache", status.log_tail)
+                self.assertIsNone(controller.current_auth_token(manifest.service_id))
         finally:
             process_controller.subprocess.Popen = original_popen
             process_controller.find_available_port = original_find_available_port
@@ -2107,7 +3262,6 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                             "transport": {
                                 "type": "http",
                                 "host": "127.0.0.1",
-                                "advertised_host": "qgis-client-01.local",
                                 "port": 49531,
                                 "path": "/mcp",
                             },
@@ -2148,7 +3302,7 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                     state = json.loads(state_path.read_text(encoding="utf-8"))
                     self.assertEqual(state["runtime_python"], sys.executable)
                     self.assertEqual(state["manifest"]["url"], status.url)
-                    self.assertEqual(state["manifest"]["advertised_host"], "qgis-client-01.local")
+                    self.assertEqual(state["manifest"]["advertised_host"], "")
                     self.assertEqual(state["manifest"]["cors_origins"], ["http://llama-server:8282"])
                     self.assertIn("owner_token", state)
                     self.assertIn("manager_pid", state)
@@ -2376,12 +3530,13 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
         class FakeProcess:
             pid = 123
             returncode = None
+            wait_calls = []
 
             def poll(self):
-                return None
+                return self.returncode
 
             def wait(self, timeout=None):
-                del timeout
+                self.wait_calls.append(timeout)
                 self.returncode = 0
                 return 0
 
@@ -2418,9 +3573,118 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
 
                 self.assertFalse(status.running)
                 self.assertEqual(terminated, [(123, False), (123, True)])
+                self.assertEqual(controller.exit_code, 0)
+                self.assertEqual(controller.process.wait_calls, [1])
         finally:
             process_controller.is_process_running = original_is_process_running
             process_controller.terminate_process_tree = original_terminate_process_tree
+
+    def test_stop_keeps_running_state_when_process_tree_does_not_exit(self):
+        import json
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        original_is_process_running = process_controller.is_process_running
+        original_process_matches_state = process_controller.process_matches_state
+        original_process_tree_pids = process_controller.process_tree_pids
+        original_terminate_process_tree = process_controller.terminate_process_tree
+        termination_calls = []
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_dummy_service"
+                plugin_dir.mkdir()
+                manifest = ServiceManifest(
+                    service_id="qcopilots.dummy_service",
+                    display_name="QCopilots Dummy Service",
+                    description="Dummy service for ProcessController tests.",
+                    plugin_name="qcopilots_dummy_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=49531,
+                        path="/mcp",
+                    ),
+                )
+                controller = ProcessController(root / "state")
+                state_path = root / "state" / "qcopilots_dummy_service.json"
+                state_path.write_text(
+                    json.dumps(
+                        {
+                            "pid": 123,
+                            "port": 49531,
+                            "owner_token": controller.owner_token,
+                            "process_identity": {
+                                "pid": "123",
+                                "creation_date": "created-123",
+                            },
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+
+                process_controller.is_process_running = lambda pid: pid in (123, 124)
+                process_controller.process_matches_state = lambda pid, state: True
+                process_controller.process_tree_pids = lambda pid: [123, 124]
+
+                def fake_terminate(pid, force=False, timeout_seconds=30):
+                    termination_calls.append((pid, force, timeout_seconds))
+                    return False
+
+                process_controller.terminate_process_tree = fake_terminate
+
+                with self.assertRaisesRegex(RuntimeError, "did not stop"):
+                    controller.stop(manifest, timeout_seconds=0.01)
+
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+                self.assertEqual(state["pid"], 123)
+                self.assertNotIn("stopped_at", state)
+                self.assertEqual(
+                    termination_calls,
+                    [
+                        (123, False, 0.01),
+                        (123, True, 0.01),
+                        (124, True, 0.01),
+                    ],
+                )
+        finally:
+            process_controller.is_process_running = original_is_process_running
+            process_controller.process_matches_state = original_process_matches_state
+            process_controller.process_tree_pids = original_process_tree_pids
+            process_controller.terminate_process_tree = original_terminate_process_tree
+
+    @unittest.skipUnless(os.name == "nt", "Windows taskkill is platform-specific")
+    def test_windows_taskkill_failure_is_reported(self):
+        import qcopilots_common.process_controller as process_controller
+
+        original_is_process_running = process_controller.is_process_running
+        original_run = process_controller.subprocess.run
+        calls = []
+        try:
+            process_controller.is_process_running = lambda pid: pid == 123
+
+            def fake_run(command, **kwargs):
+                calls.append((command, kwargs))
+                return types.SimpleNamespace(returncode=5)
+
+            process_controller.subprocess.run = fake_run
+
+            self.assertFalse(
+                process_controller.terminate_process_tree(
+                    123,
+                    force=True,
+                    timeout_seconds=0.25,
+                )
+            )
+            self.assertEqual(calls[0][0], ["taskkill", "/PID", "123", "/T", "/F"])
+            self.assertEqual(calls[0][1]["timeout"], 0.25)
+        finally:
+            process_controller.is_process_running = original_is_process_running
+            process_controller.subprocess.run = original_run
 
 
 def _wait_for_pid(path: Path, timeout_seconds: float = 5) -> int:

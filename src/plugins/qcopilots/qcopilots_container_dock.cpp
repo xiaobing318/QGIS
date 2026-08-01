@@ -16,14 +16,19 @@
 
 #include "qgsapplication.h"
 #include "qcopilots_container_utils.h"
+#include "qcopilots_mcp_bridge.h"
+#include "qcopilots_mcp_catalog.h"
 #include "qgssettings.h"
 
 #include <QAuthenticator>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QLayout>
 #include <QMetaEnum>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkProxy>
 #include <QNetworkReply>
@@ -32,6 +37,7 @@
 #include <QSslError>
 #include <QStandardPaths>
 #include <QStringList>
+#include <QTimer>
 #include <QVariant>
 
 #include <QWebEngineDownloadRequest>
@@ -42,6 +48,7 @@
 #include <QWebEngineScriptCollection>
 #include <QWebEngineSettings>
 #include <QWebEngineView>
+#include <QWebChannel>
 
 #include "moc_qcopilots_container_dock.cpp"
 
@@ -244,6 +251,89 @@ namespace
 )JS" );
   }
 
+  QString resourceScriptSource( const QString &path )
+  {
+    QFile file( path );
+    if ( !file.open( QIODevice::ReadOnly | QIODevice::Text ) )
+      return QString();
+
+    return QString::fromUtf8( file.readAll() );
+  }
+
+  QString javascriptStringLiteral( const QString &value )
+  {
+    QJsonArray array;
+    array.append( value );
+    const QByteArray serialized = QJsonDocument( array ).toJson( QJsonDocument::Compact );
+    return QString::fromUtf8( serialized.mid( 1, serialized.size() - 2 ) );
+  }
+
+  QString webUiOrigin( const QUrl &url )
+  {
+    if ( !QgsQCopilotsUtils::isSupportedWebUiUrl( url ) )
+      return QString();
+
+    QUrl origin;
+    origin.setScheme( url.scheme().toLower() );
+    origin.setHost( url.host().toLower() );
+    if ( url.port() >= 0 )
+      origin.setPort( url.port() );
+    return origin.toString( QUrl::FullyEncoded );
+  }
+
+  void installQCopilotsMcpBootstrapScript( QWebEnginePage *page, const QString &catalogJson, const QUrl &configuredUrl )
+  {
+    if ( !page )
+      return;
+
+    const QString webChannelSource = resourceScriptSource( QStringLiteral( ":/qtwebchannel/qwebchannel.js" ) );
+    const QString bootstrapSource = resourceScriptSource( QStringLiteral( ":/qcopilots/web/qcopilots_mcp_bootstrap.js" ) );
+    const QString configuredOrigin = webUiOrigin( configuredUrl );
+    if ( bootstrapSource.isEmpty() )
+    {
+      QgsQCopilotsUtils::logMessage( QObject::tr( "QCopilots local MCP bootstrap resources are unavailable." ), Qgis::Warning );
+      return;
+    }
+    if ( webChannelSource.isEmpty() || configuredOrigin.isEmpty() )
+      QgsQCopilotsUtils::logMessage( QObject::tr( "QCopilots local MCP bridge configuration is incomplete. Virtual MCP network requests will remain blocked." ), Qgis::Warning );
+
+    QWebEngineScript script;
+    script.setName( QStringLiteral( "qcopilots-local-mcp-bridge" ) );
+    script.setInjectionPoint( QWebEngineScript::DocumentCreation );
+    script.setWorldId( QWebEngineScript::MainWorld );
+    script.setRunsOnSubFrames( true );
+    const QString originLiteral = javascriptStringLiteral( configuredOrigin );
+    const QString source = QStringLiteral( R"JS(
+{
+  const qcopilotsDefaultPort = function (protocol) {
+    return protocol === 'http:' ? '80' : (protocol === 'https:' ? '443' : '');
+  };
+  let qcopilotsTrustedTopLevel = false;
+  try {
+    const qcopilotsExpectedOrigin = new URL(%1);
+    const qcopilotsExpectedPort = qcopilotsExpectedOrigin.port || qcopilotsDefaultPort(qcopilotsExpectedOrigin.protocol);
+    const qcopilotsCurrentPort = window.location.port || qcopilotsDefaultPort(window.location.protocol);
+    qcopilotsTrustedTopLevel = window.top === window
+      && window.location.protocol.toLowerCase() === qcopilotsExpectedOrigin.protocol.toLowerCase()
+      && window.location.hostname.toLowerCase() === qcopilotsExpectedOrigin.hostname.toLowerCase()
+      && qcopilotsCurrentPort === qcopilotsExpectedPort;
+  } catch (_error) {
+    qcopilotsTrustedTopLevel = false;
+  }
+  if (qcopilotsTrustedTopLevel) {
+    window.__qcopilotsConfiguredOriginV1 = %1;
+    window.__qcopilotsInitialMcpCatalogV1 = %2;
+)JS" )
+                              .arg( originLiteral, javascriptStringLiteral( catalogJson ) )
+                            + webChannelSource + QStringLiteral( "\n  }\n" ) + bootstrapSource
+                            + QStringLiteral( "\n}\n" );
+    script.setSourceCode( source );
+    const QList<QWebEngineScript> existingScripts = page->scripts().find( script.name() );
+    for ( const QWebEngineScript &existing : existingScripts )
+      page->scripts().remove( existing );
+    page->scripts().insert( script );
+  }
+
   void installQCopilotsWebFixupScript( QWebEnginePage *page )
   {
     if ( !page )
@@ -305,18 +395,23 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
   mConfiguredUrl = QgsQCopilotsUtils::normalizedWebUiUrl( QUrl( settings.value( sServerUrlKey, QgsQCopilotsUtils::defaultServerUrl().toString(), QgsSettings::Section::Plugins ).toString() ) );
   mLastSuccessfulUrl = QgsQCopilotsUtils::normalizedWebUiUrl( QUrl( settings.value( sLastSuccessfulUrlKey, mConfiguredUrl.toString(), QgsSettings::Section::Plugins ).toString() ), mConfiguredUrl );
 
+  if ( mWebView && mWebView->page() )
+  {
+    mMcpCatalog = new QgsQCopilotsMcpCatalog( this );
+    mMcpBridge = new QgsQCopilotsMcpBridge( mMcpCatalog, mWebView->page(), this );
+    mMcpBridge->setConfiguredUrl( mConfiguredUrl );
+    mWebChannel = new QWebChannel( mWebView->page() );
+    mWebChannel->registerObject( QStringLiteral( "qcopilotsMcpBridge" ), mMcpBridge );
+    mWebView->page()->setWebChannel( mWebChannel, QWebEngineScript::MainWorld );
+  }
+
   appendDiagnosticLog( tr( "QCopilots file logging initialized." ), Qgis::Info );
-  loadUrl( mConfiguredUrl, false );
+  beginInitialMcpCatalogWait();
 }
 
 QgsQCopilotsDock::~QgsQCopilotsDock()
 {
-  if ( mProbeReply )
-  {
-    mProbeReply->abort();
-    mProbeReply->deleteLater();
-    mProbeReply = nullptr;
-  }
+  cancelConnectivityProbe();
 }
 
 QUrl QgsQCopilotsDock::configuredUrl() const
@@ -340,6 +435,8 @@ void QgsQCopilotsDock::setConfiguredUrl( const QUrl &url )
 {
   const QUrl normalized = QgsQCopilotsUtils::normalizedWebUiUrl( url );
   mConfiguredUrl = normalized;
+  if ( mMcpBridge )
+    mMcpBridge->setConfiguredUrl( normalized );
 
   QgsSettings settings;
   settings.setValue( sServerUrlKey, normalized.toString(), QgsSettings::Section::Plugins );
@@ -354,6 +451,17 @@ void QgsQCopilotsDock::loadUrl( const QUrl &url, bool persistAsConfigured )
   if ( persistAsConfigured )
     setConfiguredUrl( normalized );
 
+  if ( mInitialMcpLoadPending )
+  {
+    mDeferredInitialUrl = normalized;
+    return;
+  }
+
+  const QString publicCatalog = mMcpBridge
+                                  ? mMcpBridge->catalog()
+                                  : QStringLiteral( R"({"schemaVersion":1,"generation":0,"startupComplete":false,"services":[]})" );
+  installQCopilotsMcpBootstrapScript( mWebView->page(), publicCatalog, configuredUrl() );
+
   resetProbeState();
   mPendingUrl = normalized;
   mLastFailureSummary.clear();
@@ -361,6 +469,46 @@ void QgsQCopilotsDock::loadUrl( const QUrl &url, bool persistAsConfigured )
   appendDiagnosticLog( tr( "Loading QCopilots URL: %1" ).arg( QgsQCopilotsUtils::displayUrl( normalized ) ), Qgis::Info );
   startConnectivityProbe( normalized );
   mWebView->load( normalized );
+}
+
+void QgsQCopilotsDock::beginInitialMcpCatalogWait()
+{
+  mInitialMcpLoadPending = true;
+  mDeferredInitialUrl = mConfiguredUrl;
+
+  mMcpCatalogWaitTimer = new QTimer( this );
+  mMcpCatalogWaitTimer->setSingleShot( true );
+  mMcpCatalogWaitTimer->setInterval( 30000 );
+  connect( mMcpCatalogWaitTimer, &QTimer::timeout, this, [this]() {
+    completeInitialMcpCatalogWait( true );
+  } );
+  if ( mMcpCatalog )
+  {
+    connect( mMcpCatalog, &QgsQCopilotsMcpCatalog::catalogChanged, this, [this]() {
+      completeInitialMcpCatalogWait( false );
+    } );
+  }
+  mMcpCatalogWaitTimer->start();
+  completeInitialMcpCatalogWait( false );
+}
+
+void QgsQCopilotsDock::completeInitialMcpCatalogWait( bool timedOut )
+{
+  if ( !mInitialMcpLoadPending )
+    return;
+
+  const QgsQCopilotsMcpCatalogSnapshot snapshot = mMcpCatalog
+                                                   ? mMcpCatalog->snapshot()
+                                                   : QgsQCopilotsMcpCatalogSnapshot();
+  if ( !timedOut && ( !snapshot.valid || !snapshot.startupComplete ) )
+    return;
+
+  mInitialMcpLoadPending = false;
+  if ( mMcpCatalogWaitTimer )
+    mMcpCatalogWaitTimer->stop();
+
+  const QUrl initialUrl = mDeferredInitialUrl.isValid() ? mDeferredInitialUrl : mConfiguredUrl;
+  loadUrl( initialUrl, false );
 }
 
 void QgsQCopilotsDock::loadDefaultUrl()
@@ -566,17 +714,24 @@ void QgsQCopilotsDock::resetProbeState()
   mLastProxyHint.clear();
 }
 
+void QgsQCopilotsDock::cancelConnectivityProbe()
+{
+  QNetworkReply *reply = mProbeReply;
+  if ( !reply )
+    return;
+
+  mProbeReply = nullptr;
+  QObject::disconnect( reply, nullptr, this, nullptr );
+  reply->abort();
+  reply->deleteLater();
+}
+
 void QgsQCopilotsDock::startConnectivityProbe( const QUrl &url )
 {
   if ( !mNetworkAccessManager )
     return;
 
-  if ( mProbeReply )
-  {
-    mProbeReply->abort();
-    mProbeReply->deleteLater();
-    mProbeReply = nullptr;
-  }
+  cancelConnectivityProbe();
 
   QNetworkRequest request( url );
   request.setAttribute( QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy );
