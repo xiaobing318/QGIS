@@ -34,9 +34,7 @@ PLUGIN_ROOT = (
 )
 CATALOG_PATH = PLUGIN_ROOT / "qgis_binaries.json"
 SCHEMA_PATH = PLUGIN_ROOT / "qgis_binaries.schema.json"
-DEFAULT_SNAPSHOT_ROOT = Path(
-    r"C:\Data\QGISPackages\ff40200qcopilots\QGIS40200-RelWithDebInfo"
-)
+PUBLISHED_PACKAGE_ROOT_ENV = "QCOPILOTS_QGIS_BINARY_PACKAGE_ROOT"
 EXPECTED_STATIC_ENABLED_PATHS = {
     "bin/avcexport.exe",
     "bin/avcimport.exe",
@@ -647,8 +645,8 @@ def _verify_static_probe(root, item):
 
 
 def validate_catalog_against_package(
-    catalog_path=CATALOG_PATH,
-    package_root=DEFAULT_SNAPSHOT_ROOT,
+    catalog_path,
+    package_root,
     verify_static_probes=True,
 ):
     catalog = load_catalog(catalog_path)
@@ -1655,14 +1653,18 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 _verify_static_probe(Path(root), item)
 
     def test_current_published_snapshot_matches_and_static_probes_pass(self):
-        package_root = Path(
-            os.environ.get(
-                "QCOPILOTS_QGIS_BINARY_PACKAGE_ROOT",
-                DEFAULT_SNAPSHOT_ROOT,
+        package_root_value = os.environ.get(PUBLISHED_PACKAGE_ROOT_ENV)
+        if package_root_value is None:
+            self.skipTest(
+                f"Set {PUBLISHED_PACKAGE_ROOT_ENV} to validate a published QGIS package"
             )
-        )
+        if not package_root_value.strip():
+            self.fail(f"{PUBLISHED_PACKAGE_ROOT_ENV} must not be empty")
+        package_root = Path(package_root_value)
         if not package_root.is_dir():
-            self.skipTest(f"Published QGIS package is unavailable: {package_root}")
+            self.fail(
+                f"Configured published QGIS package is unavailable: {package_root}"
+            )
         binaries = self.catalog["binaries"]
         configured = len(binaries)
         enabled = sum(item["enabled"] for item in binaries)
