@@ -2,13 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://qgis.org/schemas/qcopilots/qgis-binaries-1.schema.json",
   "title": "QCopilots QGIS Binary Catalog",
-  "description": "字段作用是定义 QGIS Binary 服务允许发现、探测和运行的发布包可执行文件目录。候选值由版本、固定计数、发布包根目录解析、环境配置、共享分组默认值和 591 个 binary 对象组成。不同候选值的影响是改变可执行文件的发现范围、环境准备、风险确认、进度解析和作业结果判定，无效配置会在编辑器校验或运行时目录校验阶段被拒绝。",
+  "description": "字段作用是定义 QGIS Binary 服务允许发现、探测和运行的发布包可执行文件目录。候选值由版本、发布包根目录解析、环境配置、共享分组默认值和一个或多个 binary 对象组成。不同候选值的影响是改变可执行文件的发现范围、环境准备、风险确认、进度解析和作业结果判定，无效配置会在编辑器校验或运行时目录校验阶段被拒绝。",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "$schema",
     "version",
-    "expected_counts",
     "package_root_resolution",
     "environment_profiles",
     "groups",
@@ -25,13 +24,9 @@
       "const": 1,
       "description": "字段作用是标识 QGIS Binary 目录的数据格式版本。候选值当前只有整数 1。不同候选值的影响是版本 1 使用本文件定义的字段和安全规则，其它值会被 schema 与目录加载器拒绝。"
     },
-    "expected_counts": {
-      "$ref": "#/$defs/expectedCounts",
-      "description": "字段作用是固定当前发布包快照的配置、启用和禁用数量。候选值当前为 configured=591、enabled=87、disabled=504。不同候选值的影响是任一数量与 binaries 实际状态不一致时目录加载失败，GPSBabel 保持在 504 个禁用项中。"
-    },
     "package_root_resolution": {
       "$ref": "#/$defs/packageRootResolution",
-      "description": "字段作用是从显式目录、环境变量或 QGIS prefix 祖先中唯一确定发布包根目录。候选值包括固定策略、一个或多个 marker、0 到 32 层祖先搜索深度，以及可选环境变量名列表。不同候选值的影响是改变候选根目录来源和匹配严格度，零个或多个匹配都会令初始化失败。"
+      "description": "字段作用是从显式目录、环境变量或 QGIS prefix 祖先中唯一确定发布包根目录。候选值包括一个或多个 marker、0 到 32 层祖先搜索深度，以及可选环境变量名列表。不同候选值的影响是改变候选根目录来源和匹配严格度，零个或多个匹配都会令初始化失败。"
     },
     "environment_profiles": {
       "type": "object",
@@ -61,48 +56,13 @@
     },
     "binaries": {
       "type": "array",
-      "minItems": 591,
-      "maxItems": 591,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/binary",
         "description": "字段作用是逐项声明发布包中的一个可执行文件及其执行策略。候选值是满足 binary 定义的对象。不同候选值的影响是改变工具是否可运行、使用何种环境和风险级别、如何探测和如何限制资源，重复对象会被拒绝。"
       },
-      "allOf": [
-        {
-          "description": "字段作用是精确统计 enabled=true 的目录项。候选值要求恰好 87 个 binary 为启用状态。不同候选值的影响是少于或多于 87 个启用项都会被 schema 拒绝，避免只修改 expected_counts 造成伪一致。",
-          "contains": {
-            "type": "object",
-            "required": [
-              "enabled"
-            ],
-            "properties": {
-              "enabled": {
-                "const": true
-              }
-            }
-          },
-          "minContains": 87,
-          "maxContains": 87
-        },
-        {
-          "description": "字段作用是精确统计 enabled=false 的目录项。候选值要求恰好 504 个 binary 为禁用状态。不同候选值的影响是少于或多于 504 个禁用项都会被 schema 拒绝，GPSBabel 继续作为不可用的 Qt5 依赖项保持禁用。",
-          "contains": {
-            "type": "object",
-            "required": [
-              "enabled"
-            ],
-            "properties": {
-              "enabled": {
-                "const": false
-              }
-            }
-          },
-          "minContains": 504,
-          "maxContains": 504
-        }
-      ],
-      "description": "字段作用是显式列出当前发布包中全部 591 个 EXE。候选值是恰好 87 个启用项和 504 个禁用项组成的唯一对象数组。不同候选值的影响是改变 MCP 可运行目录或发布包覆盖范围，数量、ID、路径或实际 EXE 集合不一致会被 schema 或运行时校验拒绝。"
+      "description": "字段作用是显式列出当前发布包中的全部 EXE。候选值是一个或多个唯一 binary 对象，启用、禁用和总数量由加载器根据数组内容动态计算。不同候选值的影响是改变 MCP 可运行目录或发布包覆盖范围，ID、路径或实际 EXE 集合不一致会被运行时校验拒绝。"
     }
   },
   "$defs": {
@@ -147,47 +107,14 @@
       ],
       "description": "字段作用是选择允许捕获子进程环境的固定可信批处理脚本。候选值只有 'bin/qgis-qt6-env.bat' 和 'bin/o4w_env.bat'。不同候选值的影响是前者准备 QGIS Qt6 环境，后者准备 OSGeo4W 基础环境，其它脚本即使位于发布包内也会被拒绝。"
     },
-    "expectedCounts": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "configured",
-        "enabled",
-        "disabled"
-      ],
-      "properties": {
-        "configured": {
-          "type": "integer",
-          "const": 591,
-          "description": "字段作用是声明当前发布包快照中配置的 EXE 总数。候选值当前只有 591。不同候选值的影响是其它值会被 schema 拒绝，运行时也会将其与 binaries 数量和实际发布包 EXE 集合核对。"
-        },
-        "enabled": {
-          "type": "integer",
-          "const": 87,
-          "description": "字段作用是声明允许通过 MCP 启动的 EXE 数量。候选值当前只有 87。不同候选值的影响是其它值会被 schema 拒绝并触发运行时计数不一致，不能仅修改此数字来启用不可运行工具。"
-        },
-        "disabled": {
-          "type": "integer",
-          "const": 504,
-          "description": "字段作用是声明只保留目录信息但禁止启动的 EXE 数量。候选值当前只有 504。不同候选值的影响是其它值会被 schema 拒绝并触发运行时计数不一致，GPSBabel 当前计入此数量。"
-        }
-      },
-      "description": "字段作用是保存当前发布包快照的三项固定计数。候选值为 configured=591、enabled=87、disabled=504。不同候选值的影响是必须同时匹配数组状态和发布包文件集合，否则目录不可加载。"
-    },
     "packageRootResolution": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "strategy",
         "markers",
         "max_parent_levels"
       ],
       "properties": {
-        "strategy": {
-          "type": "string",
-          "const": "qgis_prefix_ancestor",
-          "description": "字段作用是指定发布包根目录发现算法。候选值当前只有 'qgis_prefix_ancestor'。不同候选值的影响是该值会从 QGIS prefix 及其祖先中寻找唯一 marker 匹配，其它策略尚未实现并会被拒绝。"
-        },
         "markers": {
           "type": "array",
           "minItems": 1,
@@ -221,7 +148,7 @@
           "description": "字段作用是在未显式传入 package root 时指定优先检查的环境变量。候选值是 1 到 16 个唯一合法变量名，省略时使用 QGIS_PACKAGE_ROOT 和 OSGEO4W_ROOT。不同候选值的影响是改变根目录查找优先级，变量指向的目录不满足 marker 时会失败而不会放宽边界。"
         }
       },
-      "description": "字段作用是完整定义发布包根目录的可信发现流程。候选值由固定 strategy、markers、max_parent_levels 和可选 environment_variables 组成。不同候选值的影响是改变搜索入口、范围和唯一性判定，最终目录必须存在并满足所有 marker。"
+      "description": "字段作用是完整定义发布包根目录的可信发现流程。候选值由 markers、max_parent_levels 和可选 environment_variables 组成。不同候选值的影响是改变搜索入口、范围和唯一性判定，最终目录必须存在并满足所有 marker。"
     },
     "environmentProfile": {
       "type": "object",
@@ -564,13 +491,13 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
-          "description": "字段作用是为目录和详情结果提供可选显示名称。候选值是 1 到 256 个字符的文本，省略时使用可执行文件名 stem 或 group 默认值。不同候选值的影响只改变面向用户的名称，不改变 binary_id、路径或执行行为。"
+          "description": "字段作用是为目录和详情结果提供显示名称。候选值是 1 到 256 个字符的文本，启用项必须显式填写，禁用项省略时使用可执行文件名 stem 或 group 默认值。不同候选值的影响只改变面向用户的名称，不改变 binary_id、路径或执行行为。"
         },
         "description": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4096,
-          "description": "字段作用是提供可选的 binary 用途说明。候选值是 1 到 4096 个字符的文本，省略时使用 group 默认描述或空文本。不同候选值的影响只改变目录详情和可发现性，不放宽参数、路径或风险边界。"
+          "description": "字段作用是提供 binary 用途说明。候选值是 1 到 4096 个字符的文本，启用项必须显式填写，禁用项省略时使用 group 默认描述或空文本。不同候选值的影响只改变目录详情和可发现性，不放宽参数、路径或风险边界。"
         },
         "path": {
           "$ref": "#/$defs/executableRelativePath",
@@ -651,6 +578,10 @@
             ]
           },
           "then": {
+            "required": [
+              "name",
+              "description"
+            ],
             "properties": {
               "disabled_reason": {
                 "type": "null"
@@ -714,7 +645,7 @@
           }
         }
       ],
-      "description": "字段作用是完整声明一个可发现、可探测并按策略运行或禁用的发布包 EXE。候选值由稳定 ID、规范路径、group、enabled、风险、环境、probe、退出码、资源限制和进度解析组成，并可选 name 和 description。不同候选值的影响是共同决定目录展示和作业执行，跨记录唯一性、引用存在和发布包全集仍由运行时复核。"
+      "description": "字段作用是完整声明一个可发现、可探测并按策略运行或禁用的发布包 EXE。候选值由稳定 ID、规范路径、group、enabled、风险、环境、probe、退出码、资源限制和进度解析组成，启用项还必须显式提供 name 和 description。不同候选值的影响是共同决定目录展示和作业执行，跨记录唯一性、引用存在和发布包全集仍由运行时复核。"
     }
   }
 }

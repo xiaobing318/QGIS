@@ -1257,24 +1257,8 @@ def _validate_catalog(
         raise BinaryCatalogError("environment_profiles must be a non-empty object")
     if not isinstance(groups, dict):
         raise BinaryCatalogError("groups must be an object")
-    if not isinstance(entries, list):
-        raise BinaryCatalogError("binaries must be an array")
-    expected = document.get("expected_counts")
-    if not isinstance(expected, dict) or set(expected) != {
-        "configured",
-        "enabled",
-        "disabled",
-    }:
-        raise BinaryCatalogError(
-            "expected_counts must contain configured, enabled, and disabled"
-        )
-    if any(
-        isinstance(expected[key], bool)
-        or not isinstance(expected[key], int)
-        or expected[key] < 0
-        for key in expected
-    ):
-        raise BinaryCatalogError("expected_counts values must be non-negative integers")
+    if not isinstance(entries, list) or not entries:
+        raise BinaryCatalogError("binaries must be a non-empty array")
     normalized_profiles = {}
     for profile_id, raw_profile in profiles.items():
         if not isinstance(raw_profile, dict):
@@ -1406,17 +1390,18 @@ def _validate_catalog(
         "enabled": enabled_count,
         "disabled": len(binaries) - enabled_count,
     }
-    for key, actual in actual_counts.items():
-        if expected[key] != actual:
-            raise BinaryCatalogError(
-                f"QGIS binary catalog count mismatch for {key}: "
-                f"expected {expected[key]}, actual {actual}"
-            )
     normalized_document = {
-        **document,
-        "environment_profiles": normalized_profiles,
-        "binaries": list(binaries.values()),
+        key: document[key]
+        for key in ("$schema", "version", "package_root_resolution", "groups")
+        if key in document
     }
+    normalized_document.update(
+        {
+            "counts": actual_counts,
+            "environment_profiles": normalized_profiles,
+            "binaries": list(binaries.values()),
+        }
+    )
     return normalized_document, binaries
 
 
@@ -1426,9 +1411,9 @@ def _validate_catalog_header(document: dict[str, Any]) -> None:
     resolution = document.get("package_root_resolution")
     if not isinstance(resolution, dict):
         raise BinaryCatalogError("package_root_resolution must be an object")
-    if resolution.get("strategy") != "qgis_prefix_ancestor":
+    if "strategy" in resolution:
         raise BinaryCatalogError(
-            "package_root_resolution.strategy must be qgis_prefix_ancestor"
+            "package_root_resolution.strategy is no longer supported"
         )
 
 
@@ -1465,20 +1450,19 @@ def _resolve_package_root(
     resolver = dependencies.get("package_root_resolver")
     if resolver:
         value = resolver(configured, document)
-        return _existing_directory(value, "resolved package root")
+        return _validated_package_root(value, "resolved package root", markers)
     if configured is not None:
-        return _existing_directory(configured, "package root")
+        return _validated_package_root(configured, "package root", markers)
     names = resolution.get(
         "environment_variables", ["QGIS_PACKAGE_ROOT", "OSGEO4W_ROOT"]
     )
     for name in names:
         value = os.environ.get(str(name))
         if value:
-            root = _existing_directory(value, f"package root from {name}")
-            if _root_matches_markers(root, markers):
-                return root
-            raise BinaryCatalogError(
-                f"Package root from {name} does not satisfy catalog markers"
+            return _validated_package_root(
+                value,
+                f"package root from {name}",
+                markers,
             )
     try:
         from qgis.core import QgsApplication
@@ -1489,14 +1473,22 @@ def _resolve_package_root(
             f"Could not obtain the QGIS prefix for package root discovery: {err}"
         ) from err
     candidates = [prefix, *list(prefix.parents)[:max_parent_levels]]
-    matches = [candidate for candidate in candidates if _root_matches_markers(candidate, markers)]
+    matches = [
+        candidate
+        for candidate in candidates
+        if _root_matches_markers(candidate, markers)
+    ]
     unique_matches = list(dict.fromkeys(matches))
     if len(unique_matches) != 1:
         raise BinaryCatalogError(
             "QGIS package root discovery requires exactly one marker match, "
             f"found {len(unique_matches)}"
         )
-    return _existing_directory(unique_matches[0], "discovered package root")
+    return _validated_package_root(
+        unique_matches[0],
+        "discovered package root",
+        markers,
+    )
 
 
 def _existing_directory(value: str | Path, name: str) -> Path:
@@ -1507,6 +1499,18 @@ def _existing_directory(value: str | Path, name: str) -> Path:
     if not candidate.is_dir():
         raise BinaryCatalogError(f"{name} is not a directory: {candidate}")
     return candidate
+
+
+def _validated_package_root(
+    value: str | Path,
+    name: str,
+    markers: list[str],
+) -> Path:
+    root = _existing_directory(value, name)
+    if not _root_matches_markers(root, markers):
+        display_name = name[:1].upper() + name[1:]
+        raise BinaryCatalogError(f"{display_name} does not satisfy catalog markers")
+    return root
 
 
 def _root_matches_markers(root: Path, markers: list[str]) -> bool:
@@ -1521,7 +1525,13 @@ def _root_matches_markers(root: Path, markers: list[str]) -> bool:
             or ".." in relative.parts
         ):
             raise BinaryCatalogError(f"Invalid package root marker: {marker}")
-        if not root.joinpath(*relative.parts).exists():
+        marker_path = root.joinpath(*relative.parts)
+        try:
+            resolved_marker = marker_path.resolve(strict=True)
+            resolved_marker.relative_to(root)
+        except (OSError, RuntimeError, ValueError):
+            return False
+        if not resolved_marker.is_file():
             return False
     return True
 

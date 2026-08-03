@@ -37,46 +37,6 @@ SCHEMA_PATH = PLUGIN_ROOT / "qgis_binaries.schema.json"
 DEFAULT_SNAPSHOT_ROOT = Path(
     r"C:\Data\QGISPackages\ff40200qcopilots\QGIS40200-RelWithDebInfo"
 )
-EXPECTED_GROUP_COUNTS = {
-    "qgis_cli": 3,
-    "gdal_native": 21,
-    "ogr_gnm_avc": 7,
-    "gdal_python": 16,
-    "proj": 8,
-    "geos": 1,
-    "geotiff": 4,
-    "gps": 1,
-    "laszip": 6,
-    "hdf5": 15,
-    "xml_and_utilities": 6,
-    "grass_disabled": 419,
-    "qt_runtime_disabled": 22,
-    "python_runtime_disabled": 29,
-    "qgis_internal_disabled": 3,
-    "osgeo4w_internal_disabled": 12,
-    "risk3_blocked": 18,
-}
-EXPECTED_GROUP_ENABLED_COUNTS = {
-    "qgis_cli": 3,
-    "gdal_native": 21,
-    "ogr_gnm_avc": 7,
-    "gdal_python": 16,
-    "proj": 8,
-    "geos": 1,
-    "geotiff": 4,
-    "gps": 0,
-    "laszip": 6,
-    "hdf5": 15,
-    "xml_and_utilities": 6,
-    "grass_disabled": 0,
-    "qt_runtime_disabled": 0,
-    "python_runtime_disabled": 0,
-    "qgis_internal_disabled": 0,
-    "osgeo4w_internal_disabled": 0,
-    "risk3_blocked": 0,
-}
-EXPECTED_RISK_COUNTS = {"R1": 51, "R2": 522, "R3": 18}
-EXPECTED_ENABLED_RISK_COUNTS = {"R1": 29, "R2": 58}
 EXPECTED_STATIC_ENABLED_PATHS = {
     "bin/avcexport.exe",
     "bin/avcimport.exe",
@@ -697,7 +657,6 @@ def validate_catalog_against_package(
     if not isinstance(binaries, list):
         raise CatalogValidationError("binaries must be an array")
 
-    counts = catalog.get("expected_counts") or {}
     configured = len(binaries)
     enabled = sum(item.get("enabled") is True for item in binaries)
     disabled = configured - enabled
@@ -706,11 +665,6 @@ def validate_catalog_against_package(
         "enabled": enabled,
         "disabled": disabled,
     }
-    if counts != actual_counts:
-        raise CatalogValidationError(
-            f"count_mismatch: expected {counts}, actual {actual_counts}"
-        )
-
     ids = [item.get("id") for item in binaries]
     paths = [item.get("path") for item in binaries]
     duplicate_ids = sorted(
@@ -913,15 +867,20 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             {
                 "$schema",
                 "version",
-                "expected_counts",
                 "package_root_resolution",
                 "environment_profiles",
                 "groups",
                 "binaries",
             },
         )
+        binaries_schema = self.schema["properties"]["binaries"]
+        self.assertEqual(binaries_schema["minItems"], 1)
+        self.assertNotIn("maxItems", binaries_schema)
+        self.assertNotIn("allOf", binaries_schema)
+        root_resolution = self.schema["$defs"]["packageRootResolution"]
+        self.assertNotIn("strategy", root_resolution["required"])
+        self.assertNotIn("strategy", root_resolution["properties"])
         for definition in (
-            "expectedCounts",
             "packageRootResolution",
             "environmentProfile",
             "groupDefaults",
@@ -1089,22 +1048,15 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             "$.unexpected",
         )
         mutate(
-            "wrong_expected_count",
-            lambda document: document["expected_counts"].__setitem__(
-                "enabled", 88
-            ),
-            "$.expected_counts.enabled",
-        )
-        mutate(
-            "too_many_binaries",
+            "duplicate_binary_object",
             lambda document: document["binaries"].append(
                 copy.deepcopy(document["binaries"][0])
             ),
             "$.binaries",
         )
         mutate(
-            "too_few_binaries",
-            lambda document: document["binaries"].pop(),
+            "empty_binaries",
+            lambda document: document.__setitem__("binaries", []),
             "$.binaries",
         )
         mutate(
@@ -1247,18 +1199,11 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             "$.$schema",
         )
         add_case(
-            "wrong_root_strategy",
+            "legacy_root_strategy",
             lambda document: document["package_root_resolution"].__setitem__(
-                "strategy", "path_search"
+                "strategy", "qgis_prefix_ancestor"
             ),
             "$.package_root_resolution.strategy",
-        )
-        add_case(
-            "extra_expected_count_property",
-            lambda document: document["expected_counts"].__setitem__(
-                "unexpected", 0
-            ),
-            "$.expected_counts.unexpected",
         )
         add_case(
             "extra_root_resolution_property",
@@ -1386,6 +1331,16 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             lambda item: item.__setitem__("disabled_reason", "not null"),
         )
         invalid(
+            "enabled_without_name",
+            enabled_argv,
+            lambda item: item.pop("name"),
+        )
+        invalid(
+            "enabled_without_description",
+            enabled_argv,
+            lambda item: item.pop("description"),
+        )
+        invalid(
             "disabled_without_reason",
             disabled_static,
             lambda item: item.__setitem__("disabled_reason", None),
@@ -1463,7 +1418,7 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 )
                 self.assertTrue(errors)
 
-    def test_schema_count_constraints_reject_both_directions(self):
+    def test_schema_does_not_pin_catalog_counts(self):
         enabled_static = next(
             item
             for item in self.catalog["binaries"]
@@ -1475,78 +1430,74 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             if not item["enabled"] and item["risk"] == "R2"
         )
 
-        too_few_enabled = copy.deepcopy(self.catalog)
+        fewer_enabled = copy.deepcopy(self.catalog)
         item = next(
             candidate
-            for candidate in too_few_enabled["binaries"]
+            for candidate in fewer_enabled["binaries"]
             if candidate["id"] == enabled_static["id"]
         )
         item["enabled"] = False
         item["disabled_reason"] = "disabled for count test"
 
-        too_many_enabled = copy.deepcopy(self.catalog)
+        more_enabled = copy.deepcopy(self.catalog)
         item = next(
             candidate
-            for candidate in too_many_enabled["binaries"]
+            for candidate in more_enabled["binaries"]
             if candidate["id"] == disabled_r2["id"]
         )
         item["enabled"] = True
         item["disabled_reason"] = None
+        item.setdefault("name", Path(item["path"]).stem)
+        item.setdefault("description", "Enabled for schema count test.")
+
+        fewer_binaries = copy.deepcopy(self.catalog)
+        fewer_binaries["binaries"].pop()
 
         for name, document in (
-            ("too_few_enabled", too_few_enabled),
-            ("too_many_enabled", too_many_enabled),
+            ("fewer_enabled", fewer_enabled),
+            ("more_enabled", more_enabled),
+            ("fewer_binaries", fewer_binaries),
         ):
             with self.subTest(name=name):
-                errors = _schema_contract_errors(self.schema, document)
-                self.assertTrue(
-                    any("$.binaries: contains matched" in error for error in errors),
-                    errors[:10],
+                self.assertEqual(
+                    _schema_contract_errors(self.schema, document),
+                    [],
                 )
 
-    def test_catalog_has_exact_matrix_and_explicit_fields(self):
+    def test_catalog_has_unique_entries_and_explicit_fields(self):
         binaries = self.catalog["binaries"]
+        self.assertTrue(binaries)
+        self.assertEqual(len({item["id"] for item in binaries}), len(binaries))
+        self.assertEqual(len({item["path"] for item in binaries}), len(binaries))
         self.assertEqual(
-            self.catalog["expected_counts"],
-            {"configured": 591, "enabled": 87, "disabled": 504},
+            {item["group"] for item in binaries},
+            set(self.catalog["groups"]),
         )
-        self.assertEqual(len(binaries), 591)
-        self.assertEqual(sum(item["enabled"] for item in binaries), 87)
-        self.assertEqual(sum(not item["enabled"] for item in binaries), 504)
-        group_counts = {
-            group: sum(item["group"] == group for item in binaries)
-            for group in EXPECTED_GROUP_COUNTS
-        }
-        self.assertEqual(group_counts, EXPECTED_GROUP_COUNTS)
-        group_enabled_counts = {
-            group: sum(
-                item["group"] == group and item["enabled"]
-                for item in binaries
+        enabled_binaries = [item for item in binaries if item["enabled"]]
+
+        def normalized_text(value):
+            return " ".join(value.split()).casefold()
+
+        enabled_names = [
+            normalized_text(item["name"]) for item in enabled_binaries
+        ]
+        enabled_descriptions = [
+            normalized_text(item["description"]) for item in enabled_binaries
+        ]
+        self.assertEqual(len(set(enabled_names)), len(enabled_names))
+        self.assertEqual(
+            len(set(enabled_descriptions)),
+            len(enabled_descriptions),
+        )
+        for item in enabled_binaries:
+            group_description = self.catalog["groups"][item["group"]][
+                "description"
+            ]
+            self.assertNotEqual(
+                normalized_text(item["description"]),
+                normalized_text(group_description),
+                item["id"],
             )
-            for group in EXPECTED_GROUP_ENABLED_COUNTS
-        }
-        self.assertEqual(
-            group_enabled_counts,
-            EXPECTED_GROUP_ENABLED_COUNTS,
-        )
-        risk_counts = {
-            risk: sum(item["risk"] == risk for item in binaries)
-            for risk in EXPECTED_RISK_COUNTS
-        }
-        self.assertEqual(risk_counts, EXPECTED_RISK_COUNTS)
-        enabled_risk_counts = {
-            risk: sum(
-                item["enabled"] and item["risk"] == risk
-                for item in binaries
-            )
-            for risk in EXPECTED_ENABLED_RISK_COUNTS
-        }
-        self.assertEqual(
-            enabled_risk_counts,
-            EXPECTED_ENABLED_RISK_COUNTS,
-        )
-        self.assertEqual(len({item["id"] for item in binaries}), 591)
-        self.assertEqual(len({item["path"] for item in binaries}), 591)
 
         gpsbabel = next(
             item for item in binaries if item["id"] == "bin.gpsbabel"
@@ -1561,7 +1512,7 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
         )
         for item in binaries:
             with self.subTest(binary_id=item["id"]):
-                self.assertEqual(set(item), required_fields)
+                self.assertTrue(required_fields.issubset(item))
                 self.assertIn(item["environment"], self.catalog["environment_profiles"])
                 self.assertIn(item["group"], self.catalog["groups"])
                 self.assertEqual(item["path"], PurePosixPath(item["path"]).as_posix())
@@ -1570,11 +1521,15 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 self.assertGreater(item["timeout_seconds"], 0)
                 self.assertGreaterEqual(item["max_output_bytes"], 1024)
                 self.assertGreaterEqual(item["max_stdin_bytes"], 0)
+                if item["enabled"]:
+                    self.assertTrue(item["name"].strip())
+                    self.assertTrue(item["description"].strip())
+                    self.assertGreaterEqual(len(item["description"].strip()), 120)
 
     def test_risk_and_probe_policy_is_explicit(self):
         binaries = self.catalog["binaries"]
         risk3 = [item for item in binaries if item["risk"] == "R3"]
-        self.assertEqual(len(risk3), 18)
+        self.assertTrue(risk3)
         self.assertTrue(all(not item["enabled"] for item in risk3))
         self.assertTrue(
             all(item["group"] == "risk3_blocked" for item in risk3)
@@ -1614,7 +1569,7 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             for setup_script in profile["setup_scripts"]:
                 _validated_relative_path(setup_script)
 
-    def test_validation_rejects_duplicate_id_path_count_and_escape(self):
+    def test_validation_rejects_duplicate_id_path_and_escape(self):
         variants = []
 
         duplicate_id = copy.deepcopy(self.catalog)
@@ -1624,10 +1579,6 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
         duplicate_path = copy.deepcopy(self.catalog)
         duplicate_path["binaries"][1]["path"] = duplicate_path["binaries"][0]["path"]
         variants.append(("duplicate_path", duplicate_path, "duplicate_path"))
-
-        count_mismatch = copy.deepcopy(self.catalog)
-        count_mismatch["expected_counts"]["enabled"] = 88
-        variants.append(("count_mismatch", count_mismatch, "count_mismatch"))
 
         path_escape = copy.deepcopy(self.catalog)
         path_escape["binaries"][0]["path"] = "../escape.exe"
@@ -1712,6 +1663,9 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
         )
         if not package_root.is_dir():
             self.skipTest(f"Published QGIS package is unavailable: {package_root}")
+        binaries = self.catalog["binaries"]
+        configured = len(binaries)
+        enabled = sum(item["enabled"] for item in binaries)
         self.assertEqual(
             validate_catalog_against_package(
                 CATALOG_PATH,
@@ -1719,9 +1673,9 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 verify_static_probes=True,
             ),
             {
-                "configured": 591,
-                "enabled": 87,
-                "disabled": 504,
+                "configured": configured,
+                "enabled": enabled,
+                "disabled": configured - enabled,
                 "missing": 0,
                 "extra": 0,
                 "duplicate_ids": 0,
@@ -1757,13 +1711,7 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             }
             catalog = {
                 "version": 1,
-                "expected_counts": {
-                    "configured": 2,
-                    "enabled": 2,
-                    "disabled": 0,
-                },
                 "package_root_resolution": {
-                    "strategy": "qgis_prefix_ancestor",
                     "markers": ["bin/argv.exe"],
                     "max_parent_levels": 2,
                 },

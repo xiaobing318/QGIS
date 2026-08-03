@@ -1,6 +1,6 @@
 [general]
 name=QCopilots MCP Server Builtin Tools
-description=Expose llama-server compatible builtin tools as an MCP service.
+description=Expose builtin tools as an MCP service.
 category=QCopilots
 version=0.1.0
 qgisMinimumVersion=4.0

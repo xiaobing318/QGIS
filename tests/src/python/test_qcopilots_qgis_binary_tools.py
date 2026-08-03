@@ -33,6 +33,39 @@ EXPECTED_TOOL_NAMES = [
     "list_qgis_binary_jobs",
     "cancel_qgis_binary_job",
 ]
+EXPECTED_TOOL_DESCRIPTION_TERMS = {
+    "list_qgis_binaries": (
+        "without starting a process",
+        "cursor-paginated",
+        "binary_id",
+    ),
+    "get_qgis_binary_details": (
+        "without running it",
+        "effective catalog policy",
+        "resource limits",
+    ),
+    "start_qgis_binary": (
+        "asynchronous QgsTask job",
+        "without a command shell",
+        "blocks R3 binaries",
+        "polling or cancellation",
+    ),
+    "get_qgis_binary_job": (
+        "without waiting for or changing it",
+        "lifecycle state",
+        "stdout and stderr tails",
+    ),
+    "list_qgis_binary_jobs": (
+        "without changing or waiting for jobs",
+        "lifecycle state",
+        "get_qgis_binary_job",
+    ),
+    "cancel_qgis_binary_job": (
+        "spawned process tree",
+        "complete asynchronously",
+        "confirm the terminal state",
+    ),
+}
 
 
 class _RecordingBridge:
@@ -63,6 +96,39 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
             with self.subTest(tool=tool.name):
                 self.assertEqual(tool.input_schema["type"], "object")
                 self.assertIs(tool.input_schema["additionalProperties"], False)
+
+    def test_tool_descriptions_are_specific_unique_and_serialized(self):
+        tools = {tool.name: tool for tool in self._tools()}
+        descriptions = []
+
+        self.assertEqual(set(tools), set(EXPECTED_TOOL_DESCRIPTION_TERMS))
+        for tool_name, expected_terms in EXPECTED_TOOL_DESCRIPTION_TERMS.items():
+            with self.subTest(tool=tool_name):
+                tool = tools[tool_name]
+                description = tool.description
+                self.assertIsInstance(description, str)
+                self.assertEqual(description, description.strip())
+                self.assertGreaterEqual(len(description), 120)
+                for term in expected_terms:
+                    self.assertIn(term.casefold(), description.casefold())
+
+                descriptor = tool.descriptor()
+                self.assertEqual(descriptor["name"], tool_name)
+                self.assertEqual(descriptor["description"], description)
+                self.assertEqual(descriptor["inputSchema"], tool.input_schema)
+                descriptions.append(description)
+
+        self.assertEqual(len(set(descriptions)), len(descriptions))
+
+    def test_every_public_input_property_has_a_description(self):
+        for tool in self._tools():
+            for property_name, property_schema in tool.input_schema[
+                "properties"
+            ].items():
+                with self.subTest(tool=tool.name, property=property_name):
+                    description = property_schema.get("description")
+                    self.assertIsInstance(description, str)
+                    self.assertGreaterEqual(len(description.strip()), 16)
 
     def test_tool_handlers_use_fixed_bridge_operations_and_start_defaults(self):
         tools = {tool.name: tool for tool in self._tools()}

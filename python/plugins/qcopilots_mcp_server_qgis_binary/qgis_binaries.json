@@ -1,13 +1,7 @@
 {
   "$schema": "./qgis_binaries.schema.json",
   "version": 1,
-  "expected_counts": {
-    "configured": 591,
-    "enabled": 87,
-    "disabled": 504
-  },
   "package_root_resolution": {
-    "strategy": "qgis_prefix_ancestor",
     "markers": [
       "bin/qgis-qt6-env.bat",
       "apps/qgis-qt6/bin/qgis_process.exe",
@@ -11587,6 +11581,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_calc",
+      "name": "GDAL Raster Calculator",
+      "description": "Evaluates NumPy expressions across one or more raster bands and writes the computed raster dataset. Use it for band math where output creation options and nodata handling must be specified explicitly.",
       "path": "apps/Python312/Scripts/gdal_calc.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11643,6 +11639,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_fillnodata",
+      "name": "GDAL Fill NoData",
+      "description": "Interpolates values into nodata regions of a raster band and writes an updated or new raster. Use it for bounded gap filling rather than general image smoothing.",
       "path": "apps/Python312/Scripts/gdal_fillnodata.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11673,6 +11671,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_merge",
+      "name": "GDAL Merge",
+      "description": "Mosaics multiple georeferenced raster datasets into one output. It can select bands, assign nodata values, and create or update the destination raster.",
       "path": "apps/Python312/Scripts/gdal_merge.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11703,6 +11703,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_pansharpen",
+      "name": "GDAL Pansharpen",
+      "description": "Combines a high-resolution panchromatic band with lower-resolution multispectral bands to produce a sharpened raster. The result is written as a new raster dataset or VRT.",
       "path": "apps/Python312/Scripts/gdal_pansharpen.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11733,6 +11735,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_polygonize",
+      "name": "GDAL Polygonize",
+      "description": "Converts connected raster regions with equal pixel values into vector polygons. It writes features to a selected vector layer and can preserve source pixel values as attributes.",
       "path": "apps/Python312/Scripts/gdal_polygonize.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11763,6 +11767,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_proximity",
+      "name": "GDAL Proximity",
+      "description": "Calculates the distance from each raster pixel to selected target pixel values and writes a proximity raster. Distance units, maximum range, nodata handling, and output type are configurable.",
       "path": "apps/Python312/Scripts/gdal_proximity.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11793,6 +11799,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_retile",
+      "name": "GDAL Retile",
+      "description": "Builds tiled raster pyramids from one or more georeferenced inputs and can generate auxiliary tile indexes. It writes multiple output files into a destination directory.",
       "path": "apps/Python312/Scripts/gdal_retile.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11823,6 +11831,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal_sieve",
+      "name": "GDAL Sieve",
+      "description": "Removes raster regions smaller than a chosen threshold by replacing them with neighboring values. It writes a filtered raster band while preserving larger regions.",
       "path": "apps/Python312/Scripts/gdal_sieve.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11853,6 +11863,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal2tiles",
+      "name": "GDAL2Tiles",
+      "description": "Generates web map tiles and supporting viewer metadata from a raster for selected profiles, zoom levels, and resampling methods. It may create a large directory tree or tile archive.",
       "path": "apps/Python312/Scripts/gdal2tiles.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11883,6 +11895,8 @@
     },
     {
       "id": "apps.python312.scripts.gdal2xyz",
+      "name": "GDAL2XYZ",
+      "description": "Exports raster pixel coordinates and band values as delimited text rows. It is intended for tabular inspection or conversion and can produce very large output for dense rasters.",
       "path": "apps/Python312/Scripts/gdal2xyz.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11913,6 +11927,8 @@
     },
     {
       "id": "apps.python312.scripts.gdalattachpct",
+      "name": "GDAL Attach PCT",
+      "description": "Copies a palette color table from a reference raster onto another single-band raster and writes a new output. Pixel values are retained rather than reclassified.",
       "path": "apps/Python312/Scripts/gdalattachpct.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11943,6 +11959,8 @@
     },
     {
       "id": "apps.python312.scripts.gdalcompare",
+      "name": "GDAL Compare",
+      "description": "Compares two raster datasets and reports differences in metadata, georeferencing, bands, and pixel values. It is a diagnostic comparison and does not rewrite the compared datasets.",
       "path": "apps/Python312/Scripts/gdalcompare.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -11999,6 +12017,8 @@
     },
     {
       "id": "apps.python312.scripts.ogr_layer_algebra",
+      "name": "OGR Layer Algebra",
+      "description": "Performs vector overlay operations such as intersection, union, difference, and identity between two layers. It writes the resulting geometries and attributes to a new vector layer.",
       "path": "apps/Python312/Scripts/ogr_layer_algebra.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -12029,6 +12049,8 @@
     },
     {
       "id": "apps.python312.scripts.ogrmerge",
+      "name": "OGR Merge",
+      "description": "Merges vector datasets or layers into a destination data source, either as separate layers or one combined layer. Output schema, append behavior, and reprojection options control consolidation.",
       "path": "apps/Python312/Scripts/ogrmerge.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -12059,6 +12081,8 @@
     },
     {
       "id": "apps.python312.scripts.pct2rgb",
+      "name": "PCT to RGB",
+      "description": "Expands a paletted raster band into red, green, and blue output bands using its color table. It writes a new raster and can optionally add an alpha band.",
       "path": "apps/Python312/Scripts/pct2rgb.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -12089,6 +12113,8 @@
     },
     {
       "id": "apps.python312.scripts.rgb2pct",
+      "name": "RGB to PCT",
+      "description": "Quantizes an RGB raster to an indexed-color raster and creates a palette with a requested color count. The conversion is lossy and writes a new raster dataset.",
       "path": "apps/Python312/Scripts/rgb2pct.exe",
       "group": "gdal_python",
       "enabled": true,
@@ -12197,6 +12223,8 @@
     },
     {
       "id": "apps.qgis-qt6.bin.qgis_process",
+      "name": "QGIS Process",
+      "description": "Lists, inspects, and runs QGIS Processing algorithms from the command line in the packaged QGIS environment. Algorithm execution can read and write projects or datasets according to supplied parameters.",
       "path": "apps/qgis-qt6/bin/qgis_process.exe",
       "group": "qgis_cli",
       "enabled": true,
@@ -12381,6 +12409,8 @@
     },
     {
       "id": "apps.qgis-qt6.pdal_wrench",
+      "name": "PDAL Wrench",
+      "description": "Provides point-cloud operations including inspection, clipping, merging, thinning, filtering, translation, tiling, and raster or vector conversion. Subcommands read point-cloud sources and may create new datasets.",
       "path": "apps/qgis-qt6/pdal_wrench.exe",
       "group": "qgis_cli",
       "enabled": true,
@@ -12435,6 +12465,8 @@
     },
     {
       "id": "apps.qgis-qt6.untwine",
+      "name": "Untwine",
+      "description": "Builds a Cloud Optimized Point Cloud hierarchy from LAS or LAZ inputs. It writes a new COPC dataset and can use substantial CPU, memory, and temporary storage while indexing points.",
       "path": "apps/qgis-qt6/untwine.exe",
       "group": "qgis_cli",
       "enabled": true,
@@ -13038,6 +13070,8 @@
     },
     {
       "id": "bin.applygeo",
+      "name": "ApplyGeo",
+      "description": "Reads GeoTIFF projection metadata from a .geo text file and installs it into an existing TIFF. The target TIFF is modified in place, so callers should preserve the original when needed.",
       "path": "bin/applygeo.exe",
       "group": "geotiff",
       "enabled": true,
@@ -13116,6 +13150,8 @@
     },
     {
       "id": "bin.avcexport",
+      "name": "AVC Export",
+      "description": "Converts an Arc/Info binary vector coverage into an E00 interchange file. It reads a coverage directory and writes the complete exported coverage to the requested output file.",
       "path": "bin/avcexport.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -13142,6 +13178,8 @@
     },
     {
       "id": "bin.avcimport",
+      "name": "AVC Import",
+      "description": "Imports an Arc/Info E00 interchange file into a binary vector coverage. It creates a V7 or PC coverage at the requested destination path.",
       "path": "bin/avcimport.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -13194,6 +13232,8 @@
     },
     {
       "id": "bin.brotli",
+      "name": "Brotli",
+      "description": "Compresses or decompresses files and streams with the Brotli format. Output paths, compression quality, overwrite behavior, and integrity testing are controlled by command-line options.",
       "path": "bin/brotli.exe",
       "group": "xml_and_utilities",
       "enabled": true,
@@ -13222,6 +13262,8 @@
     },
     {
       "id": "bin.cct",
+      "name": "PROJ Coordinate Conversion and Transformation",
+      "description": "Applies a PROJ coordinate-operation pipeline to rows of numeric coordinates. It reads coordinates from files or standard input and writes transformed values without modifying source datasets.",
       "path": "bin/cct.exe",
       "group": "proj",
       "enabled": true,
@@ -13250,6 +13292,8 @@
     },
     {
       "id": "bin.cs2cs",
+      "name": "CS2CS",
+      "description": "Transforms coordinate tuples between source and destination coordinate reference systems. It accepts CRS definitions and streams numeric coordinates to formatted transformed output.",
       "path": "bin/cs2cs.exe",
       "group": "proj",
       "enabled": true,
@@ -13356,6 +13400,8 @@
     },
     {
       "id": "bin.gdal_contour",
+      "name": "GDAL Contour",
+      "description": "Generates vector contour lines or filled contour polygons from a raster elevation band. It writes a vector layer with configurable elevation intervals, attributes, nodata handling, and polygon behavior.",
       "path": "bin/gdal_contour.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13386,6 +13432,8 @@
     },
     {
       "id": "bin.gdal_create",
+      "name": "GDAL Create",
+      "description": "Creates a new raster dataset with specified dimensions, bands, data type, georeferencing, nodata, and initial values. The command writes a new dataset without requiring an input raster.",
       "path": "bin/gdal_create.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13416,6 +13464,8 @@
     },
     {
       "id": "bin.gdal_footprint",
+      "name": "GDAL Footprint",
+      "description": "Builds vector footprint polygons for valid regions of one or more raster datasets. It writes or updates a vector layer using selected bands, nodata rules, overview levels, and geometry options.",
       "path": "bin/gdal_footprint.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13446,6 +13496,8 @@
     },
     {
       "id": "bin.gdal_grid",
+      "name": "GDAL Grid",
+      "description": "Interpolates scattered vector point values onto a regular raster grid. The chosen gridding algorithm, search radius, output extent, resolution, nodata, and raster format determine the created dataset.",
       "path": "bin/gdal_grid.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13476,6 +13528,8 @@
     },
     {
       "id": "bin.gdal_rasterize",
+      "name": "GDAL Rasterize",
+      "description": "Burns vector geometries or attribute values into raster bands. It can create a destination raster or update an existing one using explicit extent, resolution, band, nodata, and merge rules.",
       "path": "bin/gdal_rasterize.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13506,6 +13560,8 @@
     },
     {
       "id": "bin.gdal_translate",
+      "name": "GDAL Translate",
+      "description": "Converts, subsets, rescales, or reformats raster datasets while writing a new destination. It supports band selection, windows, resolution changes, metadata, creation options, and virtual output.",
       "path": "bin/gdal_translate.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13536,6 +13592,8 @@
     },
     {
       "id": "bin.gdal_viewshed",
+      "name": "GDAL Viewshed",
+      "description": "Computes terrain visibility from an observer location using a raster elevation model. It writes a viewshed or minimum-visible-height raster using configured heights, range, curvature, and nodata behavior.",
       "path": "bin/gdal_viewshed.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13566,6 +13624,8 @@
     },
     {
       "id": "bin.gdal",
+      "name": "GDAL Command Line Interface",
+      "description": "Dispatches registered GDAL command-line algorithms through one unified interface. Subcommands inspect, transform, and create raster or vector datasets according to their own arguments and output contracts.",
       "path": "bin/gdal.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13596,6 +13656,8 @@
     },
     {
       "id": "bin.gdaladdo",
+      "name": "GDAL Add Overviews",
+      "description": "Builds, rebuilds, or removes reduced-resolution overview levels for a raster dataset. Depending on format and options, it updates the dataset or writes an external overview file.",
       "path": "bin/gdaladdo.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13626,6 +13688,8 @@
     },
     {
       "id": "bin.gdalbuildvrt",
+      "name": "GDAL Build VRT",
+      "description": "Creates or updates a virtual raster mosaic that references existing raster sources without copying their pixels. Resolution, extent, band mapping, nodata, and source-list options control the VRT XML output.",
       "path": "bin/gdalbuildvrt.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13656,6 +13720,8 @@
     },
     {
       "id": "bin.gdaldem",
+      "name": "GDAL DEM",
+      "description": "Derives terrain products such as hillshade, slope, aspect, color relief, TRI, TPI, or roughness from an elevation raster. It writes a new raster using the selected calculation and scaling options.",
       "path": "bin/gdaldem.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13686,6 +13752,8 @@
     },
     {
       "id": "bin.gdalenhance",
+      "name": "GDAL Enhance",
+      "description": "Generates or applies raster contrast-enhancement lookup tables from band statistics. It can emit enhancement parameters or write an enhanced raster and does not alter the input unless the chosen output path targets it.",
       "path": "bin/gdalenhance.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13716,6 +13784,8 @@
     },
     {
       "id": "bin.gdalinfo",
+      "name": "GDAL Info",
+      "description": "Reports raster driver, size, coordinate system, geotransform, metadata, bands, nodata, and optional statistics or checksums. It is used for inspection and does not rewrite the dataset.",
       "path": "bin/gdalinfo.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13746,6 +13816,8 @@
     },
     {
       "id": "bin.gdallocationinfo",
+      "name": "GDAL Location Info",
+      "description": "Queries raster values at one or more pixel, georeferenced, or geographic locations. It reports band values and optional XML or source-file details without modifying the raster.",
       "path": "bin/gdallocationinfo.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13802,6 +13874,8 @@
     },
     {
       "id": "bin.gdalmdiminfo",
+      "name": "GDAL Multidimensional Info",
+      "description": "Inspects the groups, arrays, dimensions, attributes, data types, and coordinate variables of a multidimensional dataset. Output can be detailed or summarized JSON and the source remains unchanged.",
       "path": "bin/gdalmdiminfo.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13832,6 +13906,8 @@
     },
     {
       "id": "bin.gdalmdimtranslate",
+      "name": "GDAL Multidimensional Translate",
+      "description": "Converts or subsets multidimensional arrays and groups into a new multidimensional dataset. Array selection, scaling, slicing, transposition, metadata, and creation options control the output.",
       "path": "bin/gdalmdimtranslate.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13862,6 +13938,8 @@
     },
     {
       "id": "bin.gdalsrsinfo",
+      "name": "GDAL SRS Info",
+      "description": "Parses a coordinate reference system and reports it in WKT, PROJ, EPSG, MapInfo, XML, or validation-oriented forms. It is a read-only CRS inspection and conversion utility.",
       "path": "bin/gdalsrsinfo.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13892,6 +13970,8 @@
     },
     {
       "id": "bin.gdaltindex",
+      "name": "GDAL Tile Index",
+      "description": "Creates or updates a vector tile index whose features reference raster datasets. It can record source CRS and metadata, transform footprints, and append entries to an existing index layer.",
       "path": "bin/gdaltindex.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13922,6 +14002,8 @@
     },
     {
       "id": "bin.gdaltransform",
+      "name": "GDAL Transform",
+      "description": "Transforms coordinate tuples between image coordinates, georeferenced coordinates, and coordinate reference systems. It reads point rows and writes transformed coordinates without creating a dataset.",
       "path": "bin/gdaltransform.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13952,6 +14034,8 @@
     },
     {
       "id": "bin.gdalwarp",
+      "name": "GDAL Warp",
+      "description": "Reprojects, resamples, mosaics, or clips raster datasets into a destination raster or VRT. CRS, cutline, resolution, nodata, resampling, memory, and creation options govern the output.",
       "path": "bin/gdalwarp.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -13982,6 +14066,8 @@
     },
     {
       "id": "bin.geod",
+      "name": "Geod",
+      "description": "Solves forward or inverse geodesic problems on an ellipsoid. It reads point, azimuth, and distance values and writes computed geographic positions or geodesic measurements.",
       "path": "bin/geod.exe",
       "group": "proj",
       "enabled": true,
@@ -14010,6 +14096,8 @@
     },
     {
       "id": "bin.geosop",
+      "name": "GEOS Operations",
+      "description": "Reads geometries, applies GEOS spatial operations or predicates, and prints geometry or scalar results. It supports generated, literal, file, or standard-input geometry sources without editing those sources.",
       "path": "bin/geosop.exe",
       "group": "geos",
       "enabled": true,
@@ -14038,6 +14126,8 @@
     },
     {
       "id": "bin.geotifcp",
+      "name": "GeoTIFF Copy",
+      "description": "Copies one or more TIFF inputs to a TIFF or BigTIFF output while controlling tiling, strips, compression, sample layout, and GeoTIFF positioning metadata. It always writes the requested output file.",
       "path": "bin/geotifcp.exe",
       "group": "geotiff",
       "enabled": true,
@@ -14090,6 +14180,8 @@
     },
     {
       "id": "bin.gie",
+      "name": "Geospatial Integrity Investigation Environment",
+      "description": "Runs PROJ coordinate-operation test scripts and reports numerical results against stated tolerances. It is intended for geodetic conformance testing rather than dataset conversion.",
       "path": "bin/gie.exe",
       "group": "proj",
       "enabled": true,
@@ -14118,6 +14210,8 @@
     },
     {
       "id": "bin.gnmanalyse",
+      "name": "GNM Analyse",
+      "description": "Runs shortest-path, k-path, or resource analysis against an OGR Geographical Network Model. It reads a network and can write result features to a configured destination data source and layer.",
       "path": "bin/gnmanalyse.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -14302,6 +14396,8 @@
     },
     {
       "id": "bin.h5copy",
+      "name": "HDF5 Copy",
+      "description": "Copies groups, datasets, or committed datatypes between locations in HDF5 files. It writes the destination file and can expand referenced or linked objects according to selected options.",
       "path": "bin/h5copy.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14330,6 +14426,8 @@
     },
     {
       "id": "bin.h5debug",
+      "name": "HDF5 Debug",
+      "description": "Displays low-level HDF5 file structures and object metadata at specified addresses. It is intended for file-format diagnostics and reads the target without rewriting it.",
       "path": "bin/h5debug.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14384,6 +14482,8 @@
     },
     {
       "id": "bin.h5diff",
+      "name": "HDF5 Diff",
+      "description": "Compares HDF5 files or selected objects and reports structural, datatype, attribute, and data-value differences. Absolute, relative, percentage, and count tolerances can limit reported differences.",
       "path": "bin/h5diff.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14412,6 +14512,8 @@
     },
     {
       "id": "bin.h5dump",
+      "name": "HDF5 Dump",
+      "description": "Prints HDF5 groups, datasets, attributes, links, datatypes, and optional raw data in text, XML, or binary forms. It supports object and hyperslab selection without modifying the source file.",
       "path": "bin/h5dump.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14440,6 +14542,8 @@
     },
     {
       "id": "bin.h5format_convert",
+      "name": "HDF5 Format Convert",
+      "description": "Converts selected HDF5 dataset storage structures to a compatibility-oriented file format. The operation updates the target HDF5 file in place, so callers should preserve a backup when rollback is required.",
       "path": "bin/h5format_convert.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14468,6 +14572,8 @@
     },
     {
       "id": "bin.h5import",
+      "name": "HDF5 Import",
+      "description": "Imports ASCII or binary data into an HDF5 dataset using dimensions, datatype, storage, compression, and path options from arguments or a configuration file. It creates or updates an HDF5 output file.",
       "path": "bin/h5import.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14496,6 +14602,8 @@
     },
     {
       "id": "bin.h5jam",
+      "name": "HDF5 Jam",
+      "description": "Adds a user-block file to the beginning of an HDF5 file while preserving HDF5 content. It writes a new output or replaces the input according to options and can overwrite an existing user block.",
       "path": "bin/h5jam.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14524,6 +14632,8 @@
     },
     {
       "id": "bin.h5ls",
+      "name": "HDF5 List",
+      "description": "Lists HDF5 objects, links, dimensions, datatypes, and selected metadata in concise or recursive form. It is a read-only navigation utility for understanding file structure.",
       "path": "bin/h5ls.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14552,6 +14662,8 @@
     },
     {
       "id": "bin.h5mkgrp",
+      "name": "HDF5 Make Group",
+      "description": "Creates one or more groups at requested paths in an HDF5 file. It modifies the target file and can create missing intermediate groups when parent creation is enabled.",
       "path": "bin/h5mkgrp.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14580,6 +14692,8 @@
     },
     {
       "id": "bin.h5perf_serial",
+      "name": "HDF5 Serial Performance",
+      "description": "Benchmarks serial HDF5 and POSIX I/O using configurable datasets, buffers, transfer sizes, iterations, and storage modes. It creates benchmark files and may consume substantial disk space and runtime.",
       "path": "bin/h5perf_serial.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14608,6 +14722,8 @@
     },
     {
       "id": "bin.h5repack",
+      "name": "HDF5 Repack",
+      "description": "Copies an HDF5 file into a new layout while changing filters, chunking, alignment, metadata aggregation, or format bounds. It writes a new output file and leaves the source unchanged.",
       "path": "bin/h5repack.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14636,6 +14752,8 @@
     },
     {
       "id": "bin.h5repart",
+      "name": "HDF5 Repartition",
+      "description": "Repartitions an HDF5 family of file members into a new family with a selected member size. It reads the source members and writes a separate sequence of destination files.",
       "path": "bin/h5repart.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14664,6 +14782,8 @@
     },
     {
       "id": "bin.h5stat",
+      "name": "HDF5 Statistics",
+      "description": "Reports statistics about HDF5 file objects, metadata, dataset dimensions, storage, filters, free space, and group population. It performs read-only structural analysis of the selected file.",
       "path": "bin/h5stat.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14692,6 +14812,8 @@
     },
     {
       "id": "bin.h5unjam",
+      "name": "HDF5 Unjam",
+      "description": "Extracts or removes the user block that precedes HDF5 content. It can write the user block and HDF5 payload to separate outputs or replace the input according to explicit options.",
       "path": "bin/h5unjam.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14720,6 +14842,8 @@
     },
     {
       "id": "bin.h5watch",
+      "name": "HDF5 Watch",
+      "description": "Monitors an extendible HDF5 dataset and prints newly appended data or dimension changes at polling intervals. It can run continuously until cancelled and does not modify the watched file.",
       "path": "bin/h5watch.exe",
       "group": "hdf5",
       "enabled": true,
@@ -14748,6 +14872,8 @@
     },
     {
       "id": "bin.iconv",
+      "name": "Iconv",
+      "description": "Converts text between declared character encodings using files or standard streams. It writes converted bytes to standard output or a selected file and reports invalid input sequences according to options.",
       "path": "bin/iconv.exe",
       "group": "xml_and_utilities",
       "enabled": true,
@@ -14776,6 +14902,8 @@
     },
     {
       "id": "bin.invgeod",
+      "name": "Inverse Geod",
+      "description": "Solves the inverse geodesic problem between pairs of geographic positions on an ellipsoid. It reads point pairs and writes forward azimuths, back azimuths, and geodesic distances.",
       "path": "bin/invgeod.exe",
       "group": "proj",
       "enabled": true,
@@ -14804,6 +14932,8 @@
     },
     {
       "id": "bin.invproj",
+      "name": "Inverse PROJ",
+      "description": "Applies the inverse of a selected cartographic projection to planar coordinate tuples. It reads projected values and writes longitude and latitude output without modifying a dataset.",
       "path": "bin/invproj.exe",
       "group": "proj",
       "enabled": true,
@@ -14858,6 +14988,8 @@
     },
     {
       "id": "bin.las2las",
+      "name": "LAS to LAS",
+      "description": "Converts LAS or LAZ point-cloud files while filtering, clipping, transforming, reprojecting, rescaling, or changing point attributes and format options. It writes a new point-cloud output.",
       "path": "bin/las2las.exe",
       "group": "laszip",
       "enabled": true,
@@ -14886,6 +15018,8 @@
     },
     {
       "id": "bin.las2txt",
+      "name": "LAS to Text",
+      "description": "Exports selected LAS or LAZ point fields as formatted text. Column selection, separators, headers, scaling, and point filters control output that may become much larger than the source point cloud.",
       "path": "bin/las2txt.exe",
       "group": "laszip",
       "enabled": true,
@@ -14914,6 +15048,8 @@
     },
     {
       "id": "bin.lasblock",
+      "name": "LAS Block",
+      "description": "Partitions a LAS point cloud into spatial blocks and writes an index or separate LAS files for those blocks. Capacity, bounding-box precision, point filters, and output mode control the generated artifacts.",
       "path": "bin/lasblock.exe",
       "group": "laszip",
       "enabled": true,
@@ -14940,6 +15076,8 @@
     },
     {
       "id": "bin.lasinfo",
+      "name": "LAS Info",
+      "description": "Reports LAS or LAZ header fields, coordinate bounds, point counts, classifications, returns, and optional point-level statistics. It is intended for inspection and validation of point-cloud files.",
       "path": "bin/lasinfo.exe",
       "group": "laszip",
       "enabled": true,
@@ -14968,6 +15106,8 @@
     },
     {
       "id": "bin.listgeo",
+      "name": "ListGeo",
+      "description": "Reports GeoTIFF coordinate system keys, normalized projection parameters, and image corner coordinates. Optional modes can also write an ESRI world file beside the inspected TIFF.",
       "path": "bin/listgeo.exe",
       "group": "geotiff",
       "enabled": true,
@@ -14994,6 +15134,8 @@
     },
     {
       "id": "bin.makegeo",
+      "name": "MakeGeo",
+      "description": "Creates the built-in sample GeoTIFF named newgeo.tif in the working directory to demonstrate writing georeferencing tags. It accepts no source dataset and can replace an existing file with that name.",
       "path": "bin/makegeo.exe",
       "group": "geotiff",
       "enabled": true,
@@ -15072,6 +15214,8 @@
     },
     {
       "id": "bin.nearblack",
+      "name": "Nearblack",
+      "description": "Cleans nearly black or white borders around scanned or aerial raster imagery and can create masks or alpha bands. It writes a destination raster or updates the selected dataset when in-place mode is requested.",
       "path": "bin/nearblack.exe",
       "group": "gdal_native",
       "enabled": true,
@@ -15102,6 +15246,8 @@
     },
     {
       "id": "bin.ogr2ogr",
+      "name": "OGR2OGR",
+      "description": "Converts vector datasets and can select, filter, clip, reproject, append, overwrite, or transform layers and geometries. It creates or updates the destination data source according to explicit driver and layer options.",
       "path": "bin/ogr2ogr.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -15130,6 +15276,8 @@
     },
     {
       "id": "bin.ogrinfo",
+      "name": "OGR Info",
+      "description": "Reports vector data-source, layer, schema, feature, geometry, metadata, and SQL-query information. It is primarily read-only inspection, with returned detail controlled by summary, feature, spatial, and attribute filters.",
       "path": "bin/ogrinfo.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -15158,6 +15306,8 @@
     },
     {
       "id": "bin.ogrlineref",
+      "name": "OGR Linear Reference",
+      "description": "Builds linear-reference information or resolves positions and subsections along line geometries. Depending on the operation, it reads line and reference layers and writes a new line-reference data source or textual query result.",
       "path": "bin/ogrlineref.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -15186,6 +15336,8 @@
     },
     {
       "id": "bin.ogrtindex",
+      "name": "OGR Tile Index",
+      "description": "Creates or updates a vector tile index whose polygon features reference source vector layers. It can filter inputs, record source CRS, transform footprints, and append entries to an existing index.",
       "path": "bin/ogrtindex.exe",
       "group": "ogr_gnm_avc",
       "enabled": true,
@@ -15344,6 +15496,8 @@
     },
     {
       "id": "bin.proj",
+      "name": "PROJ",
+      "description": "Applies a forward cartographic projection or coordinate operation to streamed numeric coordinates. It reads longitude and latitude or other source tuples and writes projected values in the requested format.",
       "path": "bin/proj.exe",
       "group": "proj",
       "enabled": true,
@@ -15372,6 +15526,8 @@
     },
     {
       "id": "bin.projinfo",
+      "name": "PROJ Info",
+      "description": "Queries coordinate reference systems, coordinate operations, datum transformations, grids, and database records from PROJ. It reports definitions and candidate transformations without changing datasets or the PROJ database.",
       "path": "bin/projinfo.exe",
       "group": "proj",
       "enabled": true,
@@ -15582,6 +15738,8 @@
     },
     {
       "id": "bin.sozip",
+      "name": "SOZip",
+      "description": "Creates, optimizes, lists, or validates ZIP archives with seek-optimized members for efficient random access. Creation and optimization modes write a new archive or update the requested output path.",
       "path": "bin/sozip.exe",
       "group": "xml_and_utilities",
       "enabled": true,
@@ -15662,6 +15820,8 @@
     },
     {
       "id": "bin.ts2las",
+      "name": "TerraScan to LAS",
+      "description": "Converts a TerraSolid binary point file into LAS while optionally filtering points by extent. It writes a new LAS file using the explicit output path or an output derived from the input name.",
       "path": "bin/ts2las.exe",
       "group": "laszip",
       "enabled": true,
@@ -15690,6 +15850,8 @@
     },
     {
       "id": "bin.txt2las",
+      "name": "Text to LAS",
+      "description": "Imports delimited text point records into a LAS point-cloud file. Parse layouts, separators, coordinate scale and offset, header fields, spatial reference, and point filters determine the written output.",
       "path": "bin/txt2las.exe",
       "group": "laszip",
       "enabled": true,
@@ -15718,6 +15880,8 @@
     },
     {
       "id": "bin.xmlcatalog",
+      "name": "XML Catalog",
+      "description": "Queries, creates, or updates XML catalogs that map public identifiers, system identifiers, and URIs to local resources. Read-only lookup and mutating add, delete, and convert operations are selected explicitly.",
       "path": "bin/xmlcatalog.exe",
       "group": "xml_and_utilities",
       "enabled": true,
@@ -15746,6 +15910,8 @@
     },
     {
       "id": "bin.xmllint",
+      "name": "XML Lint",
+      "description": "Parses, validates, formats, canonicalizes, queries, or transforms XML documents using schema, DTD, Relax NG, XPath, XInclude, and related options. It writes results to standard output or a selected output file.",
       "path": "bin/xmllint.exe",
       "group": "xml_and_utilities",
       "enabled": true,
@@ -15774,6 +15940,8 @@
     },
     {
       "id": "bin.xsltproc",
+      "name": "XSLT Processor",
+      "description": "Applies an XSLT stylesheet to XML input with optional string or expression parameters, catalogs, profiles, and output controls. It writes the transformation result to standard output or a selected file.",
       "path": "bin/xsltproc.exe",
       "group": "xml_and_utilities",
       "enabled": true,

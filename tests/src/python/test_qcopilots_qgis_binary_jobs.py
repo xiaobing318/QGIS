@@ -20,7 +20,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest import mock
 
 
@@ -52,6 +52,7 @@ from qcopilots_common.qgis_binary_jobs import (
     BinaryExecutionError,
     BinarySubprocessExecution,
     QGISBinaryJobManager,
+    _root_matches_markers,
 )
 
 
@@ -273,15 +274,9 @@ def _catalog_document():
     }
     return {
         "version": 1,
-        "expected_counts": {
-            "configured": 3,
-            "enabled": 2,
-            "disabled": 1,
-        },
         "package_root_resolution": {
-            "strategy": "qgis_prefix_ancestor",
             "environment_variables": ["QCOPILOTS_TEST_PACKAGE_ROOT"],
-            "markers": ["bin/alpha.exe"],
+            "markers": ["bin/qgis-qt6-env.bat"],
             "max_parent_levels": 4,
         },
         "environment_profiles": {
@@ -406,6 +401,9 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
                 executable = root.joinpath(*path.replace("\\", "/").split("/"))
                 executable.parent.mkdir(parents=True, exist_ok=True)
                 executable.write_bytes(b"MZ")
+            setup_script = root / "bin" / "qgis-qt6-env.bat"
+            setup_script.parent.mkdir(parents=True, exist_ok=True)
+            setup_script.write_text("@echo off\n", encoding="utf-8")
             catalog_path = root / "catalog.json"
             catalog_path.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaisesRegex(BinaryCatalogError, message):
@@ -436,7 +434,10 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
 
     def test_rejects_policy_and_contract_errors(self):
         cases = [
-            (lambda value: value.pop("expected_counts"), "expected_counts"),
+            (
+                lambda value: value.update(binaries=[]),
+                "binaries must be a non-empty array",
+            ),
             (
                 lambda value: value["binaries"][0].update(group="undefined"),
                 "Unknown group",
@@ -467,16 +468,16 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
             ),
             (
                 lambda value: value["package_root_resolution"].update(
-                    strategy="search_path"
+                    strategy="qgis_prefix_ancestor"
                 ),
-                "strategy must be qgis_prefix_ancestor",
+                "strategy is no longer supported",
             ),
         ]
         for mutate, message in cases:
             with self.subTest(message=message):
                 self._assert_invalid(mutate, message)
 
-    def test_rejects_missing_and_extra_executables_and_count_mismatch(self):
+    def test_rejects_missing_and_extra_executables(self):
         fixture = BinaryFixture(self)
         missing = fixture.root / "bin" / "alpha.exe"
         missing.unlink()
@@ -494,17 +495,41 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
                 package_root=fixture.root,
             )
         extra.unlink()
-        document = copy.deepcopy(fixture.document)
-        document["expected_counts"]["enabled"] = 1
-        fixture.catalog_path.write_text(json.dumps(document), encoding="utf-8")
-        with self.assertRaisesRegex(BinaryCatalogError, "count mismatch for enabled"):
-            QGISBinaryJobManager(
-                catalog_path=fixture.catalog_path,
-                package_root=fixture.root,
-            )
 
-    def test_environment_package_root_requires_markers(self):
+    def test_catalog_counts_are_derived(self):
         fixture = BinaryFixture(self)
+        catalog = fixture.manager.load_catalog()
+        self.assertEqual(
+            catalog["counts"],
+            {"configured": 3, "enabled": 2, "disabled": 1},
+        )
+
+        changed_document = _catalog_document()
+        changed_document["binaries"][0].update(
+            enabled=False,
+            disabled_reason="disabled for dynamic count test",
+            probe=_static_probe(),
+        )
+        changed_fixture = BinaryFixture(self, document=changed_document)
+        self.assertEqual(
+            changed_fixture.manager.load_catalog()["counts"],
+            {"configured": 3, "enabled": 1, "disabled": 2},
+        )
+
+    def test_all_package_root_sources_require_markers(self):
+        fixture = BinaryFixture(self)
+
+        resolved = QGISBinaryJobManager(
+            catalog_path=fixture.catalog_path,
+            package_root=None,
+            dependencies={
+                "package_root_resolver": lambda *_: fixture.root,
+                "task_manager": FakeTaskManager(),
+            },
+        )
+        self.addCleanup(resolved.shutdown, 0)
+        self.assertEqual(resolved.package_root, fixture.root.resolve())
+
         with mock.patch.dict(
             os.environ,
             {"QCOPILOTS_TEST_PACKAGE_ROOT": str(fixture.root)},
@@ -517,8 +542,53 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
             )
             self.addCleanup(manager.shutdown, 0)
             self.assertEqual(manager.package_root, fixture.root.resolve())
-        marker = fixture.root / "bin" / "alpha.exe"
+
+        prefix = fixture.root / "apps" / "qgis-qt6"
+        prefix.mkdir(parents=True)
+        qgis_module = ModuleType("qgis")
+        qgis_core_module = ModuleType("qgis.core")
+        qgis_core_module.QgsApplication = SimpleNamespace(
+            prefixPath=lambda: str(prefix)
+        )
+        qgis_module.core = qgis_core_module
+        qgis_modules = {
+            "qgis": qgis_module,
+            "qgis.core": qgis_core_module,
+        }
+        with mock.patch.dict(
+            os.environ,
+            {"QCOPILOTS_TEST_PACKAGE_ROOT": ""},
+            clear=False,
+        ), mock.patch.dict(
+            sys.modules,
+            qgis_modules,
+        ):
+            discovered = QGISBinaryJobManager(
+                catalog_path=fixture.catalog_path,
+                package_root=None,
+                dependencies={"task_manager": FakeTaskManager()},
+            )
+            self.addCleanup(discovered.shutdown, 0)
+            self.assertEqual(discovered.package_root, fixture.root.resolve())
+
+        marker = fixture.root / "bin" / "qgis-qt6-env.bat"
         marker.unlink()
+
+        with self.assertRaisesRegex(BinaryCatalogError, "does not satisfy"):
+            QGISBinaryJobManager(
+                catalog_path=fixture.catalog_path,
+                package_root=fixture.root,
+            )
+
+        with self.assertRaisesRegex(BinaryCatalogError, "does not satisfy"):
+            QGISBinaryJobManager(
+                catalog_path=fixture.catalog_path,
+                package_root=None,
+                dependencies={
+                    "package_root_resolver": lambda *_: fixture.root,
+                },
+            )
+
         with mock.patch.dict(
             os.environ,
             {"QCOPILOTS_TEST_PACKAGE_ROOT": str(fixture.root)},
@@ -529,6 +599,66 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
                     catalog_path=fixture.catalog_path,
                     package_root=None,
                 )
+
+        with mock.patch.dict(
+            os.environ,
+            {"QCOPILOTS_TEST_PACKAGE_ROOT": ""},
+            clear=False,
+        ), mock.patch.dict(
+            sys.modules,
+            qgis_modules,
+        ):
+            with self.assertRaisesRegex(BinaryCatalogError, "found 0"):
+                QGISBinaryJobManager(
+                    catalog_path=fixture.catalog_path,
+                    package_root=None,
+                )
+
+    def test_package_root_marker_must_be_a_regular_file(self):
+        fixture = BinaryFixture(self)
+        marker = fixture.root / "bin" / "qgis-qt6-env.bat"
+        marker.unlink()
+        marker.mkdir()
+        with self.assertRaisesRegex(BinaryCatalogError, "does not satisfy"):
+            QGISBinaryJobManager(
+                catalog_path=fixture.catalog_path,
+                package_root=fixture.root,
+            )
+
+    def test_package_root_marker_link_resolution(self):
+        fixture = BinaryFixture(self, unicode_root=True)
+        root = fixture.root.resolve()
+        marker = root / "bin" / "qgis-qt6-env.bat"
+        inside = root / "bin" / "inside-marker-target.exe"
+        inside.write_bytes(b"MZ inside")
+        outside = root.parent / "outside-marker.exe"
+        outside.write_bytes(b"MZ outside")
+        outside = outside.resolve()
+        path_type = type(marker)
+        original_resolve = path_type.resolve
+
+        def marker_matches(resolved_target):
+            def resolve_path(path, *arguments, **keywords):
+                if path == marker:
+                    if isinstance(resolved_target, BaseException):
+                        raise resolved_target
+                    return resolved_target
+                return original_resolve(path, *arguments, **keywords)
+
+            with mock.patch.object(
+                path_type,
+                "resolve",
+                autospec=True,
+                side_effect=resolve_path,
+            ):
+                return _root_matches_markers(
+                    root,
+                    ["bin/qgis-qt6-env.bat"],
+                )
+
+        self.assertTrue(marker_matches(inside.resolve()))
+        self.assertFalse(marker_matches(FileNotFoundError("broken marker link")))
+        self.assertFalse(marker_matches(outside))
 
 
 class TestQCopilotsQGISBinaryManager(unittest.TestCase):
