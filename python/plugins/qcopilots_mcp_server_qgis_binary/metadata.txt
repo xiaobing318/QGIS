@@ -1,0 +1,10 @@
+[general]
+name=QCopilots MCP Server QGIS Binary
+description=Expose explicitly configured QGIS package command line programs as asynchronous MCP jobs.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,mcp,qgis,binary,cli
+icon=icon.svg

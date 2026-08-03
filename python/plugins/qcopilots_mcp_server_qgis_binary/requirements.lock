@@ -1,0 +1,2 @@
+# This service currently uses only the Python standard library.
+# Keep this file for future dependencies. The manager adds requirements only for package entries.

@@ -2565,10 +2565,16 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "update_vector_features",
                         "list_vector_processing_algorithms",
                         "get_vector_processing_algorithm_details",
-                        "run_vector_processing_algorithm",
+                        "start_vector_processing_algorithm",
+                        "get_vector_processing_job",
+                        "list_vector_processing_jobs",
+                        "cancel_vector_processing_job",
                         "list_raster_processing_algorithms",
                         "get_raster_processing_algorithm_details",
-                        "run_raster_processing_algorithm",
+                        "start_raster_processing_algorithm",
+                        "get_raster_processing_job",
+                        "list_raster_processing_jobs",
+                        "cancel_raster_processing_job",
                     ],
                 )
                 for legacy_tool_name in (
@@ -2591,6 +2597,30 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     listed_tools["update_vector_features"]["inputSchema"]["properties"]["updates"]["minItems"],
                     1,
                 )
+                self.assertEqual(
+                    listed_tools["start_vector_processing_algorithm"]["inputSchema"]["required"],
+                    ["algorithm_id"],
+                )
+                self.assertEqual(
+                    listed_tools["start_vector_processing_algorithm"]["inputSchema"]["properties"]["parameters"]["default"],
+                    {},
+                )
+                self.assertTrue(
+                    listed_tools["start_vector_processing_algorithm"]["inputSchema"]["properties"]["add_outputs_to_project"]["default"]
+                )
+                self.assertEqual(
+                    listed_tools["list_vector_processing_jobs"]["inputSchema"]["properties"]["states"]["items"]["enum"],
+                    [
+                        "queued",
+                        "running",
+                        "cancelling",
+                        "succeeded",
+                        "failed",
+                        "cancelled",
+                    ],
+                )
+                self.assertNotIn("run_vector_processing_algorithm", listed_tools)
+                self.assertNotIn("run_raster_processing_algorithm", listed_tools)
 
                 for index, (tool_name, arguments, expected_message) in enumerate(
                     (
@@ -2629,6 +2659,44 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "update_vector_features",
                             {"layer_id": "scratch", "updates": [{"feature_id": 1, "attributes": {}}]},
                             "$.updates[0] must match at least one anyOf alternative",
+                        ),
+                        (
+                            "start_vector_processing_algorithm",
+                            {},
+                            "$.algorithm_id is required",
+                        ),
+                        (
+                            "start_vector_processing_algorithm",
+                            {"algorithm_id": ""},
+                            "$.algorithm_id is shorter than minLength 1",
+                        ),
+                        (
+                            "start_vector_processing_algorithm",
+                            {
+                                "algorithm_id": "native:buffer",
+                                "client_request_id": "r" * 129,
+                            },
+                            "$.client_request_id is longer than maxLength 128",
+                        ),
+                        (
+                            "get_vector_processing_job",
+                            {},
+                            "$.job_id is required",
+                        ),
+                        (
+                            "list_vector_processing_jobs",
+                            {"states": []},
+                            "$.states contains fewer than minItems 1",
+                        ),
+                        (
+                            "list_vector_processing_jobs",
+                            {"states": ["unknown"]},
+                            "$.states[0] is not one of the allowed values",
+                        ),
+                        (
+                            "list_vector_processing_jobs",
+                            {"limit": 201},
+                            "$.limit must be <= 200",
                         ),
                     )
                 ):
@@ -2754,12 +2822,29 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "update_vector_features",
                     ),
                     (
-                        "run_vector_processing_algorithm",
+                        "start_vector_processing_algorithm",
                         {
                             "algorithm_id": "native:buffer",
                             "parameters": {"OUTPUT": "memory:"},
+                            "add_outputs_to_project": False,
+                            "client_request_id": "vector-request",
                         },
-                        "processing_run_algorithm",
+                        "processing_start_algorithm",
+                    ),
+                    (
+                        "get_vector_processing_job",
+                        {"job_id": "vector-job"},
+                        "processing_get_job",
+                    ),
+                    (
+                        "list_vector_processing_jobs",
+                        {"states": ["running"], "limit": 10},
+                        "processing_list_jobs",
+                    ),
+                    (
+                        "cancel_vector_processing_job",
+                        {"job_id": "vector-job"},
+                        "processing_cancel_job",
                     ),
                     (
                         "list_raster_processing_algorithms",
@@ -2767,12 +2852,24 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "processing_list_algorithms",
                     ),
                     (
-                        "run_raster_processing_algorithm",
-                        {
-                            "algorithm_id": "gdal:warpreproject",
-                            "parameters": {"OUTPUT": "memory:"},
-                        },
-                        "processing_run_algorithm",
+                        "start_raster_processing_algorithm",
+                        {"algorithm_id": "gdal:warpreproject"},
+                        "processing_start_algorithm",
+                    ),
+                    (
+                        "get_raster_processing_job",
+                        {"job_id": "raster-job"},
+                        "processing_get_job",
+                    ),
+                    (
+                        "list_raster_processing_jobs",
+                        {},
+                        "processing_list_jobs",
+                    ),
+                    (
+                        "cancel_raster_processing_job",
+                        {"job_id": "raster-job"},
+                        "processing_cancel_job",
                     ),
                 ):
                     payload = json.dumps(
@@ -2803,6 +2900,42 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 )
                 self.assertIn(
                     ("processing_list_algorithms", {"category": "raster"}),
+                    calls,
+                )
+                self.assertIn(
+                    (
+                        "processing_start_algorithm",
+                        {
+                            "algorithm_id": "native:buffer",
+                            "parameters": {"OUTPUT": "memory:"},
+                            "add_outputs_to_project": False,
+                            "client_request_id": "vector-request",
+                            "category": "vector",
+                        },
+                    ),
+                    calls,
+                )
+                self.assertIn(
+                    (
+                        "processing_start_algorithm",
+                        {
+                            "algorithm_id": "gdal:warpreproject",
+                            "parameters": {},
+                            "add_outputs_to_project": True,
+                            "category": "raster",
+                        },
+                    ),
+                    calls,
+                )
+                self.assertIn(
+                    (
+                        "processing_list_jobs",
+                        {
+                            "states": ["running"],
+                            "limit": 10,
+                            "category": "vector",
+                        },
+                    ),
                     calls,
                 )
             finally:
@@ -3083,7 +3216,8 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         self.assertIs(controller._httpd, server)
         self.assertIs(controller._thread, thread)
         self.assertTrue(controller._shutdown_requested)
-        self.assertEqual(thread.join_timeouts, [0.01])
+        self.assertEqual(len(thread.join_timeouts), 1)
+        self.assertAlmostEqual(thread.join_timeouts[0], 0.01)
 
         thread.alive = False
         controller.stop(timeout_seconds=0.01)

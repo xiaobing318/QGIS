@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "./qgis-tools.catalog.schema.json",
   "title": "QGIS-Skills-Creator tool catalog",
-  "description": "供 QGIS-Skills-Creator 读取的工具目录 Schema。它约束 MCP 服务、QGIS Processing 发现入口、Qt6 运行环境包装器、地理命令行工具和最小权限选择规则。目录中的工具路径必须相对于运行时发现的 QGIS 发布根目录，不能固化本机绝对路径。",
+  "description": "供 QGIS-Skills-Creator 读取的工具目录 Schema。它约束 MCP 服务、QGIS Processing 发现入口、QGIS Binary 六个泛化工具、Qt6 运行环境包装器、地理命令行工具和最小权限选择规则。目录中的工具路径必须相对于运行时发现的 QGIS 发布根目录，不能固化本机绝对路径。",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -151,7 +151,7 @@
       "type": "array",
       "minItems": 1,
       "items": {"$ref": "#/$defs/processingDiscovery"},
-      "description": "字段作用是定义完整发现 QGIS Processing 算法的入口。候选值可以是 QCopilots vector/raster MCP 三工具组合或 qgis_process JSON CLI。MCP 入口适合当前 QGIS 工程状态，CLI 入口适合无界面、可复现的完整算法枚举。"
+      "description": "字段作用是定义完整发现和执行 QGIS Processing 算法的入口。候选值可以是 QCopilots vector/raster MCP 六工具异步作业组合或 qgis_process JSON CLI。MCP 入口适合当前 QGIS 工程状态，CLI 入口适合无界面、可复现的完整算法枚举。"
     },
     "selection_policy": {
       "type": "object",
@@ -333,17 +333,25 @@
         "tools"
       ],
       "properties": {
-        "service_id": {"$ref": "#/$defs/portableId"},
+        "service_id": {
+          "$ref": "#/$defs/portableId",
+          "description": "稳定 MCP 服务编号。QGIS Binary 使用 qcopilots.mcp_server_qgis_binary。"
+        },
         "availability_source": {
           "type": "string",
           "enum": ["manager-config-and-runtime-tool-list"]
         },
         "manager_config_path": {"$ref": "#/$defs/relativePath"},
         "enabled_by_default_observed": {"type": "boolean"},
-        "dynamic_tools": {"type": "boolean", "default": false},
+        "dynamic_tools": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否在运行时按目录项生成工具。QGIS Binary 固定为 false，只保留六个泛化工具。"
+        },
         "tools": {
           "type": "array",
-          "items": {"$ref": "#/$defs/toolEntry"}
+          "items": {"$ref": "#/$defs/toolEntry"},
+          "description": "服务公开工具目录。QGIS Binary 不在此复制 591 个可执行文件条目。"
         }
       }
     },
@@ -452,18 +460,32 @@
     "processingDiscovery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "transport", "scope", "list_entry", "details_entry", "run_entry"],
+      "required": ["id", "transport", "scope", "list_entry", "details_entry"],
       "properties": {
         "id": {"$ref": "#/$defs/portableId"},
         "transport": {"type": "string", "enum": ["mcp", "cli"]},
         "scope": {"type": "string", "enum": ["vector", "raster", "all"]},
         "list_entry": {"type": "string", "minLength": 1},
         "details_entry": {"type": "string", "minLength": 1},
+        "start_entry": {"type": "string", "minLength": 1},
+        "get_job_entry": {"type": "string", "minLength": 1},
+        "list_jobs_entry": {"type": "string", "minLength": 1},
+        "cancel_job_entry": {"type": "string", "minLength": 1},
         "run_entry": {"type": "string", "minLength": 1},
         "structured_output": {"type": "boolean", "const": true},
         "requires_qgis_bridge": {"type": "boolean", "default": false},
         "notes": {"type": "string"}
-      }
+      },
+      "oneOf": [
+        {
+          "required": ["start_entry", "get_job_entry", "list_jobs_entry", "cancel_job_entry"],
+          "properties": {"transport": {"const": "mcp"}}
+        },
+        {
+          "required": ["run_entry"],
+          "properties": {"transport": {"const": "cli"}}
+        }
+      ]
     }
   }
 }

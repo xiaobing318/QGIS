@@ -1,6 +1,6 @@
 {
   "$schema": "./qgis-tools.catalog.schema.json",
-  "catalog_version": "1.2.0",
+  "catalog_version": "1.3.0",
   "profile_id": "qcopilots-qgis4-qt6-windows",
   "observed_at": "2026-07-20T09:24:31+08:00",
   "runtime_profile": {
@@ -44,6 +44,77 @@
     "containment_check_required": true
   },
   "mcp_services": [
+    {
+      "service_id": "qcopilots.mcp_server_qgis_binary",
+      "availability_source": "manager-config-and-runtime-tool-list",
+      "manager_config_path": "apps/qgis-qt6/python/plugins/qcopilots_mcp_servers_manager/qcopilots_manager_config.json",
+      "enabled_by_default_observed": false,
+      "dynamic_tools": false,
+      "tools": [
+        {
+          "name": "list_qgis_binaries",
+          "description": "按分页游标和筛选条件列出 QGIS Binary 配置目录。目录只返回显式配置项，不把发布包中的 591 个程序展开成独立 MCP 工具。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "get_qgis_binary_details",
+          "description": "按稳定 binary_id 读取相对路径、启用状态、风险、环境、探测和运行限制。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "start_qgis_binary",
+          "description": "按已启用 binary_id 和原样 argv 启动异步 QgsTask 作业。R2 配置项每次调用都必须传 confirmed_risk=true，R3 配置项不能启动。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["binary_id"], "required_any_argument_groups": [], "required_target_arguments": ["binary_id"], "command_shape": "argv-only", "notes": "选择 R2 配置项时必须显式提供 confirmed_risk=true。工具不接受任意 executable path 或环境变量覆盖。"},
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": false, "uses_network": true, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "get_qgis_binary_job",
+          "description": "按 job_id 读取 QGIS Binary 作业完整快照，包括进度、状态、受限输出和结构化错误。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_qgis_binary_jobs",
+          "description": "按公开状态和数量限制列出当前 QGIS 进程保留的 QGIS Binary 作业摘要。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "cancel_qgis_binary_job",
+          "description": "请求取消指定 QGIS Binary 作业并终止其进程树。取消竞态仍可能以成功、失败或已取消终态结束。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["job_id"], "required_any_argument_groups": [], "required_target_arguments": ["job_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        }
+      ]
+    },
     {
       "service_id": "qcopilots.mcp_server_builtin_tools",
       "availability_source": "manager-config-and-runtime-tool-list",
@@ -435,15 +506,46 @@
           "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
-          "name": "run_vector_processing_algorithm",
-          "description": "按 exact algorithm_id 运行已批准矢量算法。泛化工具授权不能代替 algorithm_id 和参数级 allowlist。",
+          "name": "start_vector_processing_algorithm",
+          "description": "按 exact algorithm_id 启动异步矢量 Processing 作业。泛化工具授权不能代替 algorithm_id 和参数级 allowlist。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["algorithm_id", "parameters"], "required_any_argument_groups": [], "required_target_arguments": ["parameters"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": true, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "get_vector_processing_job",
+          "description": "按 job_id 读取矢量 Processing 作业完整快照。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_vector_processing_jobs",
+          "description": "列出当前 QGIS 进程保留的矢量 Processing 作业摘要。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "cancel_vector_processing_job",
+          "description": "请求取消指定矢量 Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["job_id"], "required_any_argument_groups": [], "required_target_arguments": ["job_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         }
       ]
     },
@@ -475,15 +577,46 @@
           "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
-          "name": "run_raster_processing_algorithm",
-          "description": "按 exact algorithm_id 运行已批准栅格算法。必须限制输入、输出、NoData、分辨率、重采样和覆盖。",
+          "name": "start_raster_processing_algorithm",
+          "description": "按 exact algorithm_id 启动异步栅格 Processing 作业。必须限制输入、输出、NoData、分辨率、重采样和覆盖。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["algorithm_id", "parameters"], "required_any_argument_groups": [], "required_target_arguments": ["parameters"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": true, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "get_raster_processing_job",
+          "description": "按 job_id 读取栅格 Processing 作业完整快照。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_raster_processing_jobs",
+          "description": "列出当前 QGIS 进程保留的栅格 Processing 作业摘要。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "cancel_raster_processing_job",
+          "description": "请求取消指定栅格 Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["job_id"], "required_any_argument_groups": [], "required_target_arguments": ["job_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         }
       ]
     }
@@ -802,9 +935,9 @@
       "id": "gpsbabel-cli",
       "entry_kind": "executable",
       "relative_path": "bin/gpsbabel.exe",
-      "status": "restricted",
+      "status": "disabled",
       "risk_level": "R2",
-      "purpose": "转换 GPS 数据和设备格式。设备访问或网络来源必须在计划中明确。",
+      "purpose": "当前 Qt6 发布包中的 GPSBabel 依赖缺失的 Qt5Core.dll，默认禁用。待替换为 Qt6 或静态构建后再启用。",
       "requires_environment": "qgis-qt6-environment",
       "version_args": ["-V"],
       "discovery_args": ["-h"],
@@ -872,7 +1005,10 @@
       "scope": "vector",
       "list_entry": "list_vector_processing_algorithms",
       "details_entry": "get_vector_processing_algorithm_details",
-      "run_entry": "run_vector_processing_algorithm",
+      "start_entry": "start_vector_processing_algorithm",
+      "get_job_entry": "get_vector_processing_job",
+      "list_jobs_entry": "list_vector_processing_jobs",
+      "cancel_job_entry": "cancel_vector_processing_job",
       "structured_output": true,
       "requires_qgis_bridge": true,
       "notes": "用于当前 QGIS 工程上下文。分类是关键词启发式，不能证明算法全集。"
@@ -883,7 +1019,10 @@
       "scope": "raster",
       "list_entry": "list_raster_processing_algorithms",
       "details_entry": "get_raster_processing_algorithm_details",
-      "run_entry": "run_raster_processing_algorithm",
+      "start_entry": "start_raster_processing_algorithm",
+      "get_job_entry": "get_raster_processing_job",
+      "list_jobs_entry": "list_raster_processing_jobs",
+      "cancel_job_entry": "cancel_raster_processing_job",
       "structured_output": true,
       "requires_qgis_bridge": true,
       "notes": "用于当前 QGIS 工程上下文。分类是关键词启发式，不能证明算法全集。"

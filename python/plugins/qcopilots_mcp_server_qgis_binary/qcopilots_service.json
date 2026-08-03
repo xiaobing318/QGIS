@@ -1,0 +1,23 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_qgis_binary",
+  "plugin_name": "QCopilots MCP Server QGIS Binary",
+  "display_name": "QCopilots MCP Server QGIS Binary",
+  "description": "通过 QGIS bridge 将发布包中逐项配置并启用的命令行程序暴露为六个泛化 MCP 工具。服务使用异步作业提供进度、轮询和取消，只接受配置中的 binary_id 可执行文件与 argv 参数，不接受任意可执行文件路径或环境变量覆盖。分类为 R2 工具每次运行都需要显式确认，而分类为 R3 工具保持禁用。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "advertised_host": "127.0.0.1",
+  "default_port": 48216,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": [
+    "tools",
+    "qgis-bridge",
+    "qgis-binary"
+  ],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "cors_origins": []
+}

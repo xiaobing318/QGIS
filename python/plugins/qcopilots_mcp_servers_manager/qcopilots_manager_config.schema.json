@@ -23,17 +23,18 @@
         "service_ids": {
           "type": "array",
           "uniqueItems": true,
-          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。",
+          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster、qcopilots.mcp_server_qgis_binary。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。QGIS Binary 默认不在列表中，用户可在管理器页面手动启停。",
           "items": {
             "type": "string",
             "pattern": "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9_.-]+$",
-            "description": "字段作用是在默认启动列表中声明一个服务编号。候选值包括 Builtin Tools 对应的 qcopilots.mcp_server_builtin_tools、Skills 对应的 qcopilots.mcp_server_skills、Interactive Tools 对应的 qcopilots.mcp_server_interactive_tools、Processing Vector 对应的 qcopilots.mcp_server_processing_vector、Processing Raster 对应的 qcopilots.mcp_server_processing_raster。选择不同编号会让对应服务在首次填充时优先显示，并在 enabled 为 true 时自动启动。schema 会把空白、不安全格式或重复编号标记为无效，若绕过 schema 进入运行时，管理器会忽略这些值并记录警告。",
+            "description": "字段作用是在默认启动列表中声明一个服务编号。候选值包括 Builtin Tools 对应的 qcopilots.mcp_server_builtin_tools、Skills 对应的 qcopilots.mcp_server_skills、Interactive Tools 对应的 qcopilots.mcp_server_interactive_tools、Processing Vector 对应的 qcopilots.mcp_server_processing_vector、Processing Raster 对应的 qcopilots.mcp_server_processing_raster、QGIS Binary 对应的 qcopilots.mcp_server_qgis_binary。选择不同编号会让对应服务在首次填充时优先显示，并在 enabled 为 true 时自动启动。schema 会把空白、不安全格式或重复编号标记为无效，若绕过 schema 进入运行时，管理器会忽略这些值并记录警告。",
             "examples": [
               "qcopilots.mcp_server_builtin_tools",
               "qcopilots.mcp_server_skills",
               "qcopilots.mcp_server_interactive_tools",
               "qcopilots.mcp_server_processing_vector",
-              "qcopilots.mcp_server_processing_raster"
+              "qcopilots.mcp_server_processing_raster",
+              "qcopilots.mcp_server_qgis_binary"
             ]
           },
           "default": [

@@ -183,7 +183,10 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                 [
                     "list_vector_processing_algorithms",
                     "get_vector_processing_algorithm_details",
-                    "run_vector_processing_algorithm",
+                    "start_vector_processing_algorithm",
+                    "get_vector_processing_job",
+                    "list_vector_processing_jobs",
+                    "cancel_vector_processing_job",
                 ],
             )
             raster_tools = processing_tools.build_processing_tools("raster")
@@ -192,18 +195,55 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                 [
                     "list_raster_processing_algorithms",
                     "get_raster_processing_algorithm_details",
-                    "run_raster_processing_algorithm",
+                    "start_raster_processing_algorithm",
+                    "get_raster_processing_job",
+                    "list_raster_processing_jobs",
+                    "cancel_raster_processing_job",
                 ],
             )
             self.assertTrue(all("requires_auth" not in tool.descriptor() for tool in tools + raster_tools))
+            start_schema = tools[2].descriptor()["inputSchema"]
+            self.assertEqual(start_schema["required"], ["algorithm_id"])
+            self.assertEqual(start_schema["properties"]["parameters"]["default"], {})
+            self.assertTrue(
+                start_schema["properties"]["add_outputs_to_project"]["default"]
+            )
+            self.assertEqual(
+                start_schema["properties"]["client_request_id"]["maxLength"],
+                128,
+            )
+            list_schema = tools[4].descriptor()["inputSchema"]
+            self.assertEqual(list_schema["properties"]["limit"]["maximum"], 200)
+            self.assertEqual(
+                list_schema["properties"]["states"]["items"]["enum"],
+                [
+                    "queued",
+                    "running",
+                    "cancelling",
+                    "succeeded",
+                    "failed",
+                    "cancelled",
+                ],
+            )
             tools[0].handler({})
             tools[1].handler({"algorithm_id": "native:buffer"})
-            tools[2].handler({"algorithm_id": "native:buffer", "parameters": {"OUTPUT": "memory:"}})
+            tools[2].handler({"algorithm_id": "native:buffer"})
+            tools[3].handler({"job_id": "vector-job"})
+            tools[4].handler({"states": ["running", "cancelling"], "limit": 25})
+            tools[5].handler({"job_id": "vector-job"})
             raster_tools[0].handler({})
             raster_tools[1].handler({"algorithm_id": "gdal:warpreproject"})
             raster_tools[2].handler(
-                {"algorithm_id": "gdal:warpreproject", "parameters": {"OUTPUT": "memory:"}}
+                {
+                    "algorithm_id": "gdal:warpreproject",
+                    "parameters": {"OUTPUT": "memory:"},
+                    "add_outputs_to_project": False,
+                    "client_request_id": "raster-request",
+                }
             )
+            raster_tools[3].handler({"job_id": "raster-job"})
+            raster_tools[4].handler({})
+            raster_tools[5].handler({"job_id": "raster-job"})
         finally:
             processing_tools.BridgeClient = original_bridge_client
 
@@ -216,12 +256,29 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     {"algorithm_id": "native:buffer", "category": "vector"},
                 ),
                 (
-                    "processing_run_algorithm",
+                    "processing_start_algorithm",
                     {
                         "algorithm_id": "native:buffer",
-                        "parameters": {"OUTPUT": "memory:"},
+                        "parameters": {},
+                        "add_outputs_to_project": True,
                         "category": "vector",
                     },
+                ),
+                (
+                    "processing_get_job",
+                    {"job_id": "vector-job", "category": "vector"},
+                ),
+                (
+                    "processing_list_jobs",
+                    {
+                        "states": ["running", "cancelling"],
+                        "limit": 25,
+                        "category": "vector",
+                    },
+                ),
+                (
+                    "processing_cancel_job",
+                    {"job_id": "vector-job", "category": "vector"},
                 ),
                 ("processing_list_algorithms", {"category": "raster"}),
                 (
@@ -229,12 +286,23 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     {"algorithm_id": "gdal:warpreproject", "category": "raster"},
                 ),
                 (
-                    "processing_run_algorithm",
+                    "processing_start_algorithm",
                     {
                         "algorithm_id": "gdal:warpreproject",
                         "parameters": {"OUTPUT": "memory:"},
+                        "add_outputs_to_project": False,
+                        "client_request_id": "raster-request",
                         "category": "raster",
                     },
+                ),
+                (
+                    "processing_get_job",
+                    {"job_id": "raster-job", "category": "raster"},
+                ),
+                ("processing_list_jobs", {"category": "raster"}),
+                (
+                    "processing_cancel_job",
+                    {"job_id": "raster-job", "category": "raster"},
                 ),
             ],
         )
@@ -360,7 +428,10 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                 [
                     "list_vector_processing_algorithms",
                     "get_vector_processing_algorithm_details",
-                    "run_vector_processing_algorithm",
+                    "start_vector_processing_algorithm",
+                    "get_vector_processing_job",
+                    "list_vector_processing_jobs",
+                    "cancel_vector_processing_job",
                 ],
             ),
             (
@@ -370,7 +441,10 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                 [
                     "list_raster_processing_algorithms",
                     "get_raster_processing_algorithm_details",
-                    "run_raster_processing_algorithm",
+                    "start_raster_processing_algorithm",
+                    "get_raster_processing_job",
+                    "list_raster_processing_jobs",
+                    "cancel_raster_processing_job",
                 ],
             ),
         ]

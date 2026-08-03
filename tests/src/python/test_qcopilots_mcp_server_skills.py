@@ -10006,6 +10006,13 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
         catalog_schema = json.loads(
             resource_contents["references/qgis-tools.catalog.schema.json"]
         )
+        gpsbabel_catalog_entry = next(
+            item
+            for item in catalog_data["cli_tools"]
+            if item["id"] == "gpsbabel-cli"
+        )
+        self.assertEqual(gpsbabel_catalog_entry["status"], "disabled")
+        self.assertIn("Qt5Core.dll", gpsbabel_catalog_entry["purpose"])
         plan_schema = json.loads(
             resource_contents["references/qgis-skill-plan.schema.json"]
         )

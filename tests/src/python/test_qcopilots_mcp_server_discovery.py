@@ -28,6 +28,7 @@ SERVICE_PLUGIN_DIR_NAMES = (
     "qcopilots_mcp_server_interactive_tools",
     "qcopilots_mcp_server_processing_raster",
     "qcopilots_mcp_server_processing_vector",
+    "qcopilots_mcp_server_qgis_binary",
     "qcopilots_mcp_server_skills",
 )
 
@@ -36,6 +37,7 @@ SERVICE_SCHEMA_DESCRIPTION_LOCALIZED_DIR_NAMES = (
     "qcopilots_mcp_server_interactive_tools",
     "qcopilots_mcp_server_processing_raster",
     "qcopilots_mcp_server_processing_vector",
+    "qcopilots_mcp_server_qgis_binary",
     "qcopilots_mcp_server_skills",
 )
 
@@ -82,6 +84,16 @@ SERVICE_DESCRIPTION_REQUIRED_TERMS = {
         "矢量",
         ("几何", "属性"),
         ("provider", "数据上下文"),
+    ),
+    "qcopilots.mcp_server_qgis_binary": (
+        "QGIS bridge",
+        "发布包",
+        "异步作业",
+        "binary_id",
+        "argv",
+        "R2",
+        "R3",
+        "任意可执行文件路径",
     ),
     "qcopilots.mcp_server_skills": (
         "Agent Skills",
@@ -235,6 +247,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "qcopilots.mcp_server_interactive_tools",
                 "qcopilots.mcp_server_processing_raster",
                 "qcopilots.mcp_server_processing_vector",
+                "qcopilots.mcp_server_qgis_binary",
                 "qcopilots.mcp_server_skills",
             ],
         )
@@ -245,14 +258,15 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "QCopilots MCP Server Interactive Tools",
                 "QCopilots MCP Server Processing Raster",
                 "QCopilots MCP Server Processing Vector",
+                "QCopilots MCP Server QGIS Binary",
                 "QCopilots MCP Server Skills",
             ],
         )
         self.assertTrue(all(manifest.enabled for manifest in discovered))
-        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * 5)
+        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * 6)
         self.assertEqual(
             [manifest.default_port for manifest in discovered],
-            [48211, 48213, 48215, 48214, 48212],
+            [48211, 48213, 48215, 48214, 48216, 48212],
         )
         for manifest in discovered:
             self.assertTrue(_contains_cjk(manifest.description), manifest.description)
@@ -293,6 +307,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots.mcp_server_interactive_tools": True,
             "qcopilots.mcp_server_processing_raster": True,
             "qcopilots.mcp_server_processing_vector": True,
+            "qcopilots.mcp_server_qgis_binary": True,
             "qcopilots.mcp_server_skills": False,
         }
 
@@ -3586,6 +3601,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_server_interactive_tools",
             "qcopilots_mcp_server_processing_raster",
             "qcopilots_mcp_server_processing_vector",
+            "qcopilots_mcp_server_qgis_binary",
             "qcopilots_mcp_server_skills",
         ]
 
@@ -3632,6 +3648,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_server_interactive_tools": "48213",
             "qcopilots_mcp_server_processing_vector": "48214",
             "qcopilots_mcp_server_processing_raster": "48215",
+            "qcopilots_mcp_server_qgis_binary": "48216",
         }
 
         for plugin_dir_name in SERVICE_PLUGIN_DIR_NAMES:

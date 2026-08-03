@@ -1,0 +1,720 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qgis.org/schemas/qcopilots/qgis-binaries-1.schema.json",
+  "title": "QCopilots QGIS Binary Catalog",
+  "description": "字段作用是定义 QGIS Binary 服务允许发现、探测和运行的发布包可执行文件目录。候选值由版本、固定计数、发布包根目录解析、环境配置、共享分组默认值和 591 个 binary 对象组成。不同候选值的影响是改变可执行文件的发现范围、环境准备、风险确认、进度解析和作业结果判定，无效配置会在编辑器校验或运行时目录校验阶段被拒绝。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "version",
+    "expected_counts",
+    "package_root_resolution",
+    "environment_profiles",
+    "groups",
+    "binaries"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "./qgis_binaries.schema.json",
+      "description": "字段作用是让 JSON 编辑器从插件目录加载本校验文件并提供自动提示。候选值只有相对路径 './qgis_binaries.schema.json'。不同候选值的影响是错误路径或其它值会失去可靠的字段提示并被 schema 拒绝，相对路径则可随插件整体迁移。"
+    },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "字段作用是标识 QGIS Binary 目录的数据格式版本。候选值当前只有整数 1。不同候选值的影响是版本 1 使用本文件定义的字段和安全规则，其它值会被 schema 与目录加载器拒绝。"
+    },
+    "expected_counts": {
+      "$ref": "#/$defs/expectedCounts",
+      "description": "字段作用是固定当前发布包快照的配置、启用和禁用数量。候选值当前为 configured=591、enabled=87、disabled=504。不同候选值的影响是任一数量与 binaries 实际状态不一致时目录加载失败，GPSBabel 保持在 504 个禁用项中。"
+    },
+    "package_root_resolution": {
+      "$ref": "#/$defs/packageRootResolution",
+      "description": "字段作用是从显式目录、环境变量或 QGIS prefix 祖先中唯一确定发布包根目录。候选值包括固定策略、一个或多个 marker、0 到 32 层祖先搜索深度，以及可选环境变量名列表。不同候选值的影响是改变候选根目录来源和匹配严格度，零个或多个匹配都会令初始化失败。"
+    },
+    "environment_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/stableId",
+        "description": "字段作用是为环境配置提供可被 binary 引用的稳定编号。候选值是小写字母或数字开头并由小写字母、数字、点、下划线和连字符组成的编号，当前包括 direct、osgeo4w 和 qgis。不同候选值的影响是 binary 会选择不同的继承环境、可信脚本和变量覆盖，未知引用会被运行时拒绝。"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/environmentProfile",
+        "description": "字段作用是定义一个命名子进程环境配置。候选值包含 inherit_environment、setup_scripts 和 variables。不同候选值的影响是改变可执行文件收到的基础环境、QGIS 或 OSGeo4W 环境设置以及最终变量覆盖。"
+      },
+      "description": "字段作用是集中声明可复用的子进程环境配置。候选值是一个或多个以稳定编号为键的 environment profile，当前为 direct、osgeo4w 和 qgis。不同候选值的影响是 binary 的 environment 引用会准备不同环境，删除仍被引用的配置会导致目录加载失败。"
+    },
+    "groups": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/stableId",
+        "description": "字段作用是为共享 binary 默认值提供稳定分组编号。候选值是符合稳定编号格式的名称，当前候选来自 qgis_cli、gdal_native、grass_disabled、risk3_blocked 等目录分组。不同候选值的影响是改变 binary 可引用的默认配置集合，未知引用会被运行时拒绝。"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/groupDefinition",
+        "description": "字段作用是定义一个 flat 默认值对象或包含 defaults 的包装对象。候选值是两种等价表示中的一种。不同候选值的影响是 flat 形式更简洁，defaults 包装形式更明确，binary 中的同名字段在两种形式下都会覆盖 group 默认值。"
+      },
+      "description": "字段作用是按工具类别提供运行时先合并的默认值和便于审计的分类基线。候选值是一个或多个稳定 group 编号及其 flat 或 defaults 包装配置，当前规范目录仍要求每个 binary 显式填写执行敏感字段。不同候选值的影响是可为可选 name 和 description 提供继承值并记录类别基线，binary 显式字段始终具有更高优先级。"
+    },
+    "binaries": {
+      "type": "array",
+      "minItems": 591,
+      "maxItems": 591,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/binary",
+        "description": "字段作用是逐项声明发布包中的一个可执行文件及其执行策略。候选值是满足 binary 定义的对象。不同候选值的影响是改变工具是否可运行、使用何种环境和风险级别、如何探测和如何限制资源，重复对象会被拒绝。"
+      },
+      "allOf": [
+        {
+          "description": "字段作用是精确统计 enabled=true 的目录项。候选值要求恰好 87 个 binary 为启用状态。不同候选值的影响是少于或多于 87 个启用项都会被 schema 拒绝，避免只修改 expected_counts 造成伪一致。",
+          "contains": {
+            "type": "object",
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 87,
+          "maxContains": 87
+        },
+        {
+          "description": "字段作用是精确统计 enabled=false 的目录项。候选值要求恰好 504 个 binary 为禁用状态。不同候选值的影响是少于或多于 504 个禁用项都会被 schema 拒绝，GPSBabel 继续作为不可用的 Qt5 依赖项保持禁用。",
+          "contains": {
+            "type": "object",
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            }
+          },
+          "minContains": 504,
+          "maxContains": 504
+        }
+      ],
+      "description": "字段作用是显式列出当前发布包中全部 591 个 EXE。候选值是恰好 87 个启用项和 504 个禁用项组成的唯一对象数组。不同候选值的影响是改变 MCP 可运行目录或发布包覆盖范围，数量、ID、路径或实际 EXE 集合不一致会被 schema 或运行时校验拒绝。"
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "description": "字段作用是定义可安全记录、排序和引用的稳定编号格式。候选值是 1 到 128 个字符且以小写字母或数字开头的字母、数字、点、下划线和连字符组合。不同候选值的影响是合法编号可稳定迁移和引用，空值、大写或其它字符会被 schema 拒绝。"
+    },
+    "environmentVariableName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "description": "字段作用是定义可读取或写入的普通环境变量名。候选值是以字母或下划线开头并仅包含字母、数字和下划线的 1 到 128 个字符。不同候选值的影响是合法名称会参与根目录查找或子进程环境覆盖，以等号开头的 Windows 伪变量和其它非法名称会被拒绝。"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?:[^/]+/)*[^/]+$",
+      "description": "字段作用是定义相对于 QGIS 发布包根目录的规范 POSIX 路径。候选值是使用正斜杠且不含盘符、绝对前缀、反斜杠、空段、重复斜杠、点段或尾随斜杠的非空路径。不同候选值的影响是合法路径可随发布包迁移，非规范路径会被 schema 拒绝且运行时仍会复核真实路径未逃逸根目录。"
+    },
+    "executableRelativePath": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/relativePath"
+        },
+        {
+          "type": "string",
+          "pattern": "\\.exe$"
+        }
+      ],
+      "description": "字段作用是定义发布包根目录内的可执行文件相对路径。候选值是在规范相对路径基础上以小写 '.exe' 结尾的路径。不同候选值的影响是合法值只能解析到配置目录内的 Windows 可执行文件，非 EXE 或逃逸路径会被拒绝。"
+    },
+    "trustedSetupScript": {
+      "type": "string",
+      "enum": [
+        "bin/qgis-qt6-env.bat",
+        "bin/o4w_env.bat"
+      ],
+      "description": "字段作用是选择允许捕获子进程环境的固定可信批处理脚本。候选值只有 'bin/qgis-qt6-env.bat' 和 'bin/o4w_env.bat'。不同候选值的影响是前者准备 QGIS Qt6 环境，后者准备 OSGeo4W 基础环境，其它脚本即使位于发布包内也会被拒绝。"
+    },
+    "expectedCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured",
+        "enabled",
+        "disabled"
+      ],
+      "properties": {
+        "configured": {
+          "type": "integer",
+          "const": 591,
+          "description": "字段作用是声明当前发布包快照中配置的 EXE 总数。候选值当前只有 591。不同候选值的影响是其它值会被 schema 拒绝，运行时也会将其与 binaries 数量和实际发布包 EXE 集合核对。"
+        },
+        "enabled": {
+          "type": "integer",
+          "const": 87,
+          "description": "字段作用是声明允许通过 MCP 启动的 EXE 数量。候选值当前只有 87。不同候选值的影响是其它值会被 schema 拒绝并触发运行时计数不一致，不能仅修改此数字来启用不可运行工具。"
+        },
+        "disabled": {
+          "type": "integer",
+          "const": 504,
+          "description": "字段作用是声明只保留目录信息但禁止启动的 EXE 数量。候选值当前只有 504。不同候选值的影响是其它值会被 schema 拒绝并触发运行时计数不一致，GPSBabel 当前计入此数量。"
+        }
+      },
+      "description": "字段作用是保存当前发布包快照的三项固定计数。候选值为 configured=591、enabled=87、disabled=504。不同候选值的影响是必须同时匹配数组状态和发布包文件集合，否则目录不可加载。"
+    },
+    "packageRootResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "markers",
+        "max_parent_levels"
+      ],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "const": "qgis_prefix_ancestor",
+          "description": "字段作用是指定发布包根目录发现算法。候选值当前只有 'qgis_prefix_ancestor'。不同候选值的影响是该值会从 QGIS prefix 及其祖先中寻找唯一 marker 匹配，其它策略尚未实现并会被拒绝。"
+        },
+        "markers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/relativePath",
+            "description": "字段作用是声明一个必须存在于候选发布包根目录下的标记路径。候选值是规范相对文件路径，例如环境脚本、qgis_process 或发布 Python。不同候选值的影响是所有 marker 都存在的祖先才算匹配，增加 marker 会提高识别严格度但错误路径会阻止初始化。"
+          },
+          "description": "字段作用是通过一组同时存在的相对路径识别正确发布包根目录。候选值是 1 到 32 个唯一规范相对路径。不同候选值的影响是 marker 越具体越能避免误匹配，任何缺失 marker 都会排除对应候选根目录。"
+        },
+        "max_parent_levels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32,
+          "description": "字段作用是限制从 QGIS prefix 向上搜索发布包根目录的祖先层数。候选值是 0 到 32 的整数。不同候选值的影响是较大值扩大搜索范围但可能产生多个匹配，0 只检查 prefix 自身，无法得到唯一匹配时初始化失败。"
+        },
+        "environment_variables": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "default": [
+            "QGIS_PACKAGE_ROOT",
+            "OSGEO4W_ROOT"
+          ],
+          "items": {
+            "$ref": "#/$defs/environmentVariableName",
+            "description": "字段作用是声明一个可提供发布包根目录的环境变量名。候选值是合法环境变量名，默认候选为 QGIS_PACKAGE_ROOT 和 OSGEO4W_ROOT。不同候选值的影响是按数组顺序选择第一个已设置变量，其目录仍须满足全部 marker。"
+          },
+          "description": "字段作用是在未显式传入 package root 时指定优先检查的环境变量。候选值是 1 到 16 个唯一合法变量名，省略时使用 QGIS_PACKAGE_ROOT 和 OSGEO4W_ROOT。不同候选值的影响是改变根目录查找优先级，变量指向的目录不满足 marker 时会失败而不会放宽边界。"
+        }
+      },
+      "description": "字段作用是完整定义发布包根目录的可信发现流程。候选值由固定 strategy、markers、max_parent_levels 和可选 environment_variables 组成。不同候选值的影响是改变搜索入口、范围和唯一性判定，最终目录必须存在并满足所有 marker。"
+    },
+    "environmentProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inherit_environment",
+        "setup_scripts",
+        "variables"
+      ],
+      "properties": {
+        "inherit_environment": {
+          "type": "boolean",
+          "description": "字段作用是决定环境准备是否从当前 QGIS 进程环境开始。候选值为 true 或 false。不同候选值的影响是 true 会复制当前环境再执行脚本和变量覆盖，false 从空环境开始并可能缺少系统程序所需变量。"
+        },
+        "setup_scripts": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/trustedSetupScript",
+              "description": "字段作用是使用单字符串兼容写法声明一个可信环境脚本。候选值只有 qgis-qt6-env.bat 或 o4w_env.bat 的固定相对路径。不同候选值的影响是加载器会把该值规范化为单项数组并捕获对应环境。"
+            },
+            {
+              "type": "array",
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/trustedSetupScript",
+                "description": "字段作用是声明一个按顺序调用的可信环境脚本。候选值只有两个固定脚本路径。不同候选值的影响是脚本按数组顺序叠加环境，空数组表示不运行批处理脚本。"
+              },
+              "description": "字段作用是使用规范数组写法声明零到两个可信环境脚本。候选值为空数组或由两个固定脚本组成的唯一数组。不同候选值的影响是数组顺序决定环境捕获顺序，不可信脚本会被 schema 和运行时拒绝。"
+            }
+          ],
+          "description": "字段作用是配置环境捕获前需要调用的固定可信批处理脚本。候选值是单个可信脚本字符串或零到两个可信脚本组成的数组。不同候选值的影响是 qgis 脚本准备 Qt6 QGIS 环境，o4w 脚本准备 OSGeo4W 环境，空数组直接使用基础环境。"
+        },
+        "variables": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/environmentVariableName",
+            "description": "字段作用是声明一个待覆盖的子进程环境变量名。候选值是合法环境变量名称。不同候选值的影响是同名值会在环境继承和脚本捕获后被最后覆盖，非法名称会被 schema 拒绝。"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 32768,
+            "description": "字段作用是声明写入子进程环境的字符串值。候选值是最多 32768 个字符的文本并可包含 '{package_root}' 或 '${package_root}' 占位符。不同候选值的影响是占位符会展开为发布包根目录，其它文本保持原样并覆盖已有同名变量。"
+          },
+          "description": "字段作用是在环境继承和脚本捕获之后应用最终变量覆盖。候选值是合法环境变量名到字符串值的映射。不同候选值的影响是后写入值优先并可引用 package root，空对象表示不增加覆盖。"
+        }
+      },
+      "description": "字段作用是定义一个可缓存复用的 binary 子进程环境。候选值由 inherit_environment、setup_scripts 和 variables 三部分组成。不同候选值的影响是改变基础环境、可信 QGIS 或 OSGeo4W 初始化以及最终变量覆盖顺序。"
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "description": "字段作用是标记运行可执行文件需要的风险控制级别。候选值为 R1、R2 和 R3。不同候选值的影响是 R1 可直接启动，R2 每次必须传 confirmed_risk=true，R3 无论是否确认都必须保持禁用。"
+    },
+    "successExitCodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": -2147483648,
+        "maximum": 2147483647,
+        "description": "字段作用是声明一个可被视为成功的进程退出码。候选值是 32 位有符号整数。不同候选值的影响是命中的退出码产生成功结果，未命中值会生成结构化失败信息。"
+      },
+      "description": "字段作用是定义 binary 执行或 argv probe 各自独立的成功退出码集合。候选值是 1 到 256 个唯一的 32 位有符号整数。不同候选值的影响是扩大集合会把更多退出状态视为成功，错误放宽可能掩盖程序失败。"
+    },
+    "progressParser": {
+      "oneOf": [
+        {
+          "type": "null",
+          "description": "字段作用是关闭该 binary 的输出进度解析。候选值只有 null。不同候选值的影响是 Job 的 progress_percent 和 processed_count 保持未知，不会伪造百分比。"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "none",
+            "gdal_dotted"
+          ],
+          "description": "字段作用是使用加载器兼容简写选择进度解析器。候选值为 'none' 或 'gdal_dotted'。不同候选值的影响是 none 等价于 null，gdal_dotted 解析 GDAL 点状进度，字符串简写无法携带自定义正则。"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "gdal_dotted",
+              "description": "字段作用是选择 GDAL 点状进度输出解析器。候选值只有 'gdal_dotted'。不同候选值的影响是该值会识别数字后接省略点、百分号或 done 的输出，其它类型需要使用对应分支。"
+            }
+          },
+          "description": "字段作用是用规范对象形式启用 GDAL 点状进度解析。候选值只有 {type:'gdal_dotted'}。不同候选值的影响是匹配到的 0 到 100 数值更新 Job 进度，但服务不会自动为命令追加进度参数。"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "pattern"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "percent_regex",
+              "description": "字段作用是选择可配置百分比正则解析器。候选值只有 'percent_regex'。不同候选值的影响是该值要求同时提供 pattern，并从匹配内容提取数值百分比。"
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "字段作用是定义从 stdout 或 stderr 提取进度百分比的 Python 正则表达式。候选值是 1 到 512 个字符的可编译正则，优先使用命名组 percent，其次第一个捕获组，最后使用完整匹配。不同候选值的影响是匹配结果会被限制到 0 到 100，错误或高回溯模式会在加载时失败或影响解析性能，服务不会追加任何程序参数。"
+            }
+          },
+          "description": "字段作用是用自定义正则解析非 GDAL 的百分比输出。候选值是 type=percent_regex 加一个可编译 pattern。不同候选值的影响是可适配 Untwine 等输出格式，无法得到有限数字时 Job 继续保持不确定进度。"
+        }
+      ],
+      "description": "字段作用是配置是否以及如何从进程输出更新 Job 百分比。候选值为 null、none、gdal_dotted 简写、gdal_dotted 对象或 percent_regex 对象。不同候选值的影响是关闭解析时进度未知，GDAL 或正则模式只解析已有输出并不会改变用户 argv。"
+    },
+    "groupDefaults": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "字段作用是为组内 binary 提供默认显示名称。候选值是 1 到 256 个字符的文本。不同候选值的影响是未显式设置 name 的 binary 会继承该值，binary 自身 name 仍会覆盖它。"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "字段作用是说明 group 用途并为组内 binary 提供默认描述。候选值是 1 到 4096 个字符的说明文本。不同候选值的影响是改变目录详情和未覆盖 binary 的描述，不改变可执行路径或安全级别。"
+        },
+        "environment": {
+          "$ref": "#/$defs/stableId",
+          "description": "字段作用是为组内 binary 指定默认 environment profile。候选值是 environment_profiles 中已声明的稳定编号，当前常用 direct、osgeo4w 或 qgis。不同候选值的影响是改变环境继承和脚本准备，binary 自身值优先且未知引用会被运行时拒绝。"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "字段作用是为组内 binary 提供默认启用状态。候选值为 true 或 false。不同候选值的影响是 true 允许满足风险条件的工具启动，false 禁止启动，binary 显式状态优先。"
+        },
+        "disabled_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "字段作用是为组内 binary 提供默认禁用原因。候选值为说明字符串或 null。不同候选值的影响是禁用项向用户显示原因，启用项应使用 null，binary 显式值优先。"
+        },
+        "risk": {
+          "$ref": "#/$defs/risk",
+          "description": "字段作用是为组内 binary 提供默认风险级别。候选值为 R1、R2 或 R3。不同候选值的影响是改变直接运行、显式确认或强制禁用策略，binary 显式风险优先。"
+        },
+        "probe": {
+          "$ref": "#/$defs/probe",
+          "description": "字段作用是为组内 binary 提供默认可用性探测方式。候选值为 argv 或 static probe。不同候选值的影响是选择实际启动只读探测或只检查文件、PE 和哈希，binary 显式 probe 优先。"
+        },
+        "success_exit_codes": {
+          "$ref": "#/$defs/successExitCodes",
+          "description": "字段作用是为组内 binary 提供默认成功退出码。候选值是唯一 32 位整数数组。不同候选值的影响是改变进程退出后的成功判定，binary 显式集合优先。"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "description": "字段作用是为组内 binary 提供默认最长运行秒数。候选值是大于 0 且不超过 86400 的有限数字。不同候选值的影响是较小值更快终止长任务，超时会结束进程树并令 Job 失败，binary 显式值优先。"
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216,
+          "description": "字段作用是为组内 binary 分别限制 stdout 和 stderr 的默认尾部缓冲容量。候选值是 1 到 16777216 字节的整数。不同候选值的影响是较大值保留更多诊断文本并占用更多内存，超限内容从头部截断并设置标志。"
+        },
+        "max_stdin_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576,
+          "description": "字段作用是为组内 binary 限制默认 stdin 文本大小。候选值是 0 到 1048576 字节的整数。不同候选值的影响是 0 禁止 stdin，正数允许不超过上限的 UTF-8 输入，binary 显式值优先。"
+        },
+        "progress_parser": {
+          "$ref": "#/$defs/progressParser",
+          "description": "字段作用是为组内 binary 提供默认进度解析方式。候选值为关闭、GDAL 点状解析或百分比正则解析。不同候选值的影响是决定 Job 是否可获得真实百分比，binary 显式配置优先。"
+        }
+      },
+      "description": "字段作用是提供加载器先于 binary 合并的共享默认值集合。候选值是至少一个 name、description、environment、enabled、disabled_reason、risk、probe、退出码、超时、输入输出限制或进度解析字段，当前规范目录要求 binary 继续显式填写执行敏感字段。不同候选值的影响是可选显示字段能够继承且其它值形成审计基线，binary 同名字段始终优先。"
+    },
+    "groupDefinition": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/groupDefaults",
+          "description": "字段作用是用 flat 对象直接声明 group 默认值。候选值是 groupDefaults 中允许的一个或多个字段。不同候选值的影响是配置更简洁，所有字段直接参与与 binary 的合并。"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "defaults"
+          ],
+          "properties": {
+            "defaults": {
+              "$ref": "#/$defs/groupDefaults",
+              "description": "字段作用是用显式 defaults 子对象声明 group 默认值。候选值是 groupDefaults 中允许的一个或多个字段。不同候选值的影响是配置层级更清楚，defaults 内容与 flat 形式具有相同合并优先级。"
+            }
+          },
+          "description": "字段作用是提供带 defaults 包装的 group 兼容表示。候选值只有包含 defaults 的闭合对象。不同候选值的影响是运行时读取 defaults 子对象作为基线，额外包装字段会被 schema 拒绝。"
+        }
+      ],
+      "description": "字段作用是选择 group 默认值的持久化表示。候选值为 flat groupDefaults 或 {defaults: groupDefaults}。不同候选值的影响只在配置组织方式，两者的运行时合并语义相同且 binary 显式字段优先。"
+    },
+    "argvProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "arguments",
+        "success_exit_codes",
+        "timeout_seconds"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "argv",
+          "description": "字段作用是选择实际启动可执行文件的只读参数探测方式。候选值只有 'argv'。不同候选值的影响是程序会使用配置 argv 且 shell=False 启动，disabled binary 不允许使用此模式。"
+        },
+        "arguments": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "--version",
+              "--help",
+              "-V",
+              "-h"
+            ],
+            "description": "字段作用是声明唯一一个直接传给 probe 进程的只读 argv 元素。候选值只有 '--version'、'--help'、'-V' 或 '-h'。不同候选值的影响是选择程序支持的版本或帮助入口，参数按原样传递且不经过 shell，具有副作用的参数会被 schema 拒绝。"
+          },
+          "description": "字段作用是定义 argv probe 的固定单项只读参数。候选值是只包含 --version、--help、-V 或 -h 之一的单元素数组。不同候选值的影响是适配不同程序的版本或帮助开关，服务不会添加、删除或通过命令解释器重写参数。"
+        },
+        "success_exit_codes": {
+          "$ref": "#/$defs/successExitCodes",
+          "description": "字段作用是定义 argv probe 可接受的退出码。候选值是一个或多个唯一 32 位整数，当前目录常用 0、1、2。不同候选值的影响是命中集合表示 probe 通过，未命中表示该启用 binary 不可用。"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "description": "字段作用是限制 argv probe 最长运行秒数。候选值是大于 0 且不超过 86400 的有限数字，当前目录使用短时探测。不同候选值的影响是超时会终止探测并判为失败，过大值会延迟整目录验收。"
+        }
+      },
+      "description": "字段作用是通过安全 argv 实际启动程序并检查退出码。候选值由 mode=argv、非空 arguments、success_exit_codes 和 timeout_seconds 组成。不同候选值的影响是可以验证真实启动能力，但只能用于启用项并始终使用 shell=False。"
+    },
+    "staticProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "checks",
+        "sha256"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "static",
+          "description": "字段作用是选择不启动程序的静态可用性探测方式。候选值只有 'static'。不同候选值的影响是只验证文件、读取权限、PE 架构和哈希，适用于禁用项及没有安全 version 或 help 参数的启用项。"
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "exists",
+              "readable",
+              "pe_machine",
+              "sha256"
+            ],
+            "description": "字段作用是选择一项必需的静态验证。候选值为 exists、readable、pe_machine 和 sha256。不同候选值的影响是分别检查文件存在、可读、受支持的 PE 架构和内容哈希，四项必须各出现一次。"
+          },
+          "description": "字段作用是固定 static probe 必须执行的完整检查集合。候选值只有由 exists、readable、pe_machine、sha256 各一次组成的四项数组。不同候选值的影响是缺失、重复或未知检查都会被 schema 拒绝。"
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "字段作用是固定 static probe 期望的可执行文件内容摘要。候选值是恰好 64 位的小写十六进制 SHA-256。不同候选值的影响是摘要匹配表示当前发布文件未变，大小写、长度或内容不符都会令 probe 失败。"
+        }
+      },
+      "description": "字段作用是在不执行程序的情况下验证发布包文件身份和架构。候选值由 mode=static、固定四项 checks 和小写 SHA-256 组成。不同候选值的影响是可安全覆盖禁用或无只读参数的程序，文件变化会被明确检测。"
+    },
+    "probe": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/argvProbe",
+          "description": "字段作用是选择会实际启动程序的 argv probe。候选值是符合 argvProbe 的闭合对象。不同候选值的影响是可验证真实运行环境，但只允许用于 enabled=true 的 binary。"
+        },
+        {
+          "$ref": "#/$defs/staticProbe",
+          "description": "字段作用是选择完全不启动程序的 static probe。候选值是符合 staticProbe 的闭合对象。不同候选值的影响是只验证文件身份和架构，所有 disabled binary 必须使用此模式。"
+        }
+      ],
+      "description": "字段作用是为每个 binary 选择唯一可用性探测策略。候选值为 argvProbe 或 staticProbe。不同候选值的影响是 argv 会以 shell=False 运行固定参数，static 不运行程序并检查存在性、可读性、PE 和哈希。"
+    },
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "group",
+        "enabled",
+        "disabled_reason",
+        "risk",
+        "environment",
+        "probe",
+        "success_exit_codes",
+        "timeout_seconds",
+        "max_output_bytes",
+        "max_stdin_bytes",
+        "progress_parser"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableId",
+          "description": "字段作用是为可执行文件提供稳定且可用于 MCP 查询的 binary_id。候选值是符合 stableId 的小写编号并应在整个目录中唯一。不同候选值的影响是改变 list、details 和 start 使用的引用，重复 ID 会由运行时目录校验拒绝。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "字段作用是为目录和详情结果提供可选显示名称。候选值是 1 到 256 个字符的文本，省略时使用可执行文件名 stem 或 group 默认值。不同候选值的影响只改变面向用户的名称，不改变 binary_id、路径或执行行为。"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "字段作用是提供可选的 binary 用途说明。候选值是 1 到 4096 个字符的文本，省略时使用 group 默认描述或空文本。不同候选值的影响只改变目录详情和可发现性，不放宽参数、路径或风险边界。"
+        },
+        "path": {
+          "$ref": "#/$defs/executableRelativePath",
+          "description": "字段作用是指定发布包根目录内唯一的 EXE。候选值是使用正斜杠、无逃逸段并以小写 .exe 结尾的相对路径。不同候选值的影响是改变实际启动目标，Windows 大小写不敏感重复、缺失、额外或解析后逃逸的路径会被运行时拒绝。"
+        },
+        "group": {
+          "$ref": "#/$defs/stableId",
+          "description": "字段作用是引用 groups 中运行时先合并的默认值和分类基线。候选值是已声明的 group 稳定编号，当前规范目录仍显式填写全部执行敏感字段。不同候选值的影响是改变可选显示字段的继承值和用于审计的类别基线，binary 自身同名字段优先且未知 group 会被运行时拒绝。"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "字段作用是控制该 binary 是否允许通过 start_qgis_binary 启动作业。候选值为 true 或 false。不同候选值的影响是 true 允许 R1 或已确认的 R2 启动并要求 disabled_reason=null，false 禁止启动并要求非空禁用原因和 static probe。"
+        },
+        "disabled_reason": {
+          "oneOf": [
+            {
+              "type": "null",
+              "description": "字段作用是表示启用 binary 没有禁用原因。候选值只有 null。不同候选值的影响是 enabled=true 时必须选择 null，字符串会被条件约束拒绝。"
+            },
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "description": "字段作用是向用户说明 binary 被禁用的具体原因。候选值是 1 到 4096 个字符的非空文本。不同候选值的影响是 enabled=false 时该文本出现在目录和启动拒绝信息中，null 或空字符串会被拒绝。"
+            }
+          ],
+          "description": "字段作用是记录 binary 禁用原因或明确其已启用。候选值为 null 或非空说明字符串。不同候选值的影响是启用项必须使用 null，禁用项必须提供可诊断原因。"
+        },
+        "risk": {
+          "$ref": "#/$defs/risk",
+          "description": "字段作用是为该 binary 指定最终风险级别。候选值为 R1、R2 或 R3。不同候选值的影响是 R1 可直接启动，R2 要求每次 confirmed_risk=true，R3 被 schema 和运行时强制禁用。"
+        },
+        "environment": {
+          "$ref": "#/$defs/stableId",
+          "description": "字段作用是引用 environment_profiles 中的最终子进程环境。候选值是已声明的 profile 稳定编号，当前常用 direct、osgeo4w 或 qgis。不同候选值的影响是改变环境继承、可信脚本和变量覆盖，未知引用会被运行时拒绝。"
+        },
+        "probe": {
+          "$ref": "#/$defs/probe",
+          "description": "字段作用是定义该 binary 的可用性验证方式。候选值为 argvProbe 或 staticProbe。不同候选值的影响是启用项可使用只读 argv 或 static，禁用项只能 static，probe 不接受用户传入参数。"
+        },
+        "success_exit_codes": {
+          "$ref": "#/$defs/successExitCodes",
+          "description": "字段作用是定义实际 binary 作业的成功退出码。候选值是一个或多个唯一 32 位整数。不同候选值的影响是命中集合生成 succeeded 和 result，未命中会生成 failed 与结构化错误，此集合独立于 probe 退出码。"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "description": "字段作用是限制该 binary 单次作业的最长运行秒数并作为用户 timeout 上限。候选值是大于 0 且不超过 86400 的有限数字。不同候选值的影响是较小值更早终止进程树，超时令 Job failed，用户不能请求超过此配置的时限。"
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216,
+          "description": "字段作用是分别限制该 binary 的 stdout 和 stderr 尾部环形缓冲。候选值是 1 到 16777216 字节的整数。不同候选值的影响是较大值保留更多输出但占用更多内存，超过容量的头部内容会被丢弃并设置对应截断标志。"
+        },
+        "max_stdin_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576,
+          "description": "字段作用是限制 start_qgis_binary 可提供的 stdin UTF-8 字节数。候选值是 0 到 1048576 的整数。不同候选值的影响是 0 完全禁止 stdin，正数允许不超过上限的文本，超限请求会在启动前被拒绝。"
+        },
+        "progress_parser": {
+          "$ref": "#/$defs/progressParser",
+          "description": "字段作用是定义该 binary 如何从 stdout 和 stderr 获取真实百分比。候选值为关闭解析、GDAL 点状解析或 percent_regex。不同候选值的影响是关闭时 progress_percent 保持 null，启用时仅解析程序已有输出而不修改 argv。"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          },
+          "then": {
+            "properties": {
+              "disabled_reason": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "disabled_reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "risk": {
+                "const": "R3"
+              }
+            },
+            "required": [
+              "risk"
+            ]
+          },
+          "then": {
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          },
+          "then": {
+            "properties": {
+              "probe": {
+                "type": "object",
+                "required": [
+                  "mode"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "static"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": "字段作用是完整声明一个可发现、可探测并按策略运行或禁用的发布包 EXE。候选值由稳定 ID、规范路径、group、enabled、风险、环境、probe、退出码、资源限制和进度解析组成，并可选 name 和 description。不同候选值的影响是共同决定目录展示和作业执行，跨记录唯一性、引用存在和发布包全集仍由运行时复核。"
+    }
+  }
+}

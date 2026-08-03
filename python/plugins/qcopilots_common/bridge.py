@@ -14,6 +14,7 @@ import json
 import math
 import os
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -93,7 +94,12 @@ class QgisBridgeController:
         self._httpd: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
         self._shutdown_requested = False
+        self._stopping = threading.Event()
         self._dispatcher = _make_main_thread_dispatcher()
+        self._processing_job_manager = None
+        self._processing_job_manager_lock = threading.RLock()
+        self._qgis_binary_job_manager = None
+        self._qgis_binary_job_manager_lock = threading.RLock()
 
     @property
     def url(self) -> str:
@@ -114,6 +120,7 @@ class QgisBridgeController:
             raise ValueError("QCopilots QGIS bridge requires a non-empty auth token")
         if self._httpd:
             return
+        self._stopping.clear()
         if self._dispatcher is None or self._dispatcher.closed:
             self._dispatcher = _make_main_thread_dispatcher()
 
@@ -282,9 +289,36 @@ class QgisBridgeController:
             raise ValueError(
                 "QCopilots QGIS bridge stop timeout must be finite and non-negative"
             )
+        deadline = time.monotonic() + timeout
+        self._stopping.set()
         httpd = self._httpd
         thread = self._thread
         dispatcher = self._dispatcher
+        manager_shutdown_errors = []
+        processing_job_manager = self._processing_job_manager
+        if processing_job_manager is not None:
+            try:
+                processing_job_manager.shutdown(
+                    timeout_seconds=max(0.0, deadline - time.monotonic())
+                )
+            except Exception as err:
+                manager_shutdown_errors.append(err)
+            finally:
+                with self._processing_job_manager_lock:
+                    if self._processing_job_manager is processing_job_manager:
+                        self._processing_job_manager = None
+        qgis_binary_job_manager = self._qgis_binary_job_manager
+        if qgis_binary_job_manager is not None:
+            try:
+                qgis_binary_job_manager.shutdown(
+                    timeout_seconds=max(0.0, deadline - time.monotonic())
+                )
+            except Exception as err:
+                manager_shutdown_errors.append(err)
+            finally:
+                with self._qgis_binary_job_manager_lock:
+                    if self._qgis_binary_job_manager is qgis_binary_job_manager:
+                        self._qgis_binary_job_manager = None
         if dispatcher:
             dispatcher.close()
         if (
@@ -302,7 +336,7 @@ class QgisBridgeController:
         if httpd:
             httpd.server_close()
         if thread and thread.is_alive():
-            thread.join(timeout=timeout)
+            thread.join(timeout=max(0.0, deadline - time.monotonic()))
         if thread and thread.is_alive():
             raise RuntimeError(
                 "QCopilots QGIS bridge HTTP thread did not stop within "
@@ -311,14 +345,54 @@ class QgisBridgeController:
         self._httpd = None
         self._thread = None
         self._shutdown_requested = False
+        if manager_shutdown_errors:
+            raise RuntimeError(
+                "QCopilots QGIS bridge job manager shutdown failed: "
+                + " | ".join(str(error) for error in manager_shutdown_errors)
+            ) from manager_shutdown_errors[0]
 
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        if self._stopping.is_set():
+            raise RuntimeError("QCopilots QGIS bridge is stopping")
+
         def invoke() -> dict[str, Any]:
-            return QgisBridgeTools(self.iface).dispatch(tool, arguments)
+            if self._stopping.is_set():
+                raise RuntimeError("QCopilots QGIS bridge is stopping")
+            return QgisBridgeTools(
+                self.iface,
+                processing_job_manager_factory=self._get_processing_job_manager,
+                qgis_binary_job_manager_factory=self._get_qgis_binary_job_manager,
+            ).dispatch(tool, arguments)
 
         if self._dispatcher:
             return self._dispatcher.call(invoke)
         return invoke()
+
+    def _get_processing_job_manager(self):
+        with self._processing_job_manager_lock:
+            if self._stopping.is_set():
+                raise RuntimeError("QCopilots QGIS bridge is stopping")
+            if self._processing_job_manager is None:
+                from qcopilots_common.processing_jobs import ProcessingJobManager
+
+                self._processing_job_manager = ProcessingJobManager(
+                    self.iface,
+                    dependencies={
+                        "parameter_sanitizer": _sanitize_processing_parameters,
+                        "category_matcher": _algorithm_matches_category,
+                    },
+                )
+            return self._processing_job_manager
+
+    def _get_qgis_binary_job_manager(self):
+        with self._qgis_binary_job_manager_lock:
+            if self._stopping.is_set():
+                raise RuntimeError("QCopilots QGIS bridge is stopping")
+            if self._qgis_binary_job_manager is None:
+                from qcopilots_common.qgis_binary_jobs import QGISBinaryJobManager
+
+                self._qgis_binary_job_manager = QGISBinaryJobManager(self.iface)
+            return self._qgis_binary_job_manager
 
 
 class _QtMainThreadDispatcher:
@@ -421,8 +495,16 @@ class QgisBridgeTools:
     def __init__(
         self,
         iface: Any,
+        processing_job_manager: Any = None,
+        processing_job_manager_factory: Any = None,
+        qgis_binary_job_manager: Any = None,
+        qgis_binary_job_manager_factory: Any = None,
     ):
         self.iface = iface
+        self._processing_job_manager_instance = processing_job_manager
+        self._processing_job_manager_factory = processing_job_manager_factory
+        self._qgis_binary_job_manager_instance = qgis_binary_job_manager
+        self._qgis_binary_job_manager_factory = qgis_binary_job_manager_factory
 
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         handlers = {
@@ -452,7 +534,16 @@ class QgisBridgeTools:
             "update_vector_features": self.update_vector_features,
             "processing_list_algorithms": self.processing_list_algorithms,
             "processing_algorithm_details": self.processing_algorithm_details,
-            "processing_run_algorithm": self.processing_run_algorithm,
+            "processing_start_algorithm": self.processing_start_algorithm,
+            "processing_get_job": self.processing_get_job,
+            "processing_list_jobs": self.processing_list_jobs,
+            "processing_cancel_job": self.processing_cancel_job,
+            "qgis_binary_list_binaries": self.qgis_binary_list_binaries,
+            "qgis_binary_get_binary_details": self.qgis_binary_get_binary_details,
+            "qgis_binary_start": self.qgis_binary_start,
+            "qgis_binary_get_job": self.qgis_binary_get_job,
+            "qgis_binary_list_jobs": self.qgis_binary_list_jobs,
+            "qgis_binary_cancel_job": self.qgis_binary_cancel_job,
         }
         if tool not in handlers:
             raise ValueError(f"Unknown QGIS bridge tool: {tool}")
@@ -839,24 +930,71 @@ class QgisBridgeTools:
             "parameters": [_parameter_metadata(parameter) for parameter in algorithm.parameterDefinitions()],
         }
 
-    def processing_run_algorithm(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsApplication
+    def processing_start_algorithm(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._processing_jobs().start(arguments)
 
-        _ensure_processing_initialized()
-        import processing
+    def processing_get_job(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._processing_jobs().get(arguments)
 
-        category = arguments.get("category")
-        algorithm = QgsApplication.processingRegistry().createAlgorithmById(arguments["algorithm_id"])
-        if not algorithm:
-            raise RuntimeError("Processing algorithm not found")
-        if category and not _algorithm_matches_category(algorithm, category):
-            raise RuntimeError(f"Processing algorithm is not available for {category} data")
-        parameters = _sanitize_processing_parameters(
-            arguments.get("parameters") or {},
-            algorithm.parameterDefinitions(),
-        )
-        result = processing.run(arguments["algorithm_id"], parameters)
-        return {"result": result}
+    def processing_list_jobs(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._processing_jobs().list(arguments)
+
+    def processing_cancel_job(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._processing_jobs().cancel(arguments)
+
+    def _processing_jobs(self):
+        if self._processing_job_manager_instance is None:
+            if self._processing_job_manager_factory is not None:
+                self._processing_job_manager_instance = (
+                    self._processing_job_manager_factory()
+                )
+            else:
+                from qcopilots_common.processing_jobs import ProcessingJobManager
+
+                self._processing_job_manager_instance = ProcessingJobManager(
+                    self.iface,
+                    dependencies={
+                        "parameter_sanitizer": _sanitize_processing_parameters,
+                        "category_matcher": _algorithm_matches_category,
+                    },
+                )
+        return self._processing_job_manager_instance
+
+    def qgis_binary_list_binaries(
+        self, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._qgis_binary_jobs().list_binaries(arguments)
+
+    def qgis_binary_get_binary_details(
+        self, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._qgis_binary_jobs().get_binary_details(arguments)
+
+    def qgis_binary_start(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._qgis_binary_jobs().start(arguments)
+
+    def qgis_binary_get_job(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._qgis_binary_jobs().get(arguments)
+
+    def qgis_binary_list_jobs(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._qgis_binary_jobs().list_jobs(arguments)
+
+    def qgis_binary_cancel_job(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self._qgis_binary_jobs().cancel(arguments)
+
+    def _qgis_binary_jobs(self):
+        if self._qgis_binary_job_manager_instance is None:
+            if self._qgis_binary_job_manager_factory is not None:
+                self._qgis_binary_job_manager_instance = (
+                    self._qgis_binary_job_manager_factory()
+                )
+            else:
+                from qcopilots_common.qgis_binary_jobs import QGISBinaryJobManager
+
+                self._qgis_binary_job_manager_instance = QGISBinaryJobManager(
+                    self.iface
+                )
+        return self._qgis_binary_job_manager_instance
 
     def _safe_workspace_path(self, value: str | Path) -> str:
         return _safe_workspace_path(value)

@@ -167,10 +167,27 @@ def build_processing_tools(category: str) -> list[McpTool]:
         payload["category"] = category
         return bridge.call("processing_algorithm_details", payload)
 
-    def run_algorithm(arguments: dict[str, Any]) -> dict[str, Any]:
+    def start_algorithm(arguments: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(arguments)
+        payload.setdefault("parameters", {})
+        payload.setdefault("add_outputs_to_project", True)
+        payload["category"] = category
+        return bridge.call("processing_start_algorithm", payload)
+
+    def get_job(arguments: dict[str, Any]) -> dict[str, Any]:
         payload = dict(arguments)
         payload["category"] = category
-        return bridge.call("processing_run_algorithm", payload)
+        return bridge.call("processing_get_job", payload)
+
+    def list_jobs(arguments: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(arguments)
+        payload["category"] = category
+        return bridge.call("processing_list_jobs", payload)
+
+    def cancel_job(arguments: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(arguments)
+        payload["category"] = category
+        return bridge.call("processing_cancel_job", payload)
 
     return [
         McpTool(
@@ -186,10 +203,28 @@ def build_processing_tools(category: str) -> list[McpTool]:
             algorithm_details,
         ),
         McpTool(
-            f"run_{category}_processing_algorithm",
-            f"Run a QGIS Processing algorithm for {category} data.",
-            _schema({"algorithm_id": "string", "parameters": "object"}, ["algorithm_id"]),
-            run_algorithm,
+            f"start_{category}_processing_algorithm",
+            f"Start a QGIS Processing algorithm job for {category} data.",
+            _start_processing_algorithm_schema(),
+            start_algorithm,
+        ),
+        McpTool(
+            f"get_{category}_processing_job",
+            f"Get the complete snapshot for a {category} Processing job.",
+            _processing_job_schema(),
+            get_job,
+        ),
+        McpTool(
+            f"list_{category}_processing_jobs",
+            f"List recent {category} Processing job summaries.",
+            _list_processing_jobs_schema(),
+            list_jobs,
+        ),
+        McpTool(
+            f"cancel_{category}_processing_job",
+            f"Request cancellation of a {category} Processing job.",
+            _processing_job_schema(),
+            cancel_job,
         ),
     ]
 
@@ -248,6 +283,61 @@ def _schema(properties: dict[str, str], required: list[str]) -> dict[str, Any]:
         "type": "object",
         "properties": converted,
         "required": required,
+        "additionalProperties": False,
+    }
+
+
+def _start_processing_algorithm_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "algorithm_id": {"type": "string", "minLength": 1},
+            "parameters": {"type": "object", "default": {}},
+            "add_outputs_to_project": {"type": "boolean", "default": True},
+            "client_request_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+            },
+        },
+        "required": ["algorithm_id"],
+        "additionalProperties": False,
+    }
+
+
+def _processing_job_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        },
+        "required": ["job_id"],
+        "additionalProperties": False,
+    }
+
+
+def _list_processing_jobs_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "states": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [
+                        "queued",
+                        "running",
+                        "cancelling",
+                        "succeeded",
+                        "failed",
+                        "cancelled",
+                    ],
+                },
+                "minItems": 1,
+                "uniqueItems": True,
+            },
+            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+        },
         "additionalProperties": False,
     }
 

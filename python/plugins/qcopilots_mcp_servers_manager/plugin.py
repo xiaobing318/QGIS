@@ -2225,6 +2225,8 @@ def _service_accent_color(manifest: ServiceManifest) -> str:
         return "#30b36b"
     if "interactive" in manifest.service_id:
         return "#2f80ed"
+    if "qgis_binary" in manifest.service_id:
+        return "#16697a"
     if "raster" in manifest.service_id:
         return "#2eb67d"
     if "vector" in manifest.service_id:
