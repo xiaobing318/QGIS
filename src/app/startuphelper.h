@@ -19,7 +19,9 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
+#include <limits>
 #include <string>
+#include <string_view>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -35,7 +37,12 @@ namespace QgsStartupHelper
 {
   inline constexpr const char *INSTALL_DIRECTORY_PREFIX_PLACEHOLDER = "QGIS40200_INSTALL_DIRECTORY_PREFIX_V_0_00_02";
   inline constexpr const char *INSTALL_DIRECTORY_NAME = "QGIS40200";
+#if defined( CMAKE_INTDIR )
+  inline constexpr std::uint32_t START_COUNTER =
+    std::string_view( CMAKE_INTDIR ) == "RelWithDebInfo" ? ( std::numeric_limits<std::uint32_t>::max )() : 1000;
+#else
   inline constexpr std::uint32_t START_COUNTER = 1000;
+#endif
   inline constexpr const char *SHOW_MECHANISM_ERRORS_ENVIRONMENT_VARIABLE = "QGIS_STARTUPHELPER_SHOW_MECHANISM_ERRORS";
   inline constexpr const char *GENERIC_STARTUP_ENVIRONMENT_ERROR = "Could not verify the QGIS startup environment.";
 
