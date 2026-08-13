@@ -503,7 +503,7 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assertIn("disableAutoRegistrationForSession()", bootstrap)
         self.assertIn("Automatic registration is disabled for this session", bootstrap)
 
-    def test_mcp_first_visit_waits_for_props_save_and_reloads_only_once(self):
+    def test_mcp_first_visit_seeds_complete_catalog_and_coordinates_reload(self):
         dock_cpp = (self.plugin_root / "qcopilots_container_dock.cpp").read_text(encoding="utf-8")
         bootstrap = (
             self.plugin_root / "web" / "qcopilots_mcp_bootstrap.js"
@@ -519,8 +519,18 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assertIn(':/qtwebchannel/qwebchannel.js', dock_cpp)
         self.assertIn("webChannelSource + QStringLiteral", install_block)
         self.assertIn("Storage.prototype.setItem = function", bootstrap)
-        self.assertIn("firstVisitAtDocumentCreation", bootstrap)
+        self.assertIn("let firstVisitAtDocumentCreation", bootstrap)
         self.assertIn("firstConfigWriteObserved", bootstrap)
+        self.assertIn("const creatingConfig = existing === null", bootstrap)
+        self.assertIn(
+            "!currentCatalog.startupComplete || currentCatalog.services.length === 0",
+            bootstrap,
+        )
+        self.assertIn(
+            "mergeConfigValue(creatingConfig ? '{}' : existing, currentCatalog)",
+            bootstrap,
+        )
+        self.assertIn("firstVisitAtDocumentCreation = false", bootstrap)
         self.assertIn("const CATALOG_WAIT_MS = 30000", bootstrap)
         self.assertIn("beginInitialMcpCatalogWait()", dock_cpp)
         self.assertIn("completeInitialMcpCatalogWait( true )", dock_cpp)
@@ -1066,6 +1076,10 @@ class TestQCopilotsContainer(unittest.TestCase):
               stored = storedServers(environment);
               assert.strictEqual(stored.servers.find((entry) => entry.id === serviceId).enabled, false);
               assert.strictEqual(environment.reloads.length, 1);
+              assert.strictEqual(
+                environment.sessionStorage.getItem('QCopilots.mcpReloadedGenerationV1'),
+                '2'
+              );
               const bridgeRequestsBeforeStoppedFetch = environment.requests.length;
               const originalFetchesBeforeStoppedFetch = environment.originalFetchCalls.length;
               await assert.rejects(
@@ -1089,17 +1103,53 @@ class TestQCopilotsContainer(unittest.TestCase):
               assert.strictEqual(environment.reloads.length, 1);
 
               const firstVisit = makeEnvironment(null, catalog);
-              assert.strictEqual(firstVisit.localStorage.getItem('LlamaUi.config'), null);
-              firstVisit.localStorage.setItem('LlamaUi.config', JSON.stringify({theme: 'system'}));
-              const firstStored = storedServers(firstVisit);
+              const firstSeeded = storedServers(firstVisit);
+              assert.strictEqual(firstSeeded.servers.length, 1);
+              assert.strictEqual(firstSeeded.servers[0].id, serviceId);
+              assert.strictEqual(firstSeeded.servers[0].enabled, true);
+              assert.strictEqual(firstVisit.reloads.length, 0);
+              assert.deepStrictEqual(
+                JSON.parse(
+                  firstVisit.localStorage.getItem('QCopilots.managedMcpServerIdsV1')
+                ),
+                [serviceId]
+              );
+
+              const routerDefaults = {
+                theme: 'system',
+                routerDefault: {temperature: 0.7}
+              };
+              firstVisit.localStorage.setItem(
+                'LlamaUi.config',
+                JSON.stringify(routerDefaults)
+              );
+              let firstStored = storedServers(firstVisit);
               assert.strictEqual(firstStored.config.theme, 'system');
+              assert.deepStrictEqual(
+                firstStored.config.routerDefault,
+                {temperature: 0.7}
+              );
               assert.strictEqual(firstStored.servers.length, 1);
+              assert.strictEqual(firstStored.servers[0].id, serviceId);
               assert.strictEqual(firstStored.servers[0].enabled, true);
-              assert.strictEqual(firstVisit.reloads.length, 1);
+              assert.strictEqual(firstVisit.reloads.length, 0);
+              firstVisit.localStorage.setItem(
+                'LlamaUi.config',
+                JSON.stringify(routerDefaults)
+              );
+              firstStored = storedServers(firstVisit);
+              assert.strictEqual(firstStored.servers.length, 1);
+              assert.strictEqual(firstVisit.reloads.length, 0);
               assert.strictEqual(
                 firstVisit.sessionStorage.getItem('QCopilots.mcpFirstVisitReloadedV1'),
-                '1'
+                null
               );
+
+              const firstVisitStopped = makeEnvironment(null, stoppedCatalog);
+              const firstStopped = storedServers(firstVisitStopped);
+              assert.strictEqual(firstStopped.servers.length, 1);
+              assert.strictEqual(firstStopped.servers[0].enabled, false);
+              assert.strictEqual(firstVisitStopped.reloads.length, 0);
 
               const corrupt = makeEnvironment('{broken-json', catalog);
               assert.strictEqual(corrupt.localStorage.getItem('LlamaUi.config'), '{broken-json');
@@ -1117,6 +1167,21 @@ class TestQCopilotsContainer(unittest.TestCase):
                 startupComplete: false,
                 services: []
               };
+              const emptyCompleteCatalog = {
+                ...incompleteCatalog,
+                startupComplete: true
+              };
+              const emptyFirstVisit = makeEnvironment(null, emptyCompleteCatalog);
+              assert.strictEqual(
+                emptyFirstVisit.localStorage.getItem('LlamaUi.config'),
+                null
+              );
+              assert.strictEqual(
+                emptyFirstVisit.localStorage.getItem('QCopilots.managedMcpServerIdsV1'),
+                null
+              );
+              assert.strictEqual(emptyFirstVisit.reloads.length, 0);
+
               const incomplete = makeEnvironment(initialConfig, incompleteCatalog);
               assert.strictEqual(incomplete.localStorage.getItem('LlamaUi.config'), initialConfig);
               assert.strictEqual(incomplete.reloads.length, 0);
@@ -1134,21 +1199,67 @@ class TestQCopilotsContainer(unittest.TestCase):
 
               const incompleteFirstVisit = makeEnvironment(null, incompleteCatalog);
               assert.strictEqual(incompleteFirstVisit.localStorage.getItem('LlamaUi.config'), null);
-              incompleteFirstVisit.localStorage.setItem(
-                'LlamaUi.config',
-                JSON.stringify({theme: 'system'})
-              );
-              assert.deepStrictEqual(
-                JSON.parse(incompleteFirstVisit.localStorage.getItem('LlamaUi.config')),
-                {theme: 'system'}
-              );
               assert.strictEqual(incompleteFirstVisit.reloads.length, 0);
               incompleteFirstVisit.bridge.catalogChanged.emit(JSON.stringify({
                 ...catalog,
                 generation: 2
               }));
-              assert.strictEqual(storedServers(incompleteFirstVisit).servers.length, 1);
+              const dynamicallySeeded = storedServers(incompleteFirstVisit);
+              assert.strictEqual(dynamicallySeeded.servers.length, 1);
+              assert.strictEqual(dynamicallySeeded.servers[0].enabled, true);
               assert.strictEqual(incompleteFirstVisit.reloads.length, 1);
+              assert.strictEqual(
+                incompleteFirstVisit.sessionStorage.getItem(
+                  'QCopilots.mcpReloadedGenerationV1'
+                ),
+                '2'
+              );
+              incompleteFirstVisit.bridge.catalogChanged.emit(JSON.stringify({
+                ...stoppedCatalog,
+                generation: 2
+              }));
+              assert.strictEqual(
+                storedServers(incompleteFirstVisit).servers[0].enabled,
+                true
+              );
+              assert.strictEqual(incompleteFirstVisit.reloads.length, 1);
+
+              const incompleteAfterPageWrite = makeEnvironment(null, incompleteCatalog);
+              incompleteAfterPageWrite.localStorage.setItem(
+                'LlamaUi.config',
+                JSON.stringify({theme: 'system', routerDefault: {temperature: 0.5}})
+              );
+              assert.strictEqual(incompleteAfterPageWrite.reloads.length, 0);
+              incompleteAfterPageWrite.bridge.catalogChanged.emit(JSON.stringify({
+                ...catalog,
+                generation: 2
+              }));
+              const mergedAfterPageWrite = storedServers(incompleteAfterPageWrite);
+              assert.strictEqual(mergedAfterPageWrite.config.theme, 'system');
+              assert.deepStrictEqual(
+                mergedAfterPageWrite.config.routerDefault,
+                {temperature: 0.5}
+              );
+              assert.strictEqual(mergedAfterPageWrite.servers.length, 1);
+              assert.strictEqual(mergedAfterPageWrite.servers[0].enabled, true);
+              assert.strictEqual(incompleteAfterPageWrite.reloads.length, 1);
+              assert.strictEqual(
+                incompleteAfterPageWrite.sessionStorage.getItem(
+                  'QCopilots.mcpFirstVisitReloadedV1'
+                ),
+                '1'
+              );
+              assert.strictEqual(
+                incompleteAfterPageWrite.sessionStorage.getItem(
+                  'QCopilots.mcpReloadedGenerationV1'
+                ),
+                null
+              );
+              incompleteAfterPageWrite.bridge.catalogChanged.emit(JSON.stringify({
+                ...stoppedCatalog,
+                generation: 2
+              }));
+              assert.strictEqual(incompleteAfterPageWrite.reloads.length, 1);
 
               const unhandledRejections = [];
               const unhandledHandler = (reason) => unhandledRejections.push(reason);
@@ -1162,9 +1273,10 @@ class TestQCopilotsContainer(unittest.TestCase):
               process.off('unhandledRejection', unhandledHandler);
               assert.deepStrictEqual(unhandledRejections, []);
 
-              const iframe = makeEnvironment(initialConfig, catalog, {iframe: true});
+              const iframe = makeEnvironment(null, catalog, {iframe: true});
               assert.strictEqual(iframe.window.__qcopilotsNativeMcpInstalled, undefined);
               assert.strictEqual(iframe.window.__qcopilotsMcpBlockOnlyInstalled, true);
+              assert.strictEqual(iframe.localStorage.getItem('LlamaUi.config'), null);
               await assert.rejects(
                 iframe.window.fetch(virtualUrl),
                 /virtual host is unavailable/
@@ -1177,12 +1289,13 @@ class TestQCopilotsContainer(unittest.TestCase):
               await iframe.window.fetch('https://external.example/mcp');
               assert.strictEqual(iframe.originalFetchCalls.length, 1);
 
-              const redirected = makeEnvironment(initialConfig, catalog, {
+              const redirected = makeEnvironment(null, catalog, {
                 configuredOrigin: 'https://llama.example/',
                 locationOrigin: 'https://redirected.example/'
               });
               assert.strictEqual(redirected.window.__qcopilotsNativeMcpInstalled, undefined);
               assert.strictEqual(redirected.window.__qcopilotsMcpBlockOnlyInstalled, true);
+              assert.strictEqual(redirected.localStorage.getItem('LlamaUi.config'), null);
               await assert.rejects(
                 redirected.window.fetch(virtualUrl),
                 /virtual host is unavailable/
@@ -1191,11 +1304,12 @@ class TestQCopilotsContainer(unittest.TestCase):
               await redirected.window.fetch('https://external.example/mcp');
               assert.strictEqual(redirected.originalFetchCalls.length, 1);
 
-              const unconfigured = makeEnvironment(initialConfig, catalog, {
+              const unconfigured = makeEnvironment(null, catalog, {
                 withoutConfiguredOrigin: true
               });
               assert.strictEqual(unconfigured.window.__qcopilotsNativeMcpInstalled, undefined);
               assert.strictEqual(unconfigured.window.__qcopilotsMcpBlockOnlyInstalled, true);
+              assert.strictEqual(unconfigured.localStorage.getItem('LlamaUi.config'), null);
               await assert.rejects(
                 unconfigured.window.fetch(virtualUrl),
                 /virtual host is unavailable/

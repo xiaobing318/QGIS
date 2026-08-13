@@ -66,7 +66,7 @@
 
   const originalGetItem = Storage.prototype.getItem;
   const originalSetItem = Storage.prototype.setItem;
-  const firstVisitAtDocumentCreation = originalGetItem.call(localStorage, CONFIG_KEY) === null;
+  let firstVisitAtDocumentCreation = originalGetItem.call(localStorage, CONFIG_KEY) === null;
 
   let firstConfigWriteObserved = false;
   let catalogWaitExpired = false;
@@ -328,10 +328,12 @@
       return false;
     }
     const existing = originalGetItem.call(localStorage, CONFIG_KEY);
-    if (existing === null) {
+    const creatingConfig = existing === null;
+    if (creatingConfig
+        && (!currentCatalog.startupComplete || currentCatalog.services.length === 0)) {
       return false;
     }
-    const merged = mergeConfigValue(existing, currentCatalog);
+    const merged = mergeConfigValue(creatingConfig ? '{}' : existing, currentCatalog);
     if (!merged.ok) {
       disableAutoRegistrationForSession();
       return false;
@@ -342,7 +344,10 @@
     }
     originalSetItem.call(localStorage, CONFIG_KEY, merged.value);
     dispatchConfigChanged(existing, merged.value);
-    if (allowFirstVisitReload) {
+    if (creatingConfig) {
+      firstVisitAtDocumentCreation = false;
+    }
+    if (allowFirstVisitReload && !creatingConfig) {
       scheduleFirstVisitReload();
     }
     return true;
