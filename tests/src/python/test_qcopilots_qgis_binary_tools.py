@@ -190,7 +190,7 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
         )
         self.assertEqual(list_jobs_properties["limit"]["maximum"], 200)
 
-    def test_manifest_is_discoverable_but_not_in_default_startup_lists(self):
+    def test_manifest_is_discoverable_and_in_default_startup_lists(self):
         plugin_dir = PLUGINS_ROOT / "qcopilots_mcp_server_qgis_binary"
         manager_dir = PLUGINS_ROOT / "qcopilots_mcp_servers_manager"
         manifest = json.loads(
@@ -211,11 +211,11 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
             manifest["capabilities"],
             ["tools", "qgis-bridge", "qgis-binary"],
         )
-        self.assertNotIn(
+        self.assertIn(
             SERVICE_ID,
             manager_config["default_startup"]["service_ids"],
         )
-        self.assertNotIn(
+        self.assertIn(
             SERVICE_ID,
             manager_schema["properties"]["default_startup"]["properties"]
             ["service_ids"]["default"],
@@ -229,7 +229,7 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
         for source_name in ("config_store.py", "plugin.py"):
             source_path = manager_dir / source_name
             defaults = _top_level_literal(source_path, "DEFAULT_STARTUP_SERVICE_IDS")
-            self.assertNotIn(SERVICE_ID, defaults, source_name)
+            self.assertIn(SERVICE_ID, defaults, source_name)
 
 
 def _top_level_literal(path, name):

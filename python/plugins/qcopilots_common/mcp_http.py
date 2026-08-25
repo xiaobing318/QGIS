@@ -43,6 +43,7 @@ from qcopilots_common.constants import (
     SERVICE_DESCRIPTION_ENV,
     SERVICE_ICON_ENV,
     SERVICE_TITLE_ENV,
+    decode_cors_origins,
 )
 from qcopilots_common.logging import configure_logger
 
@@ -124,6 +125,21 @@ MAX_MCP_CLIENT_INFO_FIELD_LENGTH = 256
 DEFAULT_MCP_LIST_PAGE_SIZE = 0
 DEFAULT_MAX_SESSION_CONTEXTS = 256
 DEFAULT_SESSION_TTL_SECONDS = 3600.0
+CORS_ALLOWED_METHODS = ("GET", "POST", "DELETE")
+CORS_ALLOWED_HEADERS = (
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "Mcp-Session-Id",
+    "MCP-Protocol-Version",
+    "Last-Event-ID",
+)
+CORS_EXPOSED_HEADERS = ("Mcp-Session-Id", "WWW-Authenticate")
+CORS_PREFLIGHT_MAX_AGE_SECONDS = 600
+_CORS_ALLOWED_HEADER_NAMES = frozenset(
+    name.casefold() for name in CORS_ALLOWED_HEADERS
+)
+_HTTP_FIELD_NAME_PATTERN = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 
 class McpJsonRpcServer:
@@ -462,8 +478,19 @@ class McpHttpServer:
             if cors_origins is not None
             else _cors_origins_from_env()
         )
-        if "*" in self.cors_origins:
-            raise ValueError("QCopilots MCP services do not allow wildcard CORS.")
+        for origin in self.cors_origins:
+            if not isinstance(origin, str) or not origin or origin != origin.strip():
+                raise ValueError(
+                    "QCopilots MCP services require non-empty, trimmed CORS origins."
+                )
+            if origin == "*":
+                raise ValueError(
+                    "QCopilots MCP services do not allow wildcard CORS."
+                )
+            if origin == "null":
+                raise ValueError("QCopilots MCP services do not allow null CORS.")
+            if "\r" in origin or "\n" in origin:
+                raise ValueError("QCopilots MCP services reject invalid CORS origins.")
         self._auth_token = auth_token or ""
         self.logger = logger or logging.getLogger(name)
         self.rpc_server = McpJsonRpcServer(
@@ -493,16 +520,58 @@ class McpHttpServer:
 
         class Handler(BaseHTTPRequestHandler):
             server_version = "QCopilotsMCP/0.1"
+            _cors_origin: str | None = None
 
             def log_message(self, fmt: str, *args: Any) -> None:
                 controller.logger.info(fmt, *args)
 
             def do_OPTIONS(self) -> None:
-                if not self._request_allowed():
+                if not self.headers.get_all("Origin"):
+                    if not self._request_allowed():
+                        return
+                    self._send_empty(
+                        HTTPStatus.METHOD_NOT_ALLOWED,
+                        {"Allow": ", ".join(CORS_ALLOWED_METHODS)},
+                    )
+                    return
+
+                if not self._request_host_allowed():
+                    return
+                if not self._request_origin_allowed(require_origin=True):
+                    return
+                if self.path != controller.path:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+                    return
+
+                requested_methods = (
+                    self.headers.get_all("Access-Control-Request-Method") or []
+                )
+                if len(requested_methods) != 1:
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": "cors_method_required"},
+                    )
+                    return
+                if requested_methods[0].strip() not in CORS_ALLOWED_METHODS:
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.METHOD_NOT_ALLOWED,
+                        {"error": "cors_method_not_allowed"},
+                        {"Allow": ", ".join(CORS_ALLOWED_METHODS)},
+                    )
+                    return
+
+                if not self._cors_request_headers_allowed():
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"error": "cors_headers_not_allowed"},
+                    )
                     return
                 self._send_empty(
-                    HTTPStatus.METHOD_NOT_ALLOWED,
-                    {"Allow": "GET, POST, DELETE"},
+                    HTTPStatus.NO_CONTENT,
+                    cors_preflight=True,
                 )
 
             def do_DELETE(self) -> None:
@@ -624,26 +693,9 @@ class McpHttpServer:
                     )
 
             def _request_allowed(self) -> bool:
-                host_headers = self.headers.get_all("Host") or []
-                expected_host = (
-                    f"{controller.host}:{int(self.server.server_address[1])}"
-                )
-                if len(host_headers) != 1 or not hmac.compare_digest(
-                    host_headers[0], expected_host
-                ):
-                    self.close_connection = True
-                    self._send_json(
-                        HTTPStatus.FORBIDDEN,
-                        {"error": "host_not_allowed"},
-                    )
+                if not self._request_host_allowed():
                     return False
-
-                if self.headers.get_all("Origin"):
-                    self.close_connection = True
-                    self._send_json(
-                        HTTPStatus.FORBIDDEN,
-                        {"error": "origin_not_allowed"},
-                    )
+                if not self._request_origin_allowed():
                     return False
 
                 if not self._is_protected_path():
@@ -664,6 +716,64 @@ class McpHttpServer:
                 )
                 return False
 
+            def _request_host_allowed(self) -> bool:
+                host_headers = self.headers.get_all("Host") or []
+                expected_host = (
+                    f"{controller.host}:{int(self.server.server_address[1])}"
+                )
+                if len(host_headers) != 1 or not hmac.compare_digest(
+                    host_headers[0], expected_host
+                ):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"error": "host_not_allowed"},
+                    )
+                    return False
+                return True
+
+            def _request_origin_allowed(self, require_origin: bool = False) -> bool:
+                origin_headers = self.headers.get_all("Origin") or []
+                if not origin_headers:
+                    if not require_origin:
+                        return True
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"error": "origin_required"},
+                    )
+                    return False
+
+                origin = origin_headers[0] if len(origin_headers) == 1 else ""
+                if origin != "null" and any(
+                    origin == configured for configured in controller.cors_origins
+                ):
+                    self._cors_origin = origin
+                    return True
+
+                self.close_connection = True
+                self._send_json(
+                    HTTPStatus.FORBIDDEN,
+                    {"error": "origin_not_allowed"},
+                )
+                return False
+
+            def _cors_request_headers_allowed(self) -> bool:
+                requested_header_lines = (
+                    self.headers.get_all("Access-Control-Request-Headers") or []
+                )
+                requested_headers: list[str] = []
+                for line in requested_header_lines:
+                    for value in line.split(","):
+                        name = value.strip()
+                        if not name or not _HTTP_FIELD_NAME_PATTERN.fullmatch(name):
+                            return False
+                        requested_headers.append(name)
+                return all(
+                    name.casefold() in _CORS_ALLOWED_HEADER_NAMES
+                    for name in requested_headers
+                )
+
             def _is_protected_path(self) -> bool:
                 return (
                     self.path == controller.path
@@ -674,9 +784,14 @@ class McpHttpServer:
                 self,
                 status: HTTPStatus,
                 extra_headers: Mapping[str, str] | None = None,
+                *,
+                cors_preflight: bool = False,
             ) -> None:
                 self.send_response(status)
-                for name, value in (extra_headers or {}).items():
+                for name, value in self._response_headers(
+                    extra_headers,
+                    cors_preflight=cors_preflight,
+                ).items():
                     self.send_header(name, value)
                 if not (
                     100 <= int(status) < 200
@@ -699,7 +814,7 @@ class McpHttpServer:
                     allow_nan=False,
                 ).encode("utf-8")
                 self.send_response(status)
-                for name, value in (extra_headers or {}).items():
+                for name, value in self._response_headers(extra_headers).items():
                     self.send_header(name, value)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(data)))
@@ -707,6 +822,34 @@ class McpHttpServer:
                     self.send_header("Connection", "close")
                 self.end_headers()
                 self.wfile.write(data)
+
+            def _response_headers(
+                self,
+                extra_headers: Mapping[str, str] | None = None,
+                *,
+                cors_preflight: bool = False,
+            ) -> dict[str, str]:
+                headers = dict(extra_headers or {})
+                if self._cors_origin is None:
+                    return headers
+
+                headers["Access-Control-Allow-Origin"] = self._cors_origin
+                headers["Vary"] = "Origin"
+                if cors_preflight:
+                    headers["Access-Control-Allow-Methods"] = ", ".join(
+                        CORS_ALLOWED_METHODS
+                    )
+                    headers["Access-Control-Allow-Headers"] = ", ".join(
+                        CORS_ALLOWED_HEADERS
+                    )
+                    headers["Access-Control-Max-Age"] = str(
+                        CORS_PREFLIGHT_MAX_AGE_SECONDS
+                    )
+                else:
+                    headers["Access-Control-Expose-Headers"] = ", ".join(
+                        CORS_EXPOSED_HEADERS
+                    )
+                return headers
 
             def _request_session_id(self, payload: Any) -> str | None:
                 session_id = self.headers.get("mcp-session-id")
@@ -1410,5 +1553,5 @@ def _cors_origins_from_env() -> list[str]:
     configured = os.environ.get(CORS_ORIGINS_ENV)
     if configured is None:
         return list(DEFAULT_CORS_ORIGINS)
-    origins = [item.strip() for item in configured.split(os.pathsep) if item.strip()]
+    origins = decode_cors_origins(configured)
     return origins or list(DEFAULT_CORS_ORIGINS)

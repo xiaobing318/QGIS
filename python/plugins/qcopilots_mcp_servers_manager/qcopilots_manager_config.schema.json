@@ -23,7 +23,7 @@
         "service_ids": {
           "type": "array",
           "uniqueItems": true,
-          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster、qcopilots.mcp_server_qgis_binary。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。QGIS Binary 默认不在列表中，用户可在管理器页面手动启停。",
+          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster、qcopilots.mcp_server_qgis_binary。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。新配置默认启动包括 QGIS Binary 在内的六个服务，已有用户配置中的显式列表保持优先。",
           "items": {
             "type": "string",
             "pattern": "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9_.-]+$",
@@ -42,7 +42,8 @@
             "qcopilots.mcp_server_interactive_tools",
             "qcopilots.mcp_server_processing_vector",
             "qcopilots.mcp_server_processing_raster",
-            "qcopilots.mcp_server_skills"
+            "qcopilots.mcp_server_skills",
+            "qcopilots.mcp_server_qgis_binary"
           ]
         }
       }
@@ -77,6 +78,41 @@
           "maxItems": 0,
           "description": "字段作用是声明浏览器跨域访问来源。唯一候选值为空数组 []，表示不开放 CORS；加入任何 origin 或 wildcard '*' 都会扩大暴露面，因此不同的非空列表会被拒绝。",
           "default": []
+        }
+      }
+    },
+    "browser_access": {
+      "type": "object",
+      "description": "字段作用是允许配置了 QCopilots URL 的浏览器页面直接访问六个本机 MCP 端点。候选子字段为 enabled、origin_source、auth_token 和 port_conflict_policy。不同取值会影响浏览器可访问性、认证凭据和端口冲突结果。浏览器仍需通过 Chrome 本地网络访问授权，并使用保存在当前用户配置中的共享 Bearer Token。该功能只允许精确的配置 URL Origin 和固定端口失败策略，不允许通配来源或端口漂移。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "字段作用是启用或关闭浏览器跨域直连。候选值为 true 或 false。true 会在 Token 已成功保存且 QCopilots URL 有效时允许该精确 Origin，false 会保持 CORS 关闭但不影响 QGIS 原生桥接。"
+        },
+        "origin_source": {
+          "type": "string",
+          "const": "configured_qcopilots_url",
+          "enum": ["configured_qcopilots_url"],
+          "default": "configured_qcopilots_url",
+          "description": "字段作用是指定浏览器 Origin 的唯一来源。唯一候选值为 configured_qcopilots_url，表示从 QGIS 的 Configure QCopilots URL 设置提取 scheme、host 和非默认端口，路径、查询和片段不会进入 CORS Origin。"
+        },
+        "auth_token": {
+          "type": "string",
+          "anyOf": [
+            {"const": ""},
+            {"pattern": "^[A-Za-z0-9_-]{32,256}$"}
+          ],
+          "default": "",
+          "description": "字段作用是保存六个 MCP 服务共用的固定 Bearer Token。候选值为空字符串或 32 至 256 个 URL-safe 字符。模板中的空字符串会在首次启动时自动替换为高熵 Token 并原子保存到用户配置，明文值应当作为敏感凭据保护。"
+        },
+        "port_conflict_policy": {
+          "type": "string",
+          "const": "fail",
+          "enum": ["fail"],
+          "default": "fail",
+          "description": "字段作用是决定固定端口被占用时的启动行为。唯一候选值为 fail，该值会在 48211 至 48216 中对应端口不可用时让该服务明确启动失败，不自动改用其它端口。"
         }
       }
     }

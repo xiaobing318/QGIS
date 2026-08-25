@@ -18,7 +18,7 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from qgis.PyQt.QtCore import QCoreApplication, QObject, QSize, QThread, QTimer, Qt, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QColor, QIcon, QPainter
@@ -30,19 +30,24 @@ from qgis.PyQt.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QMessageBox,
     QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
+from qgis.core import QgsSettings
 
 from qcopilots_common.bridge import QgisBridgeController
 from qcopilots_common.constants import (
     BRIDGE_URL_ENV,
+    CORS_ORIGINS_ENV,
     DEFAULT_BRIDGE_PORT,
     DEFAULT_HOST,
     QGIS_BRIDGE_AUTH_TOKEN_ENV,
+    encode_cors_origins,
 )
 from qcopilots_common.discovery import discover_service_manifests
 from qcopilots_common.logging import configure_logger, qgis_log, service_log_file
@@ -51,7 +56,11 @@ from qcopilots_common.menu import add_qcopilots_menu_action, remove_qcopilots_me
 from qcopilots_common.process_controller import ProcessController
 from qcopilots_common.service_id import is_safe_service_id
 
-from .config_store import ConfigSaveResult, ManagerConfigStore
+from .config_store import (
+    ConfigSaveResult,
+    ManagerConfigStore,
+    is_valid_browser_auth_token,
+)
 
 
 TOGGLE_THREAD_WAIT_TIMEOUT_MS = 35000
@@ -73,6 +82,7 @@ DEFAULT_STARTUP_SERVICE_IDS = [
     "qcopilots.mcp_server_processing_vector",
     "qcopilots.mcp_server_processing_raster",
     "qcopilots.mcp_server_skills",
+    "qcopilots.mcp_server_qgis_binary",
 ]
 DEFAULT_SERVICE_NETWORK = {
     "enabled": True,
@@ -86,12 +96,26 @@ FALLBACK_SERVICE_NETWORK = {
     "advertised_host": DEFAULT_HOST,
     "cors_origins": [],
 }
+DEFAULT_BROWSER_ACCESS = {
+    "enabled": True,
+    "origin_source": "configured_qcopilots_url",
+    "auth_token": "",
+    "port_conflict_policy": "fail",
+}
+FALLBACK_BROWSER_ACCESS = {
+    "enabled": False,
+    "origin_source": "configured_qcopilots_url",
+    "auth_token": "",
+    "port_conflict_policy": "fail",
+}
+DEFAULT_QCOPILOTS_URL = "http://127.0.0.1:8282"
 DEFAULT_MANAGER_CONFIG = {
     "default_startup": {
         "enabled": True,
         "service_ids": DEFAULT_STARTUP_SERVICE_IDS,
     },
     "service_network": DEFAULT_SERVICE_NETWORK,
+    "browser_access": DEFAULT_BROWSER_ACCESS,
 }
 
 
@@ -208,6 +232,7 @@ class _DefaultStartupWorker(QObject):
                 extra_env=job["extra_env"],
                 startup_timeout_seconds=SERVICE_STARTUP_TIMEOUT_SECONDS,
                 auth_token=job["auth_token"],
+                port_conflict_policy=job.get("port_conflict_policy", "fail"),
                 cancel_event=self._cancelled,
             )
         except Exception as err:
@@ -303,7 +328,12 @@ class QCopilotsMCPServersManagerPlugin:
             Path(__file__).with_name("qcopilots_manager_config.json"),
             self.logger,
         )
-        self._manager_config = self._config_store.snapshot()
+        self._manager_config: dict[str, Any] = {}
+        self._browser_auth_token = ""
+        self._browser_access_persisted = False
+        self._browser_access_error = ""
+        self._browser_origin = ""
+        self._initialize_browser_access()
         self._event_relay = _ManagerEventRelay(self)
 
     def initGui(self):
@@ -559,7 +589,7 @@ class QCopilotsMCPServersManagerPlugin:
         with self._state_lock:
             if manifest.service_id in self._starting_service_ids:
                 return None
-            auth_token = secrets.token_urlsafe(32)
+            auth_token = self.browser_auth_token()
             self._starting_service_ids.add(manifest.service_id)
             self._catalog_states[manifest.service_id] = "starting"
             self._catalog_statuses.pop(manifest.service_id, None)
@@ -605,7 +635,7 @@ class QCopilotsMCPServersManagerPlugin:
             return current
 
         if auth_token is None:
-            auth_token = secrets.token_urlsafe(32)
+            auth_token = self.browser_auth_token()
             self._emit_manager_event("service_starting", manifest)
 
         extra_env = self._service_env(manifest)
@@ -617,6 +647,10 @@ class QCopilotsMCPServersManagerPlugin:
                 extra_env=extra_env,
                 startup_timeout_seconds=SERVICE_STARTUP_TIMEOUT_SECONDS,
                 auth_token=auth_token,
+                port_conflict_policy=self._browser_access_config().get(
+                    "port_conflict_policy",
+                    "fail",
+                ),
                 cancel_event=operation_cancel_event,
             )
         except Exception as err:
@@ -683,7 +717,15 @@ class QCopilotsMCPServersManagerPlugin:
     def _discover_services(self, include_disabled: bool = False) -> list[ServiceManifest]:
         manifests = discover_service_manifests(self.plugins_root, include_disabled=include_disabled)
         service_network = self._service_network_config()
-        return [_network_overrides_manifest(manifest, service_network) for manifest in manifests]
+        cors_origins = self._browser_cors_origins()
+        return [
+            _network_overrides_manifest(
+                manifest,
+                service_network,
+                cors_origins=cors_origins,
+            )
+            for manifest in manifests
+        ]
 
     def manager_config(self) -> dict[str, Any]:
         return _copy_manager_config(self._manager_config)
@@ -710,8 +752,112 @@ class QCopilotsMCPServersManagerPlugin:
     def _service_network_config(self) -> dict[str, Any]:
         return self._manager_config.get("service_network", _fallback_service_network_config())
 
+    def _browser_access_config(self) -> dict[str, Any]:
+        manager_config = getattr(self, "_manager_config", {})
+        return manager_config.get(
+            "browser_access",
+            _fallback_browser_access_config(),
+        )
+
+    def _initialize_browser_access(self) -> None:
+        ensure_token = getattr(self._config_store, "ensure_browser_auth_token", None)
+        result = ensure_token() if ensure_token else None
+        self._manager_config = self._config_store.snapshot()
+        configured = self._browser_access_config()
+        configured_token = configured.get("auth_token", "")
+        if result is None:
+            persisted = is_valid_browser_auth_token(configured_token)
+            error = ""
+        else:
+            persisted = bool(result.saved and is_valid_browser_auth_token(configured_token))
+            error = result.error
+
+        self._browser_access_persisted = persisted
+        self._browser_access_error = error
+        self._browser_auth_token = (
+            configured_token if persisted else secrets.token_urlsafe(32)
+        )
+        self._browser_origin = _configured_qcopilots_origin()
+        if not persisted:
+            self.logger.warning(
+                "QCopilots browser access is disabled because its shared token could not be persisted"
+            )
+        elif configured.get("enabled", True) and not self._browser_origin:
+            self.logger.warning(
+                "QCopilots browser access is disabled because the configured QCopilots URL has no valid HTTP origin"
+            )
+
+    def browser_auth_token(self) -> str:
+        token = getattr(self, "_browser_auth_token", "")
+        if is_valid_browser_auth_token(token):
+            return token
+        token = secrets.token_urlsafe(32)
+        self._browser_auth_token = token
+        self._browser_access_persisted = False
+        return token
+
+    def browser_access_snapshot(self) -> dict[str, Any]:
+        configured = self._browser_access_config()
+        enabled = bool(configured.get("enabled", True))
+        auth_token = self.browser_auth_token()
+        available = bool(
+            enabled
+            and getattr(self, "_browser_access_persisted", False)
+            and getattr(self, "_browser_origin", "")
+            and is_valid_browser_auth_token(auth_token)
+        )
+        return {
+            "enabled": enabled,
+            "available": available,
+            "origin": getattr(self, "_browser_origin", ""),
+            "auth_token": auth_token if available else "",
+            "error": getattr(self, "_browser_access_error", ""),
+            "port_conflict_policy": configured.get("port_conflict_policy", "fail"),
+        }
+
+    def _browser_cors_origins(self) -> list[str]:
+        snapshot = self.browser_access_snapshot()
+        return [snapshot["origin"]] if snapshot["available"] else []
+
+    def regenerate_browser_auth_token(self) -> ConfigSaveResult:
+        """Persist a new shared token before any services are restarted."""
+
+        state_lock = getattr(self, "_state_lock", threading.RLock())
+        with state_lock:
+            if getattr(self, "_starting_service_ids", set()):
+                return ConfigSaveResult(
+                    changed=False,
+                    saved=False,
+                    dirty=bool(getattr(self._config_store, "dirty", False)),
+                    error=self.tr(
+                        "Wait for all MCP services to finish starting before regenerating the Token."
+                    ),
+                )
+        result = self._config_store.regenerate_browser_auth_token()
+        self._manager_config = self._config_store.snapshot()
+        configured_token = self._browser_access_config().get("auth_token", "")
+        if result.saved and is_valid_browser_auth_token(configured_token):
+            self._browser_auth_token = configured_token
+            self._browser_access_persisted = True
+            self._browser_access_error = ""
+        else:
+            self._browser_access_error = result.error
+        return result
+
+    def running_service_manifests(self) -> list[ServiceManifest]:
+        """Return manifests for services owned and running by this manager."""
+
+        running = []
+        for manifest in self._owned_manifest_snapshot():
+            status = _safe_controller_status(self.controller, manifest)
+            if _status_is_owned_and_running(status):
+                running.append(manifest)
+        return running
+
     def _service_env(self, manifest: ServiceManifest) -> dict[str, str]:
-        env = {}
+        env = {
+            CORS_ORIGINS_ENV: encode_cors_origins(manifest.cors_origins),
+        }
         if _uses_qgis_bridge(manifest):
             env[BRIDGE_URL_ENV] = self.bridge.url
             env[QGIS_BRIDGE_AUTH_TOKEN_ENV] = self._bridge_auth_token
@@ -746,7 +892,7 @@ class QCopilotsMCPServersManagerPlugin:
         for manifest in manifests:
             if manifest.service_id not in startup_ids:
                 continue
-            auth_token = secrets.token_urlsafe(32)
+            auth_token = self.browser_auth_token()
             try:
                 extra_env = self._service_env(manifest)
             except Exception as err:
@@ -761,6 +907,10 @@ class QCopilotsMCPServersManagerPlugin:
                     "auth_token": auth_token,
                     "bridge_url": extra_env.get(BRIDGE_URL_ENV),
                     "extra_env": extra_env,
+                    "port_conflict_policy": self._browser_access_config().get(
+                        "port_conflict_policy",
+                        "fail",
+                    ),
                 }
             )
 
@@ -1062,6 +1212,11 @@ def _controller_start(
     cancel_event: threading.Event | None = None,
     **kwargs,
 ):
+    if "port_conflict_policy" in kwargs and not _callable_accepts_keyword(
+        controller.start,
+        "port_conflict_policy",
+    ):
+        kwargs.pop("port_conflict_policy")
     if cancel_event is not None and _callable_accepts_keyword(
         controller.start,
         "cancel_event",
@@ -1268,6 +1423,7 @@ def _default_manager_config() -> dict[str, Any]:
             "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),
         },
         "service_network": _default_service_network_config(),
+        "browser_access": _default_browser_access_config(),
     }
 
 
@@ -1278,6 +1434,7 @@ def _fallback_manager_config() -> dict[str, Any]:
             "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),
         },
         "service_network": _fallback_service_network_config(),
+        "browser_access": _fallback_browser_access_config(),
     }
 
 
@@ -1299,9 +1456,18 @@ def _fallback_service_network_config() -> dict[str, Any]:
     }
 
 
+def _default_browser_access_config() -> dict[str, Any]:
+    return dict(DEFAULT_BROWSER_ACCESS)
+
+
+def _fallback_browser_access_config() -> dict[str, Any]:
+    return dict(FALLBACK_BROWSER_ACCESS)
+
+
 def _copy_manager_config(manager_config: dict[str, Any]) -> dict[str, Any]:
     default_startup = manager_config.get("default_startup", {})
     service_network = manager_config.get("service_network", _fallback_service_network_config())
+    browser_access = manager_config.get("browser_access", _fallback_browser_access_config())
     return {
         "default_startup": {
             "enabled": default_startup.get("enabled", DEFAULT_MANAGER_CONFIG["default_startup"]["enabled"]),
@@ -1322,6 +1488,21 @@ def _copy_manager_config(manager_config: dict[str, Any]) -> dict[str, Any]:
             ),
             "cors_origins": list(
                 service_network.get("cors_origins", DEFAULT_SERVICE_NETWORK["cors_origins"])
+            ),
+        },
+        "browser_access": {
+            "enabled": browser_access.get(
+                "enabled",
+                FALLBACK_BROWSER_ACCESS["enabled"],
+            ),
+            "origin_source": browser_access.get(
+                "origin_source",
+                FALLBACK_BROWSER_ACCESS["origin_source"],
+            ),
+            "auth_token": browser_access.get("auth_token", ""),
+            "port_conflict_policy": browser_access.get(
+                "port_conflict_policy",
+                FALLBACK_BROWSER_ACCESS["port_conflict_policy"],
             ),
         },
     }
@@ -1346,6 +1527,7 @@ def _normalize_manager_config(data: dict[str, Any], logger=None) -> dict[str, An
             "service_ids": _startup_service_ids({"default_startup": default_startup}, logger),
         },
         "service_network": _normalize_service_network_config(data.get("service_network"), logger),
+        "browser_access": _normalize_browser_access_config(data.get("browser_access"), logger),
     }
 
 
@@ -1521,13 +1703,140 @@ def _service_network_cors_origins(value: Any, fallback: list[str] | tuple[str, .
     return []
 
 
+def _normalize_browser_access_config(value: Any, logger=None) -> dict[str, Any]:
+    if value is None:
+        _warn_manager_config(
+            logger,
+            "QCopilots manager config is missing browser_access; using disabled fallback",
+        )
+        return _fallback_browser_access_config()
+    if not isinstance(value, dict):
+        _warn_manager_config(
+            logger,
+            "Ignoring QCopilots manager browser_access because it is not an object",
+        )
+        return _fallback_browser_access_config()
+
+    enabled = value.get("enabled", DEFAULT_BROWSER_ACCESS["enabled"])
+    if not isinstance(enabled, bool):
+        _warn_manager_config(
+            logger,
+            "Ignoring QCopilots manager browser_access.enabled because it is not a boolean",
+        )
+        enabled = FALLBACK_BROWSER_ACCESS["enabled"]
+
+    origin_source = value.get(
+        "origin_source",
+        DEFAULT_BROWSER_ACCESS["origin_source"],
+    )
+    if origin_source != DEFAULT_BROWSER_ACCESS["origin_source"]:
+        _warn_manager_config(
+            logger,
+            "Ignoring invalid QCopilots manager browser_access.origin_source",
+        )
+        origin_source = FALLBACK_BROWSER_ACCESS["origin_source"]
+
+    auth_token = value.get("auth_token", "")
+    if auth_token != "" and not is_valid_browser_auth_token(auth_token):
+        _warn_manager_config(
+            logger,
+            "Ignoring invalid QCopilots manager browser_access.auth_token",
+        )
+        auth_token = ""
+
+    port_conflict_policy = value.get(
+        "port_conflict_policy",
+        DEFAULT_BROWSER_ACCESS["port_conflict_policy"],
+    )
+    if port_conflict_policy != "fail":
+        _warn_manager_config(
+            logger,
+            "Ignoring invalid QCopilots manager browser_access.port_conflict_policy",
+        )
+        port_conflict_policy = "fail"
+
+    return {
+        "enabled": enabled,
+        "origin_source": origin_source,
+        "auth_token": auth_token,
+        "port_conflict_policy": port_conflict_policy,
+    }
+
+
+def _browser_origin_from_url(value: Any) -> str:
+    """Serialize an HTTP URL to the Origin form used by browsers."""
+
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if not text or any(ord(character) <= 0x20 for character in text):
+        return ""
+    try:
+        parsed = urlsplit(text)
+        scheme = parsed.scheme.lower()
+        hostname = parsed.hostname
+        port = parsed.port
+    except (UnicodeError, ValueError):
+        return ""
+    if scheme not in ("http", "https") or not hostname:
+        return ""
+    if parsed.username is not None or parsed.password is not None:
+        return ""
+    try:
+        ascii_hostname = hostname.encode("idna").decode("ascii").lower()
+    except (UnicodeError, ValueError):
+        return ""
+    if not ascii_hostname or any(
+        character in ascii_hostname for character in (" ", "/", "\\", "#", "?", "@", "%")
+    ):
+        return ""
+    if ":" in ascii_hostname:
+        try:
+            ipaddress.IPv6Address(ascii_hostname)
+        except ValueError:
+            return ""
+        serialized_host = f"[{ascii_hostname}]"
+    else:
+        serialized_host = ascii_hostname
+    default_port = 80 if scheme == "http" else 443
+    if port is not None and port != default_port:
+        serialized_host = f"{serialized_host}:{port}"
+    return f"{scheme}://{serialized_host}"
+
+
+def _configured_qcopilots_origin(settings=None) -> str:
+    settings = settings or QgsSettings()
+    try:
+        try:
+            configured_url = settings.value(
+                "QCopilots/serverUrl",
+                DEFAULT_QCOPILOTS_URL,
+                section=QgsSettings.Section.Plugins,
+            )
+        except TypeError:
+            configured_url = settings.value(
+                "QCopilots/serverUrl",
+                DEFAULT_QCOPILOTS_URL,
+                QgsSettings.Section.Plugins,
+            )
+    except Exception:
+        return ""
+    return _browser_origin_from_url(configured_url)
+
+
 def _network_overrides_manifest(
     manifest: ServiceManifest,
     service_network: dict[str, Any],
+    *,
+    cors_origins: list[str] | tuple[str, ...] = (),
 ) -> ServiceManifest:
     host = DEFAULT_HOST
     advertised_host = DEFAULT_HOST
-    cors_origins = []
+    safe_cors_origins = [
+        origin
+        for origin in cors_origins
+        if isinstance(origin, str) and _browser_origin_from_url(origin) == origin
+    ]
     return replace(
         manifest,
         transport=replace(
@@ -1535,7 +1844,7 @@ def _network_overrides_manifest(
             host=host,
             advertised_host=advertised_host,
         ),
-        cors_origins=list(cors_origins),
+        cors_origins=safe_cors_origins[:1],
     )
 
 
@@ -1554,6 +1863,227 @@ def _order_service_manifests(
     )
 
 
+class BrowserAccessRestartWorker(QObject):
+    """Restart the services which were running when the token was rotated."""
+
+    finished = pyqtSignal(object)
+
+    def __init__(
+        self,
+        plugin: QCopilotsMCPServersManagerPlugin,
+        manifests: list[ServiceManifest],
+    ):
+        super().__init__()
+        self.plugin = plugin
+        self.manifests = list(manifests)
+        self._cancelled = threading.Event()
+
+    def cancel(self):
+        self._cancelled.set()
+
+    def run(self):
+        failures = []
+        restartable = []
+        for manifest in self.manifests:
+            if self._cancelled.is_set():
+                break
+            try:
+                status = self.plugin.stop_service(
+                    manifest,
+                    cancel_event=self._cancelled,
+                )
+            except Exception as err:
+                failures.append((manifest.service_id, str(err)))
+                continue
+            if status is not None and not getattr(status, "running", False):
+                restartable.append(manifest)
+
+        for manifest in restartable:
+            if self._cancelled.is_set():
+                break
+            try:
+                self.plugin._emit_manager_event("service_starting", manifest)
+                status = self.plugin.start_service(
+                    manifest,
+                    auth_token=self.plugin.browser_auth_token(),
+                    cancel_event=self._cancelled,
+                )
+                if not _service_start_succeeded(status):
+                    failures.append(
+                        (manifest.service_id, _service_start_failure_detail(status))
+                    )
+            except Exception as err:
+                failures.append((manifest.service_id, str(err)))
+        self.finished.emit(failures)
+
+
+class BrowserAccessPanel(QFrame):
+    def __init__(
+        self,
+        plugin: QCopilotsMCPServersManagerPlugin,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.plugin = plugin
+        self.restart_thread = None
+        self.restart_worker = None
+        self.setObjectName("qcopilots_browser_access")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(7)
+
+        title = QLabel(self.plugin.tr("Chrome manual connection"), self)
+        title.setObjectName("qcopilots_browser_access_title")
+        layout.addWidget(title)
+
+        origin_row = QHBoxLayout()
+        origin_row.addWidget(QLabel(self.plugin.tr("Allowed Origin"), self))
+        self.origin_label = QLabel(self)
+        self.origin_label.setObjectName("qcopilots_browser_origin")
+        self.origin_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        origin_row.addWidget(self.origin_label, 1)
+        layout.addLayout(origin_row)
+
+        token_row = QHBoxLayout()
+        token_row.addWidget(QLabel(self.plugin.tr("Shared Bearer Token"), self))
+        self.token_edit = QLineEdit(self)
+        self.token_edit.setObjectName("qcopilots_browser_auth_token")
+        self.token_edit.setReadOnly(True)
+        self.token_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        token_row.addWidget(self.token_edit, 1)
+
+        self.copy_button = QToolButton(self)
+        self.copy_button.setObjectName("qcopilots_browser_token_copy_button")
+        self.copy_button.setText(self.plugin.tr("Copy Token"))
+        self.copy_button.clicked.connect(self.copy_token)
+        token_row.addWidget(self.copy_button)
+
+        self.regenerate_button = QToolButton(self)
+        self.regenerate_button.setObjectName("qcopilots_browser_token_regenerate_button")
+        self.regenerate_button.setText(self.plugin.tr("Regenerate Token"))
+        self.regenerate_button.clicked.connect(self.regenerate_token)
+        token_row.addWidget(self.regenerate_button)
+        layout.addLayout(token_row)
+
+        self.status_label = QLabel(self)
+        self.status_label.setObjectName("qcopilots_browser_access_status")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+        self.update_display()
+
+    def update_display(self):
+        snapshot = self.plugin.browser_access_snapshot()
+        origin = snapshot["origin"] or self.plugin.tr("Invalid configured QCopilots URL")
+        self.origin_label.setText(origin)
+        self.token_edit.setText(snapshot["auth_token"])
+        self.copy_button.setEnabled(snapshot["available"])
+        self.regenerate_button.setEnabled(self.restart_thread is None)
+        if snapshot["available"]:
+            self.status_label.setText(
+                self.plugin.tr(
+                    "Use this Token as Authorization for all six 127.0.0.1 MCP endpoints. "
+                    "Keep Use llama-server proxy turned off. The Token is stored as plaintext "
+                    "in the current user configuration. Chrome may ask for Local Network Access permission."
+                )
+            )
+        else:
+            detail = snapshot["error"] or self.plugin.tr(
+                "Browser access is disabled until the Token can be saved and the configured URL is valid."
+            )
+            self.status_label.setText(detail)
+
+    def copy_token(self):
+        snapshot = self.plugin.browser_access_snapshot()
+        if not snapshot["available"]:
+            return
+        QApplication.clipboard().setText(snapshot["auth_token"])
+        self.status_label.setText(self.plugin.tr("Shared Bearer Token copied."))
+
+    def regenerate_token(self):
+        answer = QMessageBox.question(
+            self,
+            self.plugin.tr("Regenerate shared Token"),
+            self.plugin.tr(
+                "Regenerating the Token invalidates the current Chrome configuration and restarts all running MCP services. Continue?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        result = self.plugin.regenerate_browser_auth_token()
+        self.update_display()
+        if not result.saved:
+            self.status_label.setText(
+                result.error or self.plugin.tr("The new Token could not be saved.")
+            )
+            return
+
+        manifests = self.plugin.running_service_manifests()
+        if not manifests:
+            self.status_label.setText(
+                self.plugin.tr("Shared Bearer Token regenerated. No running services needed a restart.")
+            )
+            return
+        self._start_restart(manifests)
+
+    def _start_restart(self, manifests: list[ServiceManifest]):
+        self.regenerate_button.setEnabled(False)
+        self.copy_button.setEnabled(False)
+        self.status_label.setText(self.plugin.tr("Restarting running MCP services..."))
+        thread = QThread(self)
+        worker = BrowserAccessRestartWorker(self.plugin, manifests)
+        self.restart_thread = thread
+        self.restart_worker = worker
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._finish_restart)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_restart)
+        thread.start()
+
+    def _finish_restart(self, failures):
+        if failures:
+            service_ids = ", ".join(service_id for service_id, _detail in failures)
+            self.status_label.setText(
+                self.plugin.tr("Token saved, but these services failed to restart: {0}").format(
+                    service_ids
+                )
+            )
+        else:
+            self.status_label.setText(
+                self.plugin.tr("Shared Bearer Token regenerated and running services restarted.")
+            )
+
+    def _clear_restart(self):
+        self.restart_thread = None
+        self.restart_worker = None
+        snapshot = self.plugin.browser_access_snapshot()
+        self.token_edit.setText(snapshot["auth_token"])
+        self.copy_button.setEnabled(snapshot["available"])
+        self.regenerate_button.setEnabled(True)
+
+    def cleanup_restart_thread(self, wait: bool = False) -> bool:
+        thread = self.restart_thread
+        worker = self.restart_worker
+        if not thread:
+            return True
+        if hasattr(thread, "isRunning") and thread.isRunning():
+            if not wait:
+                return False
+            if worker and hasattr(worker, "cancel"):
+                worker.cancel()
+            thread.quit()
+            if not thread.wait(TOGGLE_THREAD_WAIT_TIMEOUT_MS):
+                return False
+        self.restart_thread = None
+        self.restart_worker = None
+        return True
+
+
 class ManagerDialog(QDialog):
     def __init__(self, parent, plugin: QCopilotsMCPServersManagerPlugin):
         super().__init__(parent)
@@ -1565,6 +2095,9 @@ class ManagerDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 14, 14, 12)
         layout.setSpacing(12)
+
+        self.browser_access_panel = BrowserAccessPanel(self.plugin, self)
+        layout.addWidget(self.browser_access_panel)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setObjectName("qcopilots_mcp_servers_scroll_area")
@@ -1592,6 +2125,9 @@ class ManagerDialog(QDialog):
             " border-radius: 8px; }"
             "QFrame#qcopilots_service_details { background: #f8fafc; border: 1px solid #dce4ef;"
             " border-radius: 6px; }"
+            "QFrame#qcopilots_browser_access { background: #ffffff; border: 1px solid #dce4ef;"
+            " border-radius: 8px; }"
+            "QLabel#qcopilots_browser_access_title { color: #202733; font-weight: 600; }"
             "QLabel#qcopilots_service_icon { background: #eef4fb; border-radius: 6px; }"
             "QLabel#qcopilots_service_name { color: #202733; font-weight: 600; }"
             "QLabel#qcopilots_service_description { color: #4b5563; }"
@@ -1608,6 +2144,9 @@ class ManagerDialog(QDialog):
                 self.plugin.tr("Wait for the MCP server action to finish before updating the list.")
             )
             return
+        browser_access_panel = getattr(self, "browser_access_panel", None)
+        if browser_access_panel:
+            browser_access_panel.update_display()
 
         while self.content_layout.count():
             item = self.content_layout.takeAt(0)
@@ -1646,6 +2185,9 @@ class ManagerDialog(QDialog):
             return
 
     def prepare_close(self, wait: bool = False) -> bool:
+        browser_access_panel = getattr(self, "browser_access_panel", None)
+        if browser_access_panel and not browser_access_panel.cleanup_restart_thread(wait=wait):
+            return False
         for index in range(self.content_layout.count()):
             widget = self.content_layout.itemAt(index).widget()
             if hasattr(widget, "cleanup_toggle_thread") and not widget.cleanup_toggle_thread(wait=wait):

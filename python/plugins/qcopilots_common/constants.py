@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+from collections.abc import Iterable
 from pathlib import Path
 
 
@@ -49,6 +51,45 @@ MAX_GREP_RESULTS = 200
 MAX_GREP_SCANNED_FILES = 5000
 MAX_EXEC_TIMEOUT_SECONDS = 60
 MAX_EXEC_OUTPUT_CHARS = 128 * 1024
+
+
+def encode_cors_origins(origins: Iterable[str]) -> str:
+    """Encode CORS origins for transport through the process environment."""
+
+    values = list(origins)
+    if any(not isinstance(origin, str) for origin in values):
+        raise TypeError("CORS origins must be strings")
+    return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+
+
+def decode_cors_origins(
+    value: str | None,
+    *,
+    legacy_path_separator: str | None = None,
+) -> list[str]:
+    """Decode JSON CORS origins, with support for the legacy path separator."""
+
+    if not isinstance(value, str) or not value.strip():
+        return []
+
+    text = value.strip()
+    try:
+        decoded = json.loads(text)
+    except json.JSONDecodeError:
+        decoded = None
+    else:
+        if not isinstance(decoded, list) or any(
+            not isinstance(origin, str) for origin in decoded
+        ):
+            return []
+        return [origin.strip() for origin in decoded if origin.strip()]
+
+    if text.startswith("["):
+        return []
+    separator = os.pathsep if legacy_path_separator is None else legacy_path_separator
+    if not separator:
+        return [text]
+    return [origin.strip() for origin in text.split(separator) if origin.strip()]
 
 
 def qcopilots_home() -> Path:

@@ -42,12 +42,15 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             self.assertEqual(environment["QCOPILOTS_TEST"], "1")
 
     def test_process_controller_merges_configured_cors_origins(self):
-        from qcopilots_common.constants import CORS_ORIGINS_ENV
+        from qcopilots_common.constants import (
+            CORS_ORIGINS_ENV,
+            encode_cors_origins,
+        )
         from qcopilots_common.process_controller import _merged_cors_origins
 
         old_origins = os.environ.get(CORS_ORIGINS_ENV)
         try:
-            os.environ[CORS_ORIGINS_ENV] = os.pathsep.join(
+            os.environ[CORS_ORIGINS_ENV] = encode_cors_origins(
                 [
                     "https://qcopilots-example.tailnet.ts.net",
                     "http://127.0.0.1:8282",
@@ -66,6 +69,42 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                 os.environ.pop(CORS_ORIGINS_ENV, None)
             else:
                 os.environ[CORS_ORIGINS_ENV] = old_origins
+
+    def test_cors_origin_environment_codec_is_cross_platform_and_legacy_compatible(self):
+        from qcopilots_common.constants import (
+            decode_cors_origins,
+            encode_cors_origins,
+        )
+
+        origins = [
+            "https://qcopilots.example",
+            "http://127.0.0.1:8282",
+        ]
+        encoded = encode_cors_origins(origins)
+
+        self.assertEqual(
+            encoded,
+            '["https://qcopilots.example","http://127.0.0.1:8282"]',
+        )
+        self.assertEqual(encode_cors_origins([]), "[]")
+        self.assertEqual(
+            decode_cors_origins(encoded, legacy_path_separator=":"),
+            origins,
+        )
+        self.assertEqual(
+            decode_cors_origins(
+                "https://legacy.example;http://127.0.0.1:8282",
+                legacy_path_separator=";",
+            ),
+            ["https://legacy.example", "http://127.0.0.1:8282"],
+        )
+        self.assertEqual(
+            decode_cors_origins(
+                '["https://invalid.example"',
+                legacy_path_separator=":",
+            ),
+            [],
+        )
 
     def test_start_rejects_non_loopback_and_wildcard_network_settings(self):
         from qcopilots_common.manifest import ServiceManifest, ServiceTransport
@@ -105,6 +144,152 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
                     )
                     with self.assertRaises(ValueError):
                         controller.start(manifest)
+
+    def test_start_strict_port_policy_fails_without_falling_back(self):
+        import re
+        import socket
+
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import (
+            PORT_CONFLICT_POLICY_FAIL,
+            ProcessController,
+        )
+
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            occupied_port = int(listener.getsockname()[1])
+
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_dummy_service"
+                plugin_dir.mkdir()
+                manifest = ServiceManifest(
+                    service_id="qcopilots.dummy_service",
+                    display_name="QCopilots Dummy Service",
+                    description="Dummy service for ProcessController tests.",
+                    plugin_name="qcopilots_dummy_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(
+                        host="127.0.0.1",
+                        port=occupied_port,
+                        path="/mcp",
+                    ),
+                )
+                controller = ProcessController(root / "state")
+
+                expected = re.escape(
+                    f"Port 127.0.0.1:{occupied_port} is unavailable"
+                )
+                with self.assertRaisesRegex(RuntimeError, f"^{expected}$"):
+                    controller.start(
+                        manifest,
+                        port_conflict_policy=PORT_CONFLICT_POLICY_FAIL,
+                    )
+
+                self.assertEqual(controller._service_reserved_ports, {})
+                self.assertFalse((root / "state" / "qcopilots_dummy_service.json").exists())
+        finally:
+            listener.close()
+
+    def test_strict_port_failure_does_not_block_another_service(self):
+        import socket
+
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import (
+            PORT_CONFLICT_POLICY_FAIL,
+            ProcessController,
+            find_available_port,
+        )
+
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            occupied_port = int(listener.getsockname()[1])
+
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                plugin_dir = root / "qcopilots_dummy_service"
+                plugin_dir.mkdir()
+                controller = ProcessController(root / "state")
+
+                occupied_manifest = ServiceManifest(
+                    service_id="qcopilots.occupied_service",
+                    display_name="Occupied service",
+                    description="Service using an occupied port.",
+                    plugin_name="qcopilots_dummy_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(port=occupied_port),
+                )
+                with self.assertRaises(RuntimeError):
+                    controller._reserve_available_port(
+                        occupied_manifest,
+                        port_conflict_policy=PORT_CONFLICT_POLICY_FAIL,
+                    )
+
+                available_port = find_available_port("127.0.0.1", 0)
+                available_manifest = ServiceManifest(
+                    service_id="qcopilots.available_service",
+                    display_name="Available service",
+                    description="Service using an available port.",
+                    plugin_name="qcopilots_dummy_service",
+                    plugin_dir=plugin_dir,
+                    manifest_path=plugin_dir / "qcopilots_service.json",
+                    transport=ServiceTransport(port=available_port),
+                )
+                try:
+                    self.assertEqual(
+                        controller._reserve_available_port(
+                            available_manifest,
+                            port_conflict_policy=PORT_CONFLICT_POLICY_FAIL,
+                        ),
+                        available_port,
+                    )
+                finally:
+                    controller._release_reserved_port(available_manifest)
+        finally:
+            listener.close()
+
+    def test_port_conflict_policy_defaults_to_fallback_and_rejects_unknown_values(self):
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = root / "qcopilots_dummy_service"
+            plugin_dir.mkdir()
+            manifest = ServiceManifest(
+                service_id="qcopilots.dummy_service",
+                display_name="QCopilots Dummy Service",
+                description="Dummy service for ProcessController tests.",
+                plugin_name="qcopilots_dummy_service",
+                plugin_dir=plugin_dir,
+                manifest_path=plugin_dir / "qcopilots_service.json",
+                transport=ServiceTransport(port=49531),
+            )
+            controller = ProcessController(root / "state")
+            original_find_available_port = process_controller.find_available_port
+            calls = []
+            try:
+                process_controller.find_available_port = (
+                    lambda host, port: calls.append((host, port)) or port + 1
+                )
+                self.assertEqual(controller._reserve_available_port(manifest), 49532)
+                self.assertEqual(calls, [("127.0.0.1", 49531)])
+            finally:
+                controller._release_reserved_port(manifest)
+                process_controller.find_available_port = original_find_available_port
+
+            with self.assertRaisesRegex(ValueError, "Unsupported port conflict policy"):
+                controller._reserve_available_port(
+                    manifest,
+                    port_conflict_policy="unknown",
+                )
 
     def test_start_keeps_auth_tokens_out_of_state_and_logs(self):
         import json

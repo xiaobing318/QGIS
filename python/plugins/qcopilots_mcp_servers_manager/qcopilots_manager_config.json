@@ -7,7 +7,8 @@
       "qcopilots.mcp_server_interactive_tools",
       "qcopilots.mcp_server_processing_vector",
       "qcopilots.mcp_server_processing_raster",
-      "qcopilots.mcp_server_skills"
+      "qcopilots.mcp_server_skills",
+      "qcopilots.mcp_server_qgis_binary"
     ]
   },
   "service_network": {
@@ -15,5 +16,11 @@
     "host": "127.0.0.1",
     "advertised_host": "127.0.0.1",
     "cors_origins": []
+  },
+  "browser_access": {
+    "enabled": true,
+    "origin_source": "configured_qcopilots_url",
+    "auth_token": "",
+    "port_conflict_policy": "fail"
   }
 }

@@ -35,6 +35,8 @@ from qcopilots_common.constants import (
     SERVICE_DESCRIPTION_ENV,
     SERVICE_ICON_ENV,
     SERVICE_TITLE_ENV,
+    decode_cors_origins,
+    encode_cors_origins,
     services_state_root,
 )
 from qcopilots_common.logging import rotate_log_file, service_log_file
@@ -56,6 +58,12 @@ DEPENDENCY_PREPARATION_FAILED = "dependency-preparation-failed"
 PROCESS_LAUNCH_FAILED = "process-launch-failed"
 PROCESS_EXITED_BEFORE_HEALTHY = "process-exited-before-healthy"
 HTTP_HEALTH_TIMEOUT = "http-health-timeout"
+
+PORT_CONFLICT_POLICY_FALLBACK = "fallback"
+PORT_CONFLICT_POLICY_FAIL = "fail"
+_PORT_CONFLICT_POLICIES = frozenset(
+    (PORT_CONFLICT_POLICY_FALLBACK, PORT_CONFLICT_POLICY_FAIL)
+)
 
 
 @dataclass
@@ -277,6 +285,7 @@ class ProcessController:
         startup_timeout_seconds: float | None = None,
         auth_token: str | None = None,
         cancel_event: threading.Event | None = None,
+        port_conflict_policy: str = PORT_CONFLICT_POLICY_FALLBACK,
     ) -> ServiceStatus | None:
         with self._operation_lock(manifest):
             if manifest is None:
@@ -287,6 +296,9 @@ class ProcessController:
                 return self.status(manifest, deep=False)
 
             _validate_service_manifest_security(manifest)
+            effective_port_conflict_policy = _validated_port_conflict_policy(
+                port_conflict_policy
+            )
             effective_auth_token = auth_token
             if effective_auth_token is None and extra_env is not None:
                 effective_auth_token = extra_env.get(MCP_AUTH_TOKEN_ENV)
@@ -296,7 +308,16 @@ class ProcessController:
             state = self._read_state(manifest)
             current = self.status(manifest)
             if current.running:
-                if not _service_configuration_matches_state(manifest, state):
+                configuration_matches = _service_configuration_matches_state(
+                    manifest,
+                    state,
+                )
+                if (
+                    effective_port_conflict_policy == PORT_CONFLICT_POLICY_FAIL
+                    and current.port != manifest.default_port
+                ):
+                    configuration_matches = False
+                if not configuration_matches:
                     if current.owner_match:
                         stopped = self.stop(manifest)
                         if stopped and stopped.running:
@@ -309,7 +330,10 @@ class ProcessController:
                 else:
                     return current
 
-            port = self._reserve_available_port(manifest)
+            port = self._reserve_available_port(
+                manifest,
+                port_conflict_policy=effective_port_conflict_policy,
+            )
             self._remember_health_auth_token(
                 manifest,
                 port,
@@ -432,7 +456,7 @@ class ProcessController:
                     "QCOPILOTS_SERVICE_PORT": str(port),
                     "QCOPILOTS_MCP_PATH": manifest.mcp_path,
                     "QCOPILOTS_LOG_FILE": str(log_file),
-                    CORS_ORIGINS_ENV: os.pathsep.join(cors_origins),
+                    CORS_ORIGINS_ENV: encode_cors_origins(cors_origins),
                     SERVICE_DESCRIPTION_ENV: manifest.description,
                     SERVICE_TITLE_ENV: manifest.plugin_name,
                 }
@@ -718,7 +742,13 @@ class ProcessController:
             self._release_reserved_port(manifest)
         return status
 
-    def _reserve_available_port(self, manifest: ServiceManifest) -> int:
+    def _reserve_available_port(
+        self,
+        manifest: ServiceManifest,
+        *,
+        port_conflict_policy: str = PORT_CONFLICT_POLICY_FALLBACK,
+    ) -> int:
+        policy = _validated_port_conflict_policy(port_conflict_policy)
         bind_host = _bind_check_host(manifest.host)
         with self._reserved_ports_lock:
             previous = self._service_reserved_ports.pop(manifest.service_id, None)
@@ -726,6 +756,24 @@ class ProcessController:
                 self._reserved_ports.pop(previous, None)
 
             candidate = manifest.default_port
+            if policy == PORT_CONFLICT_POLICY_FAIL:
+                if candidate <= 0:
+                    raise ValueError(
+                        "Port conflict policy 'fail' requires a positive preferred "
+                        f"port for {manifest.service_id}"
+                    )
+                port = find_available_port(
+                    bind_host,
+                    candidate,
+                    allow_fallback=False,
+                )
+                endpoint = (bind_host, port)
+                if endpoint in self._reserved_ports:
+                    raise _port_unavailable_error(bind_host, port)
+                self._reserved_ports[endpoint] = manifest.service_id
+                self._service_reserved_ports[manifest.service_id] = endpoint
+                return port
+
             for _attempt in range(200):
                 port = find_available_port(bind_host, candidate)
                 endpoint = (bind_host, port)
@@ -1254,12 +1302,24 @@ def _read_log_tail(
     return text[-max_chars:].strip()
 
 
-def find_available_port(host: str, preferred_port: int) -> int:
+def find_available_port(
+    host: str,
+    preferred_port: int,
+    *,
+    allow_fallback: bool = True,
+) -> int:
     bind_host = _bind_check_host(host)
     if preferred_port <= 0:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((bind_host, 0))
             return int(sock.getsockname()[1])
+    if not allow_fallback:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind((bind_host, preferred_port))
+            except OSError as err:
+                raise _port_unavailable_error(bind_host, preferred_port) from err
+            return preferred_port
     for port in range(preferred_port, preferred_port + 100):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             try:
@@ -1269,6 +1329,19 @@ def find_available_port(host: str, preferred_port: int) -> int:
             else:
                 return port
     raise RuntimeError(f"No available port near {preferred_port}")
+
+
+def _validated_port_conflict_policy(policy: str) -> str:
+    if not isinstance(policy, str) or policy not in _PORT_CONFLICT_POLICIES:
+        expected = ", ".join(sorted(_PORT_CONFLICT_POLICIES))
+        raise ValueError(
+            f"Unsupported port conflict policy {policy!r}. Expected one of: {expected}"
+        )
+    return policy
+
+
+def _port_unavailable_error(host: str, port: int) -> RuntimeError:
+    return RuntimeError(f"Port {host}:{port} is unavailable")
 
 
 def _bind_check_host(host: str) -> str:
@@ -1373,7 +1446,7 @@ def _merged_cors_origins(base_origins: list[str] | tuple[str, ...]) -> list[str]
     origins = list(base_origins)
     configured = os.environ.get(CORS_ORIGINS_ENV)
     if configured:
-        origins.extend(item.strip() for item in configured.split(os.pathsep) if item.strip())
+        origins.extend(decode_cors_origins(configured))
     return list(dict.fromkeys(origins))
 
 

@@ -15,6 +15,8 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
+import secrets
 import threading
 import uuid
 from dataclasses import dataclass
@@ -32,7 +34,16 @@ DEFAULT_STARTUP_SERVICE_IDS = (
     "qcopilots.mcp_server_processing_vector",
     "qcopilots.mcp_server_processing_raster",
     "qcopilots.mcp_server_skills",
+    "qcopilots.mcp_server_qgis_binary",
 )
+
+BROWSER_AUTH_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
+DEFAULT_BROWSER_ACCESS = {
+    "enabled": True,
+    "origin_source": "configured_qcopilots_url",
+    "auth_token": "",
+    "port_conflict_policy": "fail",
+}
 
 
 @dataclass(frozen=True)
@@ -146,6 +157,50 @@ class ManagerConfigStore:
         with self._lock:
             return self._save_locked(changed=False)
 
+    def ensure_browser_auth_token(self) -> ConfigSaveResult:
+        """Create and persist the shared browser token when it is missing.
+
+        A valid token already loaded from the user configuration is left
+        untouched. The generated value remains in the dirty in-memory snapshot
+        after a failed write so a later explicit save can retry atomically.
+        """
+
+        with self._lock:
+            token = self._config["browser_access"]["auth_token"]
+            if is_valid_browser_auth_token(token):
+                if self._user_config_usable:
+                    return ConfigSaveResult(
+                        changed=False,
+                        saved=True,
+                        dirty=False,
+                    )
+                return self._save_locked(changed=False)
+
+            self._config["browser_access"]["auth_token"] = secrets.token_urlsafe(32)
+            self._dirty = True
+            return self._save_locked(changed=True)
+
+    def set_browser_auth_token(self, auth_token: str) -> ConfigSaveResult:
+        """Persist a caller-supplied shared browser token."""
+
+        if not is_valid_browser_auth_token(auth_token):
+            raise ValueError(
+                "Browser auth token must contain 32 to 256 URL-safe characters"
+            )
+        with self._lock:
+            changed = self._config["browser_access"]["auth_token"] != auth_token
+            if changed:
+                self._config["browser_access"]["auth_token"] = auth_token
+                self._dirty = True
+            if not self._dirty and self._user_config_usable:
+                return ConfigSaveResult(changed=False, saved=True, dirty=False)
+            return self._save_locked(changed=changed)
+
+    def regenerate_browser_auth_token(self) -> ConfigSaveResult:
+        """Replace the shared browser token with a fresh high-entropy value."""
+
+        return self.set_browser_auth_token(secrets.token_urlsafe(32))
+
     def _load(self) -> dict[str, Any]:
         config = _default_config()
         template = _read_json_object(
@@ -209,6 +264,7 @@ def _default_config() -> dict[str, Any]:
             "advertised_host": DEFAULT_HOST,
             "cors_origins": [],
         },
+        "browser_access": copy.deepcopy(DEFAULT_BROWSER_ACCESS),
     }
 
 
@@ -262,6 +318,22 @@ def _apply_config_layer(
             _warning(logger, "Ignoring QCopilots %s service_network because it is not an object", label)
         else:
             _apply_network_fields(result["service_network"], network, logger, label)
+
+    browser_access = layer.get("browser_access")
+    if browser_access is not None:
+        if not isinstance(browser_access, dict):
+            _warning(
+                logger,
+                "Ignoring QCopilots %s browser_access because it is not an object",
+                label,
+            )
+        else:
+            _apply_browser_access_fields(
+                result["browser_access"],
+                browser_access,
+                logger,
+                label,
+            )
     return result
 
 
@@ -323,6 +395,51 @@ def _apply_network_fields(
             )
 
 
+def _apply_browser_access_fields(
+    destination: dict[str, Any],
+    source: dict[str, Any],
+    logger,
+    label: str,
+) -> None:
+    if "enabled" in source:
+        if isinstance(source["enabled"], bool):
+            destination["enabled"] = source["enabled"]
+        else:
+            _warning(
+                logger,
+                "Ignoring QCopilots %s browser_access.enabled because it is not a boolean",
+                label,
+            )
+
+    for field, expected in (
+        ("origin_source", "configured_qcopilots_url"),
+        ("port_conflict_policy", "fail"),
+    ):
+        if field not in source:
+            continue
+        if source[field] == expected:
+            destination[field] = expected
+        else:
+            _warning(
+                logger,
+                "Ignoring QCopilots %s browser_access.%s because it is not %s",
+                label,
+                field,
+                expected,
+            )
+
+    if "auth_token" in source:
+        token = source["auth_token"]
+        if token == "" or is_valid_browser_auth_token(token):
+            destination["auth_token"] = token
+        else:
+            _warning(
+                logger,
+                "Ignoring invalid QCopilots %s browser_access.auth_token",
+                label,
+            )
+
+
 def _validated_service_id(service_id: str) -> str:
     if not isinstance(service_id, str):
         raise TypeError("service_id must be a string")
@@ -330,6 +447,12 @@ def _validated_service_id(service_id: str) -> str:
     if not is_safe_service_id(normalized):
         raise ValueError(f"Invalid QCopilots service id: {service_id}")
     return normalized
+
+
+def is_valid_browser_auth_token(value: Any) -> bool:
+    """Return whether *value* is safe to copy into a Bearer header."""
+
+    return isinstance(value, str) and BROWSER_AUTH_TOKEN_PATTERN.fullmatch(value) is not None
 
 
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:

@@ -2335,6 +2335,304 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             else:
                 os.environ[CORS_ORIGINS_ENV] = old_origins
 
+    def test_cors_environment_prefers_json_origin_encoding(self):
+        from qcopilots_common.constants import (
+            CORS_ORIGINS_ENV,
+            encode_cors_origins,
+        )
+        from qcopilots_common.mcp_http import _cors_origins_from_env
+
+        origins = [
+            "https://qcopilots.example",
+            "http://127.0.0.1:8282",
+        ]
+        old_origins = os.environ.get(CORS_ORIGINS_ENV)
+        try:
+            os.environ[CORS_ORIGINS_ENV] = encode_cors_origins(origins)
+            self.assertEqual(_cors_origins_from_env(), origins)
+        finally:
+            if old_origins is None:
+                os.environ.pop(CORS_ORIGINS_ENV, None)
+            else:
+                os.environ[CORS_ORIGINS_ENV] = old_origins
+
+    def test_http_transport_allows_strict_browser_cors(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        allowed_origin = "https://qcopilots.example"
+        server = McpHttpServer(
+            name="qcopilots-http-cors-test",
+            version="1.0.0",
+            tools=[],
+            port=0,
+            cors_origins=[allowed_origin],
+            auth_token=self.HTTP_AUTH_TOKEN,
+        )
+        httpd = server.create_http_server()
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            preflight_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                headers={
+                    "Origin": allowed_origin,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": (
+                        "authorization, content-type, accept, mcp-session-id, "
+                        "mcp-protocol-version, last-event-id"
+                    ),
+                    "Access-Control-Request-Private-Network": "true",
+                },
+                method="OPTIONS",
+            )
+            with urlopen(preflight_request, timeout=5) as response:
+                self.assertEqual(response.status, 204)
+                self.assertEqual(
+                    response.headers["Access-Control-Allow-Origin"],
+                    allowed_origin,
+                )
+                self.assertEqual(response.headers["Vary"], "Origin")
+                self.assertEqual(
+                    response.headers["Access-Control-Allow-Methods"],
+                    "GET, POST, DELETE",
+                )
+                self.assertEqual(
+                    {
+                        item.strip().casefold()
+                        for item in response.headers[
+                            "Access-Control-Allow-Headers"
+                        ].split(",")
+                    },
+                    {
+                        "authorization",
+                        "content-type",
+                        "accept",
+                        "mcp-session-id",
+                        "mcp-protocol-version",
+                        "last-event-id",
+                    },
+                )
+                self.assertEqual(response.headers["Access-Control-Max-Age"], "600")
+                self.assertNotIn("Access-Control-Allow-Credentials", response.headers)
+                self.assertNotIn(
+                    "Access-Control-Allow-Private-Network",
+                    response.headers,
+                )
+
+            initialize_payload = json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "clientInfo": {"name": "cors-client", "version": "1.0"}
+                    },
+                }
+            ).encode("utf-8")
+            unauthorized_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=initialize_payload,
+                headers={
+                    "Origin": allowed_origin,
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with self.assertRaises(HTTPError) as error_context:
+                urlopen(unauthorized_request, timeout=5)
+            unauthorized_response = error_context.exception
+            try:
+                self.assertEqual(unauthorized_response.code, 401)
+                self.assertEqual(
+                    unauthorized_response.headers["Access-Control-Allow-Origin"],
+                    allowed_origin,
+                )
+                self.assertEqual(unauthorized_response.headers["Vary"], "Origin")
+                self.assertEqual(
+                    unauthorized_response.headers["WWW-Authenticate"],
+                    "Bearer",
+                )
+                self.assertEqual(
+                    {
+                        item.strip().casefold()
+                        for item in unauthorized_response.headers[
+                            "Access-Control-Expose-Headers"
+                        ].split(",")
+                    },
+                    {"mcp-session-id", "www-authenticate"},
+                )
+                self.assertNotIn(
+                    "Access-Control-Allow-Credentials",
+                    unauthorized_response.headers,
+                )
+                self.assertNotIn(
+                    "Access-Control-Allow-Private-Network",
+                    unauthorized_response.headers,
+                )
+            finally:
+                unauthorized_response.close()
+
+            authorized_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=initialize_payload,
+                headers={
+                    "Origin": allowed_origin,
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
+                },
+                method="POST",
+            )
+            with urlopen(authorized_request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(
+                    response.headers["Access-Control-Allow-Origin"],
+                    allowed_origin,
+                )
+                self.assertNotEqual(
+                    response.headers["Access-Control-Allow-Origin"],
+                    "*",
+                )
+                self.assertTrue(response.headers["mcp-session-id"])
+                self.assertIn(
+                    "mcp-session-id",
+                    response.headers["Access-Control-Expose-Headers"].casefold(),
+                )
+
+            with urlopen(
+                Request(
+                    f"http://127.0.0.1:{port}/health",
+                    headers=self._http_headers(),
+                ),
+                timeout=5,
+            ) as response:
+                self.assertEqual(response.status, 200)
+                self.assertNotIn("Access-Control-Allow-Origin", response.headers)
+                self.assertNotIn("Vary", response.headers)
+        finally:
+            self._stop_http_server(httpd, thread)
+
+    def test_http_transport_rejects_invalid_browser_cors_preflights(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        allowed_origin = "https://qcopilots.example"
+        server = McpHttpServer(
+            name="qcopilots-http-cors-rejection-test",
+            version="1.0.0",
+            tools=[],
+            port=0,
+            cors_origins=[allowed_origin],
+            auth_token=self.HTTP_AUTH_TOKEN,
+        )
+        httpd = server.create_http_server()
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            cases = (
+                (
+                    "unconfigured_origin",
+                    {
+                        "Origin": "https://attacker.example",
+                        "Access-Control-Request-Method": "POST",
+                    },
+                    403,
+                    False,
+                ),
+                (
+                    "null_origin",
+                    {
+                        "Origin": "null",
+                        "Access-Control-Request-Method": "POST",
+                    },
+                    403,
+                    False,
+                ),
+                (
+                    "missing_method",
+                    {"Origin": allowed_origin},
+                    400,
+                    True,
+                ),
+                (
+                    "unknown_method",
+                    {
+                        "Origin": allowed_origin,
+                        "Access-Control-Request-Method": "PUT",
+                    },
+                    405,
+                    True,
+                ),
+                (
+                    "unknown_header",
+                    {
+                        "Origin": allowed_origin,
+                        "Access-Control-Request-Method": "POST",
+                        "Access-Control-Request-Headers": (
+                            "Authorization, X-QCopilots-Unsafe"
+                        ),
+                    },
+                    403,
+                    True,
+                ),
+            )
+            for name, headers, expected_status, exposes_origin in cases:
+                with self.subTest(case=name):
+                    request = Request(
+                        f"http://127.0.0.1:{port}/mcp",
+                        headers=headers,
+                        method="OPTIONS",
+                    )
+                    with self.assertRaises(HTTPError) as error_context:
+                        urlopen(request, timeout=5)
+                    response = error_context.exception
+                    try:
+                        self.assertEqual(response.code, expected_status)
+                        if exposes_origin:
+                            self.assertEqual(
+                                response.headers["Access-Control-Allow-Origin"],
+                                allowed_origin,
+                            )
+                        else:
+                            self.assertNotIn(
+                                "Access-Control-Allow-Origin",
+                                response.headers,
+                            )
+                        self.assertNotIn(
+                            "Access-Control-Allow-Credentials",
+                            response.headers,
+                        )
+                        self.assertNotIn(
+                            "Access-Control-Allow-Private-Network",
+                            response.headers,
+                        )
+                    finally:
+                        response.close()
+
+            raw_request = (
+                "OPTIONS /mcp HTTP/1.1\r\n"
+                f"Host: 127.0.0.1:{port}\r\n"
+                f"Origin: {allowed_origin}\r\n"
+                "Origin: https://attacker.example\r\n"
+                "Access-Control-Request-Method: POST\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            ).encode("ascii")
+            with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+                connection.settimeout(2)
+                connection.sendall(raw_request)
+                raw_response = bytearray()
+                while True:
+                    chunk = connection.recv(4096)
+                    if not chunk:
+                        break
+                    raw_response.extend(chunk)
+            decoded_response = raw_response.decode("iso-8859-1")
+            self.assertIn(" 403 ", decoded_response.splitlines()[0])
+            self.assertNotIn("Access-Control-Allow-Origin", decoded_response)
+        finally:
+            self._stop_http_server(httpd, thread)
+
     def test_service_bind_host_only_accepts_literal_loopback(self):
         from qcopilots_common.constants import DEFAULT_HOST
         from qcopilots_common.mcp_http import McpHttpServer, parse_server_args
@@ -2444,15 +2742,22 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
     def test_http_transport_rejects_wildcard_cors_configuration(self):
         from qcopilots_common.mcp_http import McpHttpServer
 
-        with self.assertRaisesRegex(ValueError, "wildcard CORS"):
-            McpHttpServer(
-                name="qcopilots-http-wildcard-cors-test",
-                version="1.0.0",
-                tools=[],
-                host="127.0.0.1",
-                port=0,
-                cors_origins=["*"],
-            )
+        invalid_origins = (
+            (["*"], "wildcard CORS"),
+            (["null"], "null CORS"),
+            (["https://allowed.example\r\nX-Injected: true"], "invalid CORS"),
+        )
+        for origins, message in invalid_origins:
+            with self.subTest(origins=origins):
+                with self.assertRaisesRegex(ValueError, message):
+                    McpHttpServer(
+                        name="qcopilots-http-invalid-cors-test",
+                        version="1.0.0",
+                        tools=[],
+                        host="127.0.0.1",
+                        port=0,
+                        cors_origins=origins,
+                    )
 
     def test_http_transport_runs_qcopilots_tools_with_bearer(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools

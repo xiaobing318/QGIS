@@ -617,6 +617,12 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assertIn("reply->error() != QNetworkReply::NoError && status <= 0", bridge_cpp)
         self.assertIn("mLastPublicGeneration = snapshot.generation", bridge_cpp)
         self.assertIn("!snapshot.valid && !mPublicCatalogJson.isEmpty()", bridge_cpp)
+        public_catalog_block = self.source_block(
+            bridge_cpp,
+            "void QgsQCopilotsMcpBridge::updatePublicCatalog",
+        )
+        self.assertNotIn("service.targetUrl", public_catalog_block)
+        self.assertNotIn("service.authToken", public_catalog_block)
         self.assertIn("pending->reply->abort()", bridge_cpp)
         self.assertIn("QTimer::timeout", bridge_cpp)
         self.assertIn("constexpr int sMaximumTimeoutMs = 300000", bridge_cpp)
