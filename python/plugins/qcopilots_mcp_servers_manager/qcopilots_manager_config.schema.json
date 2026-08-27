@@ -5,6 +5,7 @@
   "description": "配置 QCopilots MCP Servers Manager 的管理器级启动和本机网络行为。每个字段提示都说明字段作用、候选值或取值范围，以及不同取值对服务排序、QGIS 初始化自动启动、端点展示和本机暴露面的影响。",
   "type": "object",
   "additionalProperties": false,
+  "required": ["default_startup", "service_network", "browser_access", "security_policy"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -14,6 +15,7 @@
       "type": "object",
       "description": "字段作用是控制管理器插件 initGui 初始化时的默认自动启动策略，不依赖打开对话框。候选子字段为 enabled 和 service_ids。enabled 决定是否自动启动，service_ids 决定自动启动的服务编号和优先显示顺序，未列出的服务仍会被发现并追加显示，但不会因默认策略自动启动。",
       "additionalProperties": false,
+      "required": ["enabled", "service_ids"],
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -23,17 +25,18 @@
         "service_ids": {
           "type": "array",
           "uniqueItems": true,
-          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster、qcopilots.mcp_server_qgis_binary。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。新配置默认启动包括 QGIS Binary 在内的六个服务，已有用户配置中的显式列表保持优先。",
+          "description": "字段作用是声明默认自动启动的 service_id 列表。候选值是安全的 QCopilots MCP 服务编号，常用候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster、qcopilots.mcp_server_processing_general、qcopilots.mcp_server_qgis_binary。列表顺序会影响启动顺序和管理器优先显示顺序，空数组表示不自动启动任何服务，未列出的服务仍会被发现并显示在已列服务之后。新配置默认启动包括 General Processing 和 QGIS Binary 在内的七个服务，已有用户配置中的显式列表保持优先。",
           "items": {
             "type": "string",
             "pattern": "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9_.-]+$",
-            "description": "字段作用是在默认启动列表中声明一个服务编号。候选值包括 Builtin Tools 对应的 qcopilots.mcp_server_builtin_tools、Skills 对应的 qcopilots.mcp_server_skills、Interactive Tools 对应的 qcopilots.mcp_server_interactive_tools、Processing Vector 对应的 qcopilots.mcp_server_processing_vector、Processing Raster 对应的 qcopilots.mcp_server_processing_raster、QGIS Binary 对应的 qcopilots.mcp_server_qgis_binary。选择不同编号会让对应服务在首次填充时优先显示，并在 enabled 为 true 时自动启动。schema 会把空白、不安全格式或重复编号标记为无效，若绕过 schema 进入运行时，管理器会忽略这些值并记录警告。",
+            "description": "字段作用是在默认启动列表中声明一个服务编号。候选值包括 Builtin Tools 对应的 qcopilots.mcp_server_builtin_tools、Skills 对应的 qcopilots.mcp_server_skills、Interactive Tools 对应的 qcopilots.mcp_server_interactive_tools、Processing Vector 对应的 qcopilots.mcp_server_processing_vector、Processing Raster 对应的 qcopilots.mcp_server_processing_raster、Processing General 对应的 qcopilots.mcp_server_processing_general、QGIS Binary 对应的 qcopilots.mcp_server_qgis_binary。选择不同编号会让对应服务在首次填充时优先显示，并在 enabled 为 true 时自动启动。空白、不安全格式或重复编号会使整份配置被拒绝。",
             "examples": [
               "qcopilots.mcp_server_builtin_tools",
               "qcopilots.mcp_server_skills",
               "qcopilots.mcp_server_interactive_tools",
               "qcopilots.mcp_server_processing_vector",
               "qcopilots.mcp_server_processing_raster",
+              "qcopilots.mcp_server_processing_general",
               "qcopilots.mcp_server_qgis_binary"
             ]
           },
@@ -42,6 +45,7 @@
             "qcopilots.mcp_server_interactive_tools",
             "qcopilots.mcp_server_processing_vector",
             "qcopilots.mcp_server_processing_raster",
+            "qcopilots.mcp_server_processing_general",
             "qcopilots.mcp_server_skills",
             "qcopilots.mcp_server_qgis_binary"
           ]
@@ -50,13 +54,14 @@
     },
     "service_network": {
       "type": "object",
-      "description": "字段作用是把管理器启动的 MCP 服务严格限制在 loopback 本机网络边界。候选子字段为 enabled、host、advertised_host 和 cors_origins。host 与 advertised_host 只允许 127.0.0.1，cors_origins 只允许空数组；不同的宽绑定、非 loopback 或 wildcard 取值会被 schema 拒绝，运行时也会回退到安全本机值，避免扩大暴露面。",
+      "description": "字段作用是把管理器启动的 MCP 服务严格限制在 loopback 本机网络边界。候选子字段为 enabled、host、advertised_host 和 cors_origins。host 与 advertised_host 只允许 127.0.0.1，cors_origins 只允许空数组；宽绑定、非 loopback 或 wildcard 取值会使整份配置被拒绝。",
       "additionalProperties": false,
+      "required": ["enabled", "host", "advertised_host", "cors_origins"],
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": true,
-          "description": "字段作用是保留 service_network.enabled 配置键的兼容性。候选值为 true 或 false。当前两种取值都会把动态发现的 MCP 服务统一限制为 127.0.0.1 并关闭 CORS，不会保留或接受 manifest 中的宽绑定、非 loopback 地址或非空 CORS 来源，因此切换该值不会放宽本机安全边界。"
+          "description": "字段作用是启用或关闭管理器为动态发现服务应用本机网络设置。候选值为 true 或 false。两种取值都将服务限制为 127.0.0.1 并关闭通配 CORS，不会接受宽绑定、非 loopback 地址或非空 CORS 来源。"
         },
         "host": {
           "type": "string",
@@ -81,10 +86,67 @@
         }
       }
     },
+    "security_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "字段作用是统一约束 Bridge、Processing 和 Builtin 的本地路径安全、网络来源与命令执行。候选子字段为 mode、shell 和 network。普通本机文件读写不使用根目录白名单并服从操作系统权限。两种模式都执行路径安全与 Shell 启用状态，compatible 保留命令兼容行为，formal_restricted 增加命令参数和精确网络来源限制。额外字段不受支持并会被拒绝。",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["compatible", "formal_restricted"],
+          "default": "compatible",
+          "description": "字段作用是选择命令和网络策略模式。候选值为 compatible 和 formal_restricted。两种模式都允许操作系统账户有权访问的普通本机文件路径，并拒绝将非文件 URI、UNC、设备路径、ADS、符号链接和 junction 当作本机路径。不同值会影响附加限制，compatible 在 executables 非空时执行 Shell 白名单，formal_restricted 始终要求非空 Shell 白名单并启用精确网络来源限制。"
+        },
+        "shell": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "字段作用是启用或关闭 Builtin 命令工具。候选值为 true 或 false。两种模式下 false 都会拒绝命令执行，正式验证可保持关闭并真实验证拒绝结果。"
+            },
+            "executables": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1},
+              "default": [],
+              "description": "字段作用是声明允许的可执行文件名或绝对路径。候选值为名称或已存在文件组成的唯一列表。compatible 下空列表不增加可执行文件限制，非空列表会启用白名单。formal_restricted 下空列表拒绝所有命令。"
+            }
+          },
+          "required": ["enabled", "executables"]
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "字段作用是控制 formal_restricted 模式可访问的本机模拟服务。候选子字段为 enabled 和 allowed_origins。默认关闭，开启时会只接受显式配置的 127.0.0.1 scheme、host 和端口组合。",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "字段作用是启用或关闭 formal_restricted 的本机 HTTP 数据源。候选值为 true 或 false。false 会拒绝所有网络图层来源，true 仍只允许 allowed_origins 中的精确来源。"
+            },
+            "allowed_origins": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^https?://127\\.0\\.0\\.1:[1-9][0-9]{0,4}$"
+              },
+              "default": [],
+              "description": "字段作用是声明允许的本机模拟服务来源。候选值为不带路径、凭据、查询或片段的 http 或 https 127.0.0.1 精确端口列表。不同列表会影响可连接的固定测试服务。"
+            }
+          },
+          "required": ["enabled", "allowed_origins"]
+        }
+      },
+      "required": ["mode", "shell", "network"]
+    },
     "browser_access": {
       "type": "object",
-      "description": "字段作用是允许配置了 QCopilots URL 的浏览器页面直接访问六个本机 MCP 端点。候选子字段为 enabled、origin_source、auth_token 和 port_conflict_policy。不同取值会影响浏览器可访问性、认证凭据和端口冲突结果。浏览器仍需通过 Chrome 本地网络访问授权，并使用保存在当前用户配置中的共享 Bearer Token。该功能只允许精确的配置 URL Origin 和固定端口失败策略，不允许通配来源或端口漂移。",
+      "description": "字段作用是允许配置了 QCopilots URL 的浏览器页面直接访问七个本机 MCP 端点。候选子字段为 enabled、origin_source、auth_token 和 port_conflict_policy。不同取值会影响浏览器可访问性、认证凭据和端口冲突结果。浏览器仍需通过 Chrome 本地网络访问授权，并使用保存在当前用户配置中的共享 Bearer Token。该功能只允许精确的配置 URL Origin 和固定端口失败策略，不允许通配来源或端口漂移。",
       "additionalProperties": false,
+      "required": ["enabled", "origin_source", "auth_token", "port_conflict_policy"],
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -105,14 +167,14 @@
             {"pattern": "^[A-Za-z0-9_-]{32,256}$"}
           ],
           "default": "",
-          "description": "字段作用是保存六个 MCP 服务共用的固定 Bearer Token。候选值为空字符串或 32 至 256 个 URL-safe 字符。模板中的空字符串会在首次启动时自动替换为高熵 Token 并原子保存到用户配置，明文值应当作为敏感凭据保护。"
+          "description": "字段作用是保存七个 MCP 服务共用的固定 Bearer Token。候选值为空字符串或 32 至 256 个 URL-safe 字符。模板中的空字符串会在首次启动时自动替换为高熵 Token 并原子保存到用户配置，明文值应当作为敏感凭据保护。"
         },
         "port_conflict_policy": {
           "type": "string",
           "const": "fail",
           "enum": ["fail"],
           "default": "fail",
-          "description": "字段作用是决定固定端口被占用时的启动行为。唯一候选值为 fail，该值会在 48211 至 48216 中对应端口不可用时让该服务明确启动失败，不自动改用其它端口。"
+          "description": "字段作用是决定固定端口被占用时的启动行为。唯一候选值为 fail，该值会在 48211 至 48217 中对应端口不可用时让该服务明确启动失败，不自动改用其它端口。"
         }
       }
     }

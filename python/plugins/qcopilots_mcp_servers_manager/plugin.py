@@ -54,12 +54,16 @@ from qcopilots_common.logging import configure_logger, qgis_log, service_log_fil
 from qcopilots_common.manifest import ServiceManifest
 from qcopilots_common.menu import add_qcopilots_menu_action, remove_qcopilots_menu_action
 from qcopilots_common.process_controller import ProcessController
-from qcopilots_common.service_id import is_safe_service_id
-
+from qcopilots_common.security_policy import (
+    FORMAL_RESTRICTED_MODE,
+    FilesystemPolicy,
+    filesystem_policy_from_config,
+)
 from .config_store import (
     ConfigSaveResult,
     ManagerConfigStore,
     is_valid_browser_auth_token,
+    validate_manager_config,
 )
 
 
@@ -81,42 +85,11 @@ DEFAULT_STARTUP_SERVICE_IDS = [
     "qcopilots.mcp_server_interactive_tools",
     "qcopilots.mcp_server_processing_vector",
     "qcopilots.mcp_server_processing_raster",
+    "qcopilots.mcp_server_processing_general",
     "qcopilots.mcp_server_skills",
     "qcopilots.mcp_server_qgis_binary",
 ]
-DEFAULT_SERVICE_NETWORK = {
-    "enabled": True,
-    "host": DEFAULT_HOST,
-    "advertised_host": DEFAULT_HOST,
-    "cors_origins": [],
-}
-FALLBACK_SERVICE_NETWORK = {
-    "enabled": False,
-    "host": DEFAULT_HOST,
-    "advertised_host": DEFAULT_HOST,
-    "cors_origins": [],
-}
-DEFAULT_BROWSER_ACCESS = {
-    "enabled": True,
-    "origin_source": "configured_qcopilots_url",
-    "auth_token": "",
-    "port_conflict_policy": "fail",
-}
-FALLBACK_BROWSER_ACCESS = {
-    "enabled": False,
-    "origin_source": "configured_qcopilots_url",
-    "auth_token": "",
-    "port_conflict_policy": "fail",
-}
 DEFAULT_QCOPILOTS_URL = "http://127.0.0.1:8282"
-DEFAULT_MANAGER_CONFIG = {
-    "default_startup": {
-        "enabled": True,
-        "service_ids": DEFAULT_STARTUP_SERVICE_IDS,
-    },
-    "service_network": DEFAULT_SERVICE_NETWORK,
-    "browser_access": DEFAULT_BROWSER_ACCESS,
-}
 
 
 class _ManagerEventRelay(QObject):
@@ -298,6 +271,7 @@ class QCopilotsMCPServersManagerPlugin:
         self.plugins_root = Path(__file__).resolve().parents[1]
         self.controller = ProcessController(qgis_executable=QCoreApplication.applicationFilePath())
         self._bridge_auth_token = secrets.token_urlsafe(32)
+        self._filesystem_policy = FilesystemPolicy()
         self.bridge = QgisBridgeController(
             iface,
             port=DEFAULT_BRIDGE_PORT,
@@ -334,10 +308,33 @@ class QCopilotsMCPServersManagerPlugin:
         self._browser_access_error = ""
         self._browser_origin = ""
         self._initialize_browser_access()
+        if bool(getattr(self._config_store, "blocked", False)):
+            self._filesystem_policy = FilesystemPolicy(
+                mode=FORMAL_RESTRICTED_MODE,
+                shell_enabled=False,
+                network_enabled=False,
+            )
+        else:
+            self._filesystem_policy = filesystem_policy_from_config(
+                self._manager_config.get("security_policy")
+            )
+        set_filesystem_policy = getattr(
+            self.bridge, "set_filesystem_policy", None
+        )
+        if callable(set_filesystem_policy):
+            set_filesystem_policy(self._filesystem_policy)
         self._event_relay = _ManagerEventRelay(self)
 
     def initGui(self):
         if self._initialized:
+            return
+        config_store = getattr(self, "_config_store", None)
+        if bool(getattr(config_store, "blocked", False)):
+            self.logger.warning(
+                "QCopilots MCP services are disabled because manager configuration "
+                "is blocked: %s",
+                getattr(config_store, "blocked_error", "invalid configuration"),
+            )
             return
         self._shutdown_started = False
         self._shutdown_completed = False
@@ -353,6 +350,11 @@ class QCopilotsMCPServersManagerPlugin:
                     port=DEFAULT_BRIDGE_PORT,
                     auth_token=self._bridge_auth_token,
                 )
+                set_filesystem_policy = getattr(
+                    self.bridge, "set_filesystem_policy", None
+                )
+                if callable(set_filesystem_policy):
+                    set_filesystem_policy(self._filesystem_policy)
         self._connect_about_to_quit()
         self.bridge.start()
         qgis_log(f"QCopilots QGIS bridge listening at {self.bridge.url}")
@@ -584,7 +586,9 @@ class QCopilotsMCPServersManagerPlugin:
         self.dialog.activateWindow()
 
     def prepare_service_start(self, manifest: ServiceManifest) -> str | None:
-        if self.is_shutting_down():
+        if self.is_shutting_down() or bool(
+            getattr(getattr(self, "_config_store", None), "blocked", False)
+        ):
             return None
         with self._state_lock:
             if manifest.service_id in self._starting_service_ids:
@@ -602,6 +606,12 @@ class QCopilotsMCPServersManagerPlugin:
         auth_token: str | None = None,
         cancel_event: threading.Event | None = None,
     ):
+        if bool(
+            getattr(getattr(self, "_config_store", None), "blocked", False)
+        ):
+            raise RuntimeError(
+                "QCopilots MCP service startup is blocked by invalid manager configuration"
+            )
         if self.is_shutting_down():
             return self.service_status(manifest, deep=False)
         operation_cancel_event = (
@@ -750,14 +760,16 @@ class QCopilotsMCPServersManagerPlugin:
         return result
 
     def _service_network_config(self) -> dict[str, Any]:
-        return self._manager_config.get("service_network", _fallback_service_network_config())
+        manager_config = getattr(self, "_manager_config", None)
+        if manager_config is None:
+            return _default_service_network_config()
+        return dict(manager_config["service_network"])
 
     def _browser_access_config(self) -> dict[str, Any]:
-        manager_config = getattr(self, "_manager_config", {})
-        return manager_config.get(
-            "browser_access",
-            _fallback_browser_access_config(),
-        )
+        manager_config = getattr(self, "_manager_config", None)
+        if manager_config is None:
+            return _default_browser_access_config()
+        return dict(manager_config["browser_access"])
 
     def _initialize_browser_access(self) -> None:
         ensure_token = getattr(self._config_store, "ensure_browser_auth_token", None)
@@ -858,6 +870,8 @@ class QCopilotsMCPServersManagerPlugin:
         env = {
             CORS_ORIGINS_ENV: encode_cors_origins(manifest.cors_origins),
         }
+        policy = getattr(self, "_filesystem_policy", FilesystemPolicy())
+        env.update(policy.to_environment())
         if _uses_qgis_bridge(manifest):
             env[BRIDGE_URL_ENV] = self.bridge.url
             env[QGIS_BRIDGE_AUTH_TOKEN_ENV] = self._bridge_auth_token
@@ -886,8 +900,8 @@ class QCopilotsMCPServersManagerPlugin:
             self._catalog_statuses.clear()
             self._catalog_startup_complete = False
 
-        startup = self._manager_config.get("default_startup", {})
-        startup_ids = set(_startup_service_ids(self._manager_config)) if startup.get("enabled", True) else set()
+        startup = self._manager_config["default_startup"]
+        startup_ids = set(_startup_service_ids(self._manager_config)) if startup["enabled"] else set()
         jobs = []
         for manifest in manifests:
             if manifest.service_id not in startup_ids:
@@ -1401,366 +1415,69 @@ def _runtime_catalog_generation(app) -> int:
 
 
 def _load_manager_config(config_path: Path, logger) -> dict[str, Any]:
+    """Load one complete latest-format manager configuration.
+
+    Missing, malformed, obsolete, and partial configurations are rejected. The
+    caller decides how to surface the blocked state and no fallback is applied.
+    """
+
+    del logger
     try:
         data = json.loads(config_path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        _warn_manager_config(logger, "QCopilots manager config is missing; using loopback service network fallback")
-        return _fallback_manager_config()
     except Exception as err:
-        logger.warning("Could not read QCopilots manager config %s: %s", config_path, err)
-        return _fallback_manager_config()
+        raise ValueError(
+            f"Could not read QCopilots manager config {config_path}: {err}"
+        ) from err
     try:
-        return _normalize_manager_config(data, logger)
+        return validate_manager_config(data, str(config_path))
     except Exception as err:
-        logger.warning("Could not use QCopilots manager config %s: %s", config_path, err)
-        return _fallback_manager_config()
+        raise ValueError(
+            f"Could not use QCopilots manager config {config_path}: {err}"
+        ) from err
+
+
+def _copy_manager_config(manager_config: dict[str, Any]) -> dict[str, Any]:
+    return validate_manager_config(manager_config)
+
+
+def _default_service_network_config() -> dict[str, Any]:
+    return {
+        "enabled": True,
+        "host": DEFAULT_HOST,
+        "advertised_host": DEFAULT_HOST,
+        "cors_origins": [],
+    }
+
+
+def _default_browser_access_config() -> dict[str, Any]:
+    return {
+        "enabled": True,
+        "origin_source": "configured_qcopilots_url",
+        "auth_token": "",
+        "port_conflict_policy": "fail",
+    }
 
 
 def _default_manager_config() -> dict[str, Any]:
     return {
         "default_startup": {
-            "enabled": DEFAULT_MANAGER_CONFIG["default_startup"]["enabled"],
+            "enabled": True,
             "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),
         },
         "service_network": _default_service_network_config(),
         "browser_access": _default_browser_access_config(),
-    }
-
-
-def _fallback_manager_config() -> dict[str, Any]:
-    return {
-        "default_startup": {
-            "enabled": DEFAULT_MANAGER_CONFIG["default_startup"]["enabled"],
-            "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),
-        },
-        "service_network": _fallback_service_network_config(),
-        "browser_access": _fallback_browser_access_config(),
-    }
-
-
-def _default_service_network_config() -> dict[str, Any]:
-    return {
-        "enabled": DEFAULT_SERVICE_NETWORK["enabled"],
-        "host": DEFAULT_SERVICE_NETWORK["host"],
-        "advertised_host": DEFAULT_SERVICE_NETWORK["advertised_host"],
-        "cors_origins": list(DEFAULT_SERVICE_NETWORK["cors_origins"]),
-    }
-
-
-def _fallback_service_network_config() -> dict[str, Any]:
-    return {
-        "enabled": FALLBACK_SERVICE_NETWORK["enabled"],
-        "host": FALLBACK_SERVICE_NETWORK["host"],
-        "advertised_host": FALLBACK_SERVICE_NETWORK["advertised_host"],
-        "cors_origins": list(FALLBACK_SERVICE_NETWORK["cors_origins"]),
-    }
-
-
-def _default_browser_access_config() -> dict[str, Any]:
-    return dict(DEFAULT_BROWSER_ACCESS)
-
-
-def _fallback_browser_access_config() -> dict[str, Any]:
-    return dict(FALLBACK_BROWSER_ACCESS)
-
-
-def _copy_manager_config(manager_config: dict[str, Any]) -> dict[str, Any]:
-    default_startup = manager_config.get("default_startup", {})
-    service_network = manager_config.get("service_network", _fallback_service_network_config())
-    browser_access = manager_config.get("browser_access", _fallback_browser_access_config())
-    return {
-        "default_startup": {
-            "enabled": default_startup.get("enabled", DEFAULT_MANAGER_CONFIG["default_startup"]["enabled"]),
-            "service_ids": list(default_startup.get("service_ids", DEFAULT_STARTUP_SERVICE_IDS)),
-        },
-        "service_network": {
-            "enabled": service_network.get(
-                "enabled",
-                DEFAULT_SERVICE_NETWORK["enabled"],
-            ),
-            "host": service_network.get(
-                "host",
-                DEFAULT_SERVICE_NETWORK["host"],
-            ),
-            "advertised_host": service_network.get(
-                "advertised_host",
-                DEFAULT_SERVICE_NETWORK["advertised_host"],
-            ),
-            "cors_origins": list(
-                service_network.get("cors_origins", DEFAULT_SERVICE_NETWORK["cors_origins"])
-            ),
-        },
-        "browser_access": {
-            "enabled": browser_access.get(
-                "enabled",
-                FALLBACK_BROWSER_ACCESS["enabled"],
-            ),
-            "origin_source": browser_access.get(
-                "origin_source",
-                FALLBACK_BROWSER_ACCESS["origin_source"],
-            ),
-            "auth_token": browser_access.get("auth_token", ""),
-            "port_conflict_policy": browser_access.get(
-                "port_conflict_policy",
-                FALLBACK_BROWSER_ACCESS["port_conflict_policy"],
-            ),
-        },
+        "security_policy": FilesystemPolicy().to_config(),
     }
 
 
 def _normalize_manager_config(data: dict[str, Any], logger=None) -> dict[str, Any]:
-    if not isinstance(data, dict):
-        raise ValueError("manager config must be a JSON object")
-    if "default_startup" not in data:
-        _warn_manager_config(logger, "QCopilots manager config is missing default_startup")
-    default_startup = data.get("default_startup", {})
-    if not isinstance(default_startup, dict):
-        _warn_manager_config(logger, "Ignoring QCopilots manager default_startup because it is not an object")
-        default_startup = {}
-    if "enabled" not in default_startup:
-        _warn_manager_config(logger, "QCopilots manager default_startup is missing enabled")
-    if "service_ids" not in default_startup:
-        _warn_manager_config(logger, "QCopilots manager default_startup is missing service_ids")
-    return {
-        "default_startup": {
-            "enabled": _startup_enabled(default_startup.get("enabled", True), logger),
-            "service_ids": _startup_service_ids({"default_startup": default_startup}, logger),
-        },
-        "service_network": _normalize_service_network_config(data.get("service_network"), logger),
-        "browser_access": _normalize_browser_access_config(data.get("browser_access"), logger),
-    }
+    del logger
+    return validate_manager_config(data)
 
 
-def _startup_enabled(value: Any, logger=None) -> bool:
-    if isinstance(value, bool):
-        return value
-    _warn_manager_config(logger, "Ignoring QCopilots manager default_startup.enabled because it is not a boolean")
-    return DEFAULT_MANAGER_CONFIG["default_startup"]["enabled"]
-
-
-def _startup_service_ids(manager_config: dict[str, Any], logger=None) -> list[str]:
-    default_startup = manager_config.get("default_startup", {})
-    configured_ids = default_startup.get("service_ids", DEFAULT_STARTUP_SERVICE_IDS)
-    if not isinstance(configured_ids, list):
-        _warn_manager_config(logger, "Ignoring QCopilots manager default_startup.service_ids because it is not a list")
-        return list(DEFAULT_STARTUP_SERVICE_IDS)
-    ordered_ids = []
-    for service_id in configured_ids:
-        if not isinstance(service_id, str):
-            _warn_manager_config(
-                logger,
-                "Ignoring QCopilots manager default startup service id because it is not a string",
-            )
-            continue
-        service_id = service_id.strip()
-        if not service_id:
-            _warn_manager_config(logger, "Ignoring blank QCopilots manager default startup service id")
-            continue
-        if not is_safe_service_id(service_id):
-            _warn_manager_config(logger, "Ignoring unsafe QCopilots manager default startup service id: %s", service_id)
-            continue
-        if service_id not in ordered_ids:
-            ordered_ids.append(service_id)
-        else:
-            _warn_manager_config(
-                logger,
-                "Ignoring duplicate QCopilots manager default startup service id: %s",
-                service_id,
-            )
-    return ordered_ids
-
-
-def _warn_manager_config(logger, message: str, *args):
-    if logger is not None:
-        logger.warning(message, *args)
-
-
-def _normalize_service_network_config(value: Any, logger=None) -> dict[str, Any]:
-    if value is None:
-        _warn_manager_config(logger, "QCopilots manager config is missing service_network; using loopback fallback")
-        return _fallback_service_network_config()
-    if not isinstance(value, dict):
-        _warn_manager_config(logger, "Ignoring QCopilots manager service_network because it is not an object")
-        return _fallback_service_network_config()
-
-    host = _service_network_host(
-        value.get("host", DEFAULT_SERVICE_NETWORK["host"]),
-        FALLBACK_SERVICE_NETWORK["host"],
-        logger,
-    )
-    advertised_host = _service_network_advertised_host(value.get("advertised_host"), logger)
-    return {
-        "enabled": _service_network_enabled(
-            value.get("enabled", DEFAULT_SERVICE_NETWORK["enabled"]),
-            FALLBACK_SERVICE_NETWORK["enabled"],
-            logger,
-        ),
-        "host": host,
-        "advertised_host": advertised_host,
-        "cors_origins": _service_network_cors_origins(
-            value.get("cors_origins"),
-            FALLBACK_SERVICE_NETWORK["cors_origins"],
-            logger,
-        ),
-    }
-
-
-def _service_network_enabled(value: Any, fallback: bool, logger=None) -> bool:
-    if isinstance(value, bool):
-        return value
-    _warn_manager_config(logger, "Ignoring QCopilots manager service_network.enabled because it is not a boolean")
-    return fallback
-
-
-def _service_network_host(value: Any, fallback: str, logger=None) -> str:
-    if not isinstance(value, str):
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager service_network.host because it is not a string",
-        )
-        return fallback
-    host = value.strip()
-    if not host:
-        _warn_manager_config(logger, "Ignoring blank QCopilots manager service_network.host")
-        return fallback
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        _warn_manager_config(logger, "Ignoring invalid QCopilots manager service_network.host: %s", host)
-        return fallback
-    if address.version == 4 and str(address) == DEFAULT_HOST:
-        return DEFAULT_HOST
-    _warn_manager_config(
-        logger,
-        "Ignoring non-loopback QCopilots manager service_network.host: %s",
-        host,
-    )
-    return fallback
-
-
-def _service_network_string(
-    value: Any,
-    fallback: str,
-    logger=None,
-    field: str = "host",
-    allow_empty: bool = False,
-) -> str:
-    if isinstance(value, str):
-        value = value.strip()
-        if value or allow_empty:
-            return value
-    _warn_manager_config(
-        logger,
-        "Ignoring QCopilots manager service_network.%s because it is not a string",
-        field,
-    )
-    return fallback
-
-
-def _service_network_advertised_host(value: Any, logger=None) -> str:
-    if value is None:
-        return DEFAULT_SERVICE_NETWORK["advertised_host"]
-    if not isinstance(value, str):
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager service_network.advertised_host because it is not a string",
-        )
-        return FALLBACK_SERVICE_NETWORK["advertised_host"]
-    host = value.strip()
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        _warn_manager_config(
-            logger,
-            "Ignoring invalid QCopilots manager service_network.advertised_host: %s",
-            host,
-        )
-        return FALLBACK_SERVICE_NETWORK["advertised_host"]
-    if address.version == 4 and str(address) == DEFAULT_HOST:
-        return DEFAULT_HOST
-    _warn_manager_config(
-        logger,
-        "Ignoring non-loopback QCopilots manager service_network.advertised_host: %s",
-        host,
-    )
-    return FALLBACK_SERVICE_NETWORK["advertised_host"]
-
-
-def _service_network_cors_origins(value: Any, fallback: list[str] | tuple[str, ...], logger=None) -> list[str]:
-    if value is None:
-        return list(DEFAULT_SERVICE_NETWORK["cors_origins"])
-    if not isinstance(value, list):
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager service_network.cors_origins because it is not a list",
-        )
-        return list(fallback)
-    if value:
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager service_network.cors_origins because only an empty list is allowed",
-        )
-    return []
-
-
-def _normalize_browser_access_config(value: Any, logger=None) -> dict[str, Any]:
-    if value is None:
-        _warn_manager_config(
-            logger,
-            "QCopilots manager config is missing browser_access; using disabled fallback",
-        )
-        return _fallback_browser_access_config()
-    if not isinstance(value, dict):
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager browser_access because it is not an object",
-        )
-        return _fallback_browser_access_config()
-
-    enabled = value.get("enabled", DEFAULT_BROWSER_ACCESS["enabled"])
-    if not isinstance(enabled, bool):
-        _warn_manager_config(
-            logger,
-            "Ignoring QCopilots manager browser_access.enabled because it is not a boolean",
-        )
-        enabled = FALLBACK_BROWSER_ACCESS["enabled"]
-
-    origin_source = value.get(
-        "origin_source",
-        DEFAULT_BROWSER_ACCESS["origin_source"],
-    )
-    if origin_source != DEFAULT_BROWSER_ACCESS["origin_source"]:
-        _warn_manager_config(
-            logger,
-            "Ignoring invalid QCopilots manager browser_access.origin_source",
-        )
-        origin_source = FALLBACK_BROWSER_ACCESS["origin_source"]
-
-    auth_token = value.get("auth_token", "")
-    if auth_token != "" and not is_valid_browser_auth_token(auth_token):
-        _warn_manager_config(
-            logger,
-            "Ignoring invalid QCopilots manager browser_access.auth_token",
-        )
-        auth_token = ""
-
-    port_conflict_policy = value.get(
-        "port_conflict_policy",
-        DEFAULT_BROWSER_ACCESS["port_conflict_policy"],
-    )
-    if port_conflict_policy != "fail":
-        _warn_manager_config(
-            logger,
-            "Ignoring invalid QCopilots manager browser_access.port_conflict_policy",
-        )
-        port_conflict_policy = "fail"
-
-    return {
-        "enabled": enabled,
-        "origin_source": origin_source,
-        "auth_token": auth_token,
-        "port_conflict_policy": port_conflict_policy,
-    }
+def _startup_service_ids(manager_config: dict[str, Any]) -> list[str]:
+    validated = validate_manager_config(manager_config)
+    return list(validated["default_startup"]["service_ids"])
 
 
 def _browser_origin_from_url(value: Any) -> str:

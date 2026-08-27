@@ -1,0 +1,24 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_processing_general",
+  "plugin_name": "QCopilots MCP Server Processing General",
+  "display_name": "QCopilots MCP Server Processing General",
+  "description": "通过 QGIS bridge 将经过安全元数据分类的通用 QGIS Processing 算法暴露为 MCP 工具，覆盖网络、数据库、制图和其他不属于矢量或栅格领域的处理流程。算法通过异步作业执行，成功输出默认添加到当前工程。已有输出不会静默覆盖，覆盖需要显式请求和一次性确认令牌。列表只返回具有独立 destination 且支持安全发布的算法。按明确 ID 查询详情时仍可看到不支持算法及拒绝原因，网络访问、任意 SQL、外部数据库写入、目录写入和原地修改算法会在启动前拒绝。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "advertised_host": "127.0.0.1",
+  "default_port": 48217,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": [
+    "tools",
+    "qgis-bridge",
+    "processing",
+    "general"
+  ],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "cors_origins": []
+}

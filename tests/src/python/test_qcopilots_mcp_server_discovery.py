@@ -26,6 +26,7 @@ from unittest import mock
 SERVICE_PLUGIN_DIR_NAMES = (
     "qcopilots_mcp_server_builtin_tools",
     "qcopilots_mcp_server_interactive_tools",
+    "qcopilots_mcp_server_processing_general",
     "qcopilots_mcp_server_processing_raster",
     "qcopilots_mcp_server_processing_vector",
     "qcopilots_mcp_server_qgis_binary",
@@ -35,6 +36,7 @@ SERVICE_PLUGIN_DIR_NAMES = (
 SERVICE_SCHEMA_DESCRIPTION_LOCALIZED_DIR_NAMES = (
     "qcopilots_mcp_server_builtin_tools",
     "qcopilots_mcp_server_interactive_tools",
+    "qcopilots_mcp_server_processing_general",
     "qcopilots_mcp_server_processing_raster",
     "qcopilots_mcp_server_processing_vector",
     "qcopilots_mcp_server_qgis_binary",
@@ -46,9 +48,56 @@ DEFAULT_STARTUP_SERVICE_IDS = [
     "qcopilots.mcp_server_interactive_tools",
     "qcopilots.mcp_server_processing_vector",
     "qcopilots.mcp_server_processing_raster",
+    "qcopilots.mcp_server_processing_general",
     "qcopilots.mcp_server_skills",
     "qcopilots.mcp_server_qgis_binary",
 ]
+
+DEFAULT_SECURITY_POLICY = {
+    "mode": "compatible",
+    "shell": {"enabled": True, "executables": []},
+    "network": {"enabled": True, "allowed_origins": []},
+}
+
+
+def _manager_config(
+    *,
+    startup_enabled=True,
+    service_ids=None,
+    service_network_enabled=False,
+    browser_enabled=True,
+    auth_token="",
+    security_policy=None,
+):
+    """Return one complete current-version manager configuration."""
+
+    return {
+        "default_startup": {
+            "enabled": startup_enabled,
+            "service_ids": list(
+                DEFAULT_STARTUP_SERVICE_IDS if service_ids is None else service_ids
+            ),
+        },
+        "service_network": {
+            "enabled": service_network_enabled,
+            "host": "127.0.0.1",
+            "advertised_host": "127.0.0.1",
+            "cors_origins": [],
+        },
+        "browser_access": {
+            "enabled": browser_enabled,
+            "origin_source": "configured_qcopilots_url",
+            "auth_token": auth_token,
+            "port_conflict_policy": "fail",
+        },
+        "security_policy": json.loads(
+            json.dumps(
+                DEFAULT_SECURITY_POLICY
+                if security_policy is None
+                else security_policy
+            )
+        ),
+    }
 
 SERVICE_DESCRIPTION_REQUIRED_TERMS = {
     "qcopilots.mcp_server_builtin_tools": (
@@ -85,6 +134,14 @@ SERVICE_DESCRIPTION_REQUIRED_TERMS = {
         "矢量",
         ("几何", "属性"),
         ("provider", "数据上下文"),
+    ),
+    "qcopilots.mcp_server_processing_general": (
+        "QGIS bridge",
+        "Processing",
+        "通用",
+        ("网络", "数据库", "制图"),
+        ("SQL", "目录写入"),
+        ("原子发布", "启动前拒绝"),
     ),
     "qcopilots.mcp_server_qgis_binary": (
         "QGIS bridge",
@@ -246,6 +303,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             [
                 "qcopilots.mcp_server_builtin_tools",
                 "qcopilots.mcp_server_interactive_tools",
+                "qcopilots.mcp_server_processing_general",
                 "qcopilots.mcp_server_processing_raster",
                 "qcopilots.mcp_server_processing_vector",
                 "qcopilots.mcp_server_qgis_binary",
@@ -257,6 +315,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             [
                 "QCopilots MCP Server Builtin Tools",
                 "QCopilots MCP Server Interactive Tools",
+                "QCopilots MCP Server Processing General",
                 "QCopilots MCP Server Processing Raster",
                 "QCopilots MCP Server Processing Vector",
                 "QCopilots MCP Server QGIS Binary",
@@ -264,10 +323,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             ],
         )
         self.assertTrue(all(manifest.enabled for manifest in discovered))
-        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * 6)
+        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * 7)
         self.assertEqual(
             [manifest.default_port for manifest in discovered],
-            [48211, 48213, 48215, 48214, 48216, 48212],
+            [48211, 48213, 48217, 48215, 48214, 48216, 48212],
         )
         for manifest in discovered:
             self.assertTrue(_contains_cjk(manifest.description), manifest.description)
@@ -296,6 +355,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             CORS_ORIGINS_ENV,
             QGIS_BRIDGE_AUTH_TOKEN_ENV,
         )
+        from qcopilots_common.security_policy import SECURITY_POLICY_ENV
         from qcopilots_common.discovery import discover_service_manifests
         from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
 
@@ -310,6 +370,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         expected_bridge_services = {
             "qcopilots.mcp_server_builtin_tools": False,
             "qcopilots.mcp_server_interactive_tools": True,
+            "qcopilots.mcp_server_processing_general": True,
             "qcopilots.mcp_server_processing_raster": True,
             "qcopilots.mcp_server_processing_vector": True,
             "qcopilots.mcp_server_qgis_binary": True,
@@ -323,6 +384,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 expected_url = bridge_url if uses_bridge else None
                 self.assertEqual(plugin._bridge_url(manifest), expected_url)
                 env = plugin._service_env(manifest)
+                self.assertIn(SECURITY_POLICY_ENV, env)
+                policy_env = env.pop(SECURITY_POLICY_ENV)
+                self.assertEqual(json.loads(policy_env)["mode"], "compatible")
                 if uses_bridge:
                     self.assertEqual(
                         env,
@@ -515,9 +579,20 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertIn("default_startup", schema["properties"])
         self.assertIn("service_network", schema["properties"])
         self.assertIn("browser_access", schema["properties"])
+        self.assertIn("security_policy", schema["properties"])
         self.assertNotIn("workspace_roots", schema["properties"])
+        self.assertEqual(
+            set(schema["required"]),
+            {
+                "default_startup",
+                "service_network",
+                "browser_access",
+                "security_policy",
+            },
+        )
 
         default_start = schema["properties"]["default_startup"]
+        self.assertEqual(set(default_start["required"]), {"enabled", "service_ids"})
         _assert_described_schema_node(
             self,
             default_start,
@@ -525,8 +600,6 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             required_terms=(("默认", "default", "automatic"), ("启动", "start"), ("显式", "service_ids", "list")),
         )
         self.assertEqual(default_start["type"], "object")
-        self.assertNotIn("required", schema)
-        self.assertNotIn("required", default_start)
         self.assertIn("properties", default_start)
         default_start_properties = default_start["properties"]
         self.assertIn("enabled", default_start_properties)
@@ -558,6 +631,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         )
 
         self.assertIn("default_startup", config)
+        self.assertEqual(config["security_policy"], DEFAULT_SECURITY_POLICY)
         self.assertNotIn("workspace_roots", config)
         self.assertIs(config["default_startup"]["enabled"], True)
         self.assertEqual(
@@ -619,6 +693,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             )
 
         browser_access = schema["properties"]["browser_access"]
+        self.assertEqual(
+            set(browser_access["required"]),
+            {"enabled", "origin_source", "auth_token", "port_conflict_policy"},
+        )
         browser_properties = browser_access["properties"]
         self.assertEqual(
             set(browser_properties),
@@ -633,8 +711,34 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertEqual(config["browser_access"]["port_conflict_policy"], "fail")
         self.assertEqual(browser_properties["origin_source"]["const"], "configured_qcopilots_url")
         self.assertEqual(browser_properties["port_conflict_policy"]["const"], "fail")
+        security_properties = schema["properties"]["security_policy"]["properties"]
+        self.assertNotIn("read_roots", security_properties)
+        self.assertNotIn("write_roots", security_properties)
+        self.assertEqual(
+            schema["properties"]["security_policy"]["required"],
+            ["mode", "shell", "network"],
+        )
+        self.assertIn("network", security_properties)
+        self.assertEqual(
+            set(security_properties["network"]["properties"]),
+            {"enabled", "allowed_origins"},
+        )
+        self.assertIs(config["security_policy"]["network"]["enabled"], True)
+        self.assertEqual(
+            config["security_policy"]["network"]["allowed_origins"], []
+        )
+        for obsolete_field in ("read_roots", "write_roots"):
+            candidate = json.loads(json.dumps(config))
+            candidate["security_policy"][obsolete_field] = []
+            self.assertTrue(
+                _json_schema_errors(
+                    candidate,
+                    schema,
+                    f"manager config obsolete {obsolete_field}",
+                )
+            )
 
-    def test_manager_config_store_user_fields_override_template_independently(self):
+    def test_manager_config_store_uses_complete_current_user_configuration(self):
         from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -643,84 +747,31 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             user_path = root / "user" / "qcopilots_manager_config.json"
             template_path.parent.mkdir(parents=True)
             user_path.parent.mkdir(parents=True)
-            template_path.write_text(
-                json.dumps(
-                    {
-                        "default_startup": {
-                            "enabled": True,
-                            "service_ids": [
-                                "qcopilots.mcp_server_builtin_tools",
-                                "qcopilots.template_future",
-                            ],
-                        },
-                        "service_network": {
-                            "enabled": True,
-                            "host": "127.0.0.1",
-                            "advertised_host": "127.0.0.1",
-                            "cors_origins": [],
-                        },
-                    }
-                ),
-                encoding="utf-8",
+            template_config = _manager_config(
+                service_ids=[
+                    "qcopilots.mcp_server_builtin_tools",
+                    "qcopilots.template_future",
+                ],
+                service_network_enabled=True,
             )
-            user_path.write_text(
-                json.dumps(
-                    {
-                        "default_startup": {
-                            "enabled": False,
-                            "service_ids": [
-                                "qcopilots.mcp_server_skills",
-                                "qcopilots.user_future",
-                                "qcopilots.mcp_server_skills",
-                                "../unsafe",
-                                42,
-                            ],
-                        },
-                        "service_network": {
-                            "enabled": False,
-                            "host": "0.0.0.0",
-                            "cors_origins": ["*"],
-                        },
-                    }
-                ),
-                encoding="utf-8",
+            user_config = _manager_config(
+                startup_enabled=False,
+                service_ids=[
+                    "qcopilots.mcp_server_skills",
+                    "qcopilots.user_future",
+                ],
             )
+            template_path.write_text(json.dumps(template_config), encoding="utf-8")
+            user_path.write_text(json.dumps(user_config), encoding="utf-8")
             logger = _FakeLogger()
 
             store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
 
-            self.assertEqual(
-                store.snapshot(),
-                {
-                    "default_startup": {
-                        "enabled": False,
-                        "service_ids": [
-                            "qcopilots.mcp_server_skills",
-                            "qcopilots.user_future",
-                        ],
-                    },
-                    "service_network": {
-                        "enabled": False,
-                        "host": "127.0.0.1",
-                        "advertised_host": "127.0.0.1",
-                        "cors_origins": [],
-                    },
-                    "browser_access": {
-                        "enabled": True,
-                        "origin_source": "configured_qcopilots_url",
-                        "auth_token": "",
-                        "port_conflict_policy": "fail",
-                    },
-                },
-            )
-            _assert_logger_warning_contains(self, logger, "duplicate")
-            _assert_logger_warning_contains(self, logger, "unsafe")
-            _assert_logger_warning_contains(self, logger, "non-string")
-            _assert_logger_warning_contains(self, logger, "service_network.%s")
-            _assert_logger_warning_contains(self, logger, "empty list")
-            self.assertTrue(any("host" in args for _message, args in logger.messages))
+            self.assertEqual(store.snapshot(), user_config)
+            self.assertFalse(store.blocked)
+            self.assertEqual(logger.messages, [])
 
-    def test_manager_config_store_corrupt_user_falls_back_and_repairs_on_success(self):
+    def test_manager_config_store_corrupt_user_blocks_without_overwriting(self):
         from qcopilots_mcp_servers_manager.config_store import (
             DEFAULT_STARTUP_SERVICE_IDS,
             ManagerConfigStore,
@@ -749,32 +800,251 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                     "auth_token": "",
                     "port_conflict_policy": "fail",
                 },
+                "security_policy": DEFAULT_SECURITY_POLICY,
             }
             template_path.write_text(json.dumps(template_config), encoding="utf-8")
             user_path.write_text("{", encoding="utf-8")
+            corrupt_bytes = user_path.read_bytes()
             logger = _FakeLogger()
 
             store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
 
-            self.assertEqual(store.snapshot(), template_config)
+            self.assertTrue(store.blocked)
+            self.assertFalse(store.snapshot()["default_startup"]["enabled"])
+            self.assertEqual(store.snapshot()["default_startup"]["service_ids"], [])
+            self.assertFalse(store.snapshot()["browser_access"]["enabled"])
             _assert_logger_warning_contains(self, logger, "Could not read")
             result = store.add_startup_service("qcopilots.template_only")
-            self.assertTrue(result.saved)
+            self.assertFalse(result.saved)
             self.assertFalse(result.changed)
             self.assertFalse(result.dirty)
-            self.assertEqual(json.loads(user_path.read_text(encoding="utf-8")), template_config)
+            self.assertIn("invalid", result.error.lower())
+            self.assertEqual(user_path.read_bytes(), corrupt_bytes)
+
+            user_path.write_text(json.dumps(template_config), encoding="utf-8")
+            self.assertEqual(store.reload(), template_config)
+            self.assertFalse(store.blocked)
+            self.assertTrue(store.save().saved)
 
             missing_template_store = ManagerConfigStore(
                 root / "missing-template.json",
                 user_path=root / "missing-user.json",
             )
             missing_snapshot = missing_template_store.snapshot()
-            self.assertIs(missing_snapshot["default_startup"]["enabled"], True)
-            self.assertEqual(
-                missing_snapshot["default_startup"]["service_ids"],
-                list(DEFAULT_STARTUP_SERVICE_IDS),
-            )
+            self.assertTrue(missing_template_store.blocked)
+            self.assertIs(missing_snapshot["default_startup"]["enabled"], False)
+            self.assertEqual(missing_snapshot["default_startup"]["service_ids"], [])
             self.assertIs(missing_snapshot["service_network"]["enabled"], False)
+
+    def test_manager_config_store_invalid_present_security_policy_fails_closed(self):
+        from qcopilots_mcp_servers_manager.config_store import (
+            DEFAULT_SECURITY_POLICY,
+            ManagerConfigStore,
+        )
+
+        invalid_policies = (
+            "formal_restricted",
+            {"mode": "unknown"},
+            {
+                **DEFAULT_SECURITY_POLICY,
+                "read_roots": [],
+            },
+            {
+                **DEFAULT_SECURITY_POLICY,
+                "write_roots": [],
+            },
+            {
+                "mode": "compatible",
+                "shell": "disabled",
+                "network": {"enabled": True, "allowed_origins": []},
+            },
+            {
+                "mode": "compatible",
+                "shell": {"enabled": True, "executables": []},
+                "network": "disabled",
+            },
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {
+                    "enabled": True,
+                    "allowed_origins": ["http://localhost:49180"],
+                },
+            },
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "user.json"
+            template_path.write_text(
+                json.dumps(_manager_config()),
+                encoding="utf-8",
+            )
+            for invalid_policy in invalid_policies:
+                with self.subTest(invalid_policy=invalid_policy):
+                    payload = _manager_config(security_policy=invalid_policy)
+                    user_path.write_text(json.dumps(payload), encoding="utf-8")
+                    original = user_path.read_bytes()
+                    store = ManagerConfigStore(
+                        template_path,
+                        user_path=user_path,
+                    )
+                    self.assertTrue(store.blocked)
+                    if isinstance(invalid_policy, dict) and set(invalid_policy).intersection(
+                        {"read_roots", "write_roots"}
+                    ):
+                        self.assertIn("obsolete", store.blocked_error)
+                    self.assertFalse(store.save().saved)
+                    self.assertEqual(user_path.read_bytes(), original)
+
+            partial = {"default_startup": _manager_config()["default_startup"]}
+            user_path.write_text(json.dumps(partial), encoding="utf-8")
+            store = ManagerConfigStore(template_path, user_path=user_path)
+            self.assertTrue(store.blocked)
+            self.assertIn("missing required fields", store.blocked_error)
+
+            for obsolete_field in ("read_roots", "write_roots", "workspace_roots"):
+                with self.subTest(top_level_obsolete_field=obsolete_field):
+                    obsolete_config = _manager_config()
+                    obsolete_config[obsolete_field] = []
+                    user_path.write_text(
+                        json.dumps(obsolete_config),
+                        encoding="utf-8",
+                    )
+                    store = ManagerConfigStore(template_path, user_path=user_path)
+                    self.assertTrue(store.blocked)
+                    self.assertIn("obsolete", store.blocked_error)
+
+            unknown_config = _manager_config()
+            unknown_config["future_unknown"] = True
+            user_path.write_text(json.dumps(unknown_config), encoding="utf-8")
+            store = ManagerConfigStore(template_path, user_path=user_path)
+            self.assertTrue(store.blocked)
+            self.assertIn("unsupported fields", store.blocked_error)
+
+    def test_manager_config_store_existing_corrupt_template_fails_closed(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "missing-user.json"
+            template_path.write_bytes(b"{")
+            original = template_path.read_bytes()
+
+            store = ManagerConfigStore(template_path, user_path=user_path)
+
+            self.assertTrue(store.blocked)
+            self.assertFalse(store.snapshot()["default_startup"]["enabled"])
+            self.assertEqual(store.snapshot()["default_startup"]["service_ids"], [])
+            self.assertFalse(store.save().saved)
+            self.assertEqual(template_path.read_bytes(), original)
+            self.assertFalse(user_path.exists())
+
+    def test_manager_plugin_does_not_start_bridge_when_config_is_blocked(self):
+        _install_manager_import_stubs()
+
+        from qcopilots_mcp_servers_manager.plugin import (
+            QCopilotsMCPServersManagerPlugin,
+        )
+
+        plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
+        plugin._initialized = False
+        plugin._config_store = types.SimpleNamespace(
+            blocked=True,
+            blocked_error="invalid user configuration",
+        )
+        plugin.logger = _FakeLogger()
+        plugin.bridge = mock.Mock()
+
+        plugin.initGui()
+
+        plugin.bridge.start.assert_not_called()
+        self.assertFalse(plugin._initialized)
+
+    def test_manager_config_store_does_not_rewrite_service_selection(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        selected_services = [
+            "qcopilots.mcp_server_builtin_tools",
+            "qcopilots.mcp_server_interactive_tools",
+            "qcopilots.mcp_server_processing_vector",
+            "qcopilots.mcp_server_processing_raster",
+            "qcopilots.mcp_server_skills",
+            "qcopilots.mcp_server_qgis_binary",
+        ]
+        token = "A" * 43
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            user_path.parent.mkdir(parents=True)
+            user_path.write_text(
+                json.dumps(
+                    _manager_config(
+                        service_ids=selected_services,
+                        auth_token=token,
+                    )
+                ),
+                encoding="utf-8",
+            )
+            logger = _FakeLogger()
+
+            store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
+
+            self.assertFalse(store.dirty)
+            self.assertEqual(
+                store.snapshot()["default_startup"]["service_ids"],
+                selected_services,
+            )
+            result = store.ensure_browser_auth_token()
+            self.assertTrue(result.saved)
+            self.assertFalse(result.changed)
+            self.assertEqual(
+                json.loads(user_path.read_text(encoding="utf-8"))["default_startup"][
+                    "service_ids"
+                ],
+                selected_services,
+            )
+            self.assertFalse(any(token in message for message, _args in logger.messages))
+            self.assertFalse(any(token in str(args) for _message, args in logger.messages))
+
+    def test_manager_config_store_preserves_custom_service_order(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        custom = [
+            "qcopilots.mcp_server_interactive_tools",
+            "qcopilots.mcp_server_builtin_tools",
+            "qcopilots.mcp_server_processing_vector",
+            "qcopilots.mcp_server_processing_raster",
+            "qcopilots.mcp_server_skills",
+            "qcopilots.mcp_server_qgis_binary",
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            user_path.parent.mkdir(parents=True)
+            user_path.write_text(
+                json.dumps(_manager_config(service_ids=custom)),
+                encoding="utf-8",
+            )
+
+            store = ManagerConfigStore(template_path, user_path=user_path)
+
+            self.assertFalse(store.dirty)
+            self.assertEqual(
+                store.snapshot()["default_startup"]["service_ids"],
+                custom,
+            )
+            self.assertNotIn(
+                "qcopilots.mcp_server_processing_general",
+                json.loads(user_path.read_text(encoding="utf-8"))["default_startup"][
+                    "service_ids"
+                ],
+            )
 
     def test_manager_config_store_defaults_to_qcopilots_home(self):
         from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
@@ -782,7 +1052,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             template_path = root / "qcopilots_manager_config.json"
-            template_path.write_text("{}", encoding="utf-8")
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
             configured_home = root / "user-home"
 
             with mock.patch.dict(os.environ, {"QCOPILOTS_HOME": str(configured_home)}):
@@ -804,19 +1074,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             template_path = root / "plugin" / "qcopilots_manager_config.json"
             user_path = root / "user" / "qcopilots_manager_config.json"
             template_path.parent.mkdir(parents=True)
-            template_path.write_text(
-                json.dumps(
-                    {
-                        "browser_access": {
-                            "enabled": True,
-                            "origin_source": "configured_qcopilots_url",
-                            "auth_token": "",
-                            "port_conflict_policy": "fail",
-                        }
-                    }
-                ),
-                encoding="utf-8",
-            )
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
 
             store = ManagerConfigStore(template_path, user_path=user_path)
             generated = store.ensure_browser_auth_token()
@@ -856,7 +1114,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             root = Path(tmp)
             template_path = root / "qcopilots_manager_config.json"
             user_path = root / "user" / "qcopilots_manager_config.json"
-            template_path.write_text("{}", encoding="utf-8")
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
             logger = _FakeLogger()
             store = config_store.ManagerConfigStore(
                 template_path,
@@ -881,30 +1139,18 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 any(token in str(args) for _message, args in logger.messages)
             )
 
-    def test_manager_config_store_replaces_invalid_browser_token_without_logging_it(self):
-        from qcopilots_mcp_servers_manager.config_store import (
-            ManagerConfigStore,
-            is_valid_browser_auth_token,
-        )
+    def test_manager_config_store_rejects_invalid_browser_token_without_logging_it(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
 
         invalid_token = "do-not-log-this-invalid-token!"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             template_path = root / "qcopilots_manager_config.json"
             user_path = root / "user" / "qcopilots_manager_config.json"
-            template_path.write_text("{}", encoding="utf-8")
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
             user_path.parent.mkdir(parents=True)
             user_path.write_text(
-                json.dumps(
-                    {
-                        "browser_access": {
-                            "enabled": True,
-                            "origin_source": "configured_qcopilots_url",
-                            "auth_token": invalid_token,
-                            "port_conflict_policy": "fail",
-                        }
-                    }
-                ),
+                json.dumps(_manager_config(auth_token=invalid_token)),
                 encoding="utf-8",
             )
             logger = _FakeLogger()
@@ -915,12 +1161,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 user_path=user_path,
             )
             result = store.ensure_browser_auth_token()
-            replacement = store.snapshot()["browser_access"]["auth_token"]
 
-            self.assertTrue(result.saved)
-            self.assertTrue(result.changed)
-            self.assertTrue(is_valid_browser_auth_token(replacement))
-            self.assertNotEqual(replacement, invalid_token)
+            self.assertTrue(store.blocked)
+            self.assertFalse(result.saved)
+            self.assertFalse(result.changed)
+            self.assertIn("auth_token is invalid", result.error)
             self.assertFalse(
                 any(invalid_token in message for message, _args in logger.messages)
             )
@@ -935,7 +1180,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             root = Path(tmp)
             template_path = root / "qcopilots_manager_config.json"
             user_path = root / "user" / "qcopilots_manager_config.json"
-            template_path.write_text("{}", encoding="utf-8")
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
             store = config_store.ManagerConfigStore(template_path, user_path=user_path)
 
             with mock.patch.object(
@@ -1073,7 +1318,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             any(unsaved_token in message for message, _args in plugin.logger.messages)
         )
 
-    def test_manager_six_services_share_one_fixed_token(self):
+    def test_manager_seven_services_share_one_fixed_token(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
@@ -1087,7 +1332,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             _prime_manager_runtime(plugin, manifests)
             tokens = [plugin.prepare_service_start(manifest) for manifest in manifests]
 
-            self.assertEqual(len(manifests), 6)
+            self.assertEqual(len(manifests), 7)
             self.assertEqual(len(set(tokens)), 1)
             self.assertTrue(
                 manager_plugin.is_valid_browser_auth_token(tokens[0])
@@ -1225,21 +1470,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             template_path = root / "plugin" / "qcopilots_manager_config.json"
             user_path = root / "user" / "qcopilots_manager_config.json"
             template_path.parent.mkdir(parents=True)
-            template_config = {
-                "default_startup": {
-                    "enabled": False,
-                    "service_ids": [
-                        "qcopilots.mcp_server_builtin_tools",
-                        "qcopilots.mcp_server_skills",
-                    ],
-                },
-                "service_network": {
-                    "enabled": True,
-                    "host": "127.0.0.1",
-                    "advertised_host": "127.0.0.1",
-                    "cors_origins": [],
-                },
-            }
+            template_config = _manager_config(
+                startup_enabled=False,
+                service_ids=[
+                    "qcopilots.mcp_server_builtin_tools",
+                    "qcopilots.mcp_server_skills",
+                ],
+                service_network_enabled=True,
+            )
             template_text = json.dumps(template_config)
             template_path.write_text(template_text, encoding="utf-8")
             store = config_store.ManagerConfigStore(template_path, user_path=user_path)
@@ -1370,15 +1608,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             user_path = root / "user" / "qcopilots_manager_config.json"
             template_path.write_text(
                 json.dumps(
-                    {
-                        "default_startup": {"enabled": True, "service_ids": []},
-                        "service_network": {
-                            "enabled": True,
-                            "host": "127.0.0.1",
-                            "advertised_host": "127.0.0.1",
-                            "cors_origins": [],
-                        },
-                    }
+                    _manager_config(
+                        service_ids=[],
+                        service_network_enabled=True,
+                    )
                 ),
                 encoding="utf-8",
             )
@@ -1418,7 +1651,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             types.SimpleNamespace(service_id=skills_id),
         ]
         config = manager_plugin._normalize_manager_config(
-            {"default_startup": {"enabled": True, "service_ids": [skills_id, builtin_id]}}
+            _manager_config(service_ids=[skills_id, builtin_id])
         )
 
         ordered = manager_plugin._order_service_manifests(
@@ -1431,116 +1664,72 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             [skills_id, builtin_id, interactive_id],
         )
         self.assertFalse(hasattr(manager_plugin.ManagerDialog, "_apply_default_startup"))
-        self.assertEqual(
-            manager_plugin._normalize_manager_config({})["service_network"],
-            {
-                "enabled": False,
-                "host": "127.0.0.1",
-                "advertised_host": "127.0.0.1",
-                "cors_origins": [],
-            },
-        )
+        with self.assertRaisesRegex(ValueError, "missing required fields"):
+            manager_plugin._normalize_manager_config({})
 
-    def test_manager_normalizes_default_startup_service_ids(self):
+    def test_manager_rejects_invalid_default_startup_service_ids(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        logger = _FakeLogger()
-        config = manager_plugin._normalize_manager_config(
+        invalid_startups = (
+            {"enabled": "false", "service_ids": []},
+            {"enabled": True, "service_ids": "qcopilots.mcp_server_builtin_tools"},
+            {"enabled": True, "service_ids": [""]},
+            {"enabled": True, "service_ids": ["../bad"]},
+            {"enabled": True, "service_ids": [42]},
             {
-                "default_startup": {
-                    "enabled": "false",
-                    "service_ids": [
-                        "qcopilots.mcp_server_builtin_tools",
-                        "",
-                        "qcopilots.future_service",
-                        "qcopilots.future_service",
-                        "../bad",
-                        42,
-                    ],
-                }
+                "enabled": True,
+                "service_ids": ["qcopilots.future_service", "qcopilots.future_service"],
             },
-            logger,
+            [],
         )
+        for startup in invalid_startups:
+            with self.subTest(startup=startup), self.assertRaises((TypeError, ValueError)):
+                candidate = _manager_config()
+                candidate["default_startup"] = startup
+                manager_plugin._normalize_manager_config(candidate)
 
-        self.assertIs(config["default_startup"]["enabled"], True)
-        self.assertEqual(
-            config["default_startup"]["service_ids"],
-            [
-                "qcopilots.mcp_server_builtin_tools",
-                "qcopilots.future_service",
-            ],
-        )
-        _assert_logger_warning_contains(self, logger, "not a boolean")
-        _assert_logger_warning_contains(self, logger, "blank")
-        _assert_logger_warning_contains(self, logger, "unsafe")
-        _assert_logger_warning_contains(self, logger, "not a string")
-        _assert_logger_warning_contains(self, logger, "duplicate")
-
-        warning_count = len(logger.messages)
-        config = manager_plugin._normalize_manager_config(
-            {"default_startup": {"service_ids": "qcopilots.mcp_server_builtin_tools"}},
-            logger,
-        )
-        self.assertEqual(
-            config["default_startup"]["service_ids"],
-            DEFAULT_STARTUP_SERVICE_IDS,
-        )
-        self.assertGreater(len(logger.messages), warning_count)
-        _assert_logger_warning_contains(self, logger, "not a list")
-
-        warning_count = len(logger.messages)
-        config = manager_plugin._normalize_manager_config({"default_startup": []}, logger)
-        self.assertEqual(
-            config["default_startup"]["service_ids"],
-            DEFAULT_STARTUP_SERVICE_IDS,
-        )
-        self.assertGreater(len(logger.messages), warning_count)
-        _assert_logger_warning_contains(self, logger, "not an object")
-        _assert_logger_warning_contains(self, logger, "missing enabled")
-        _assert_logger_warning_contains(self, logger, "missing service_ids")
-
-    def test_manager_normalizes_service_network_host_and_origins(self):
+    def test_manager_rejects_invalid_service_network_values(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        logger = _FakeLogger()
-        config = manager_plugin._normalize_manager_config(
+        invalid_networks = (
             {
-                "service_network": {
-                    "enabled": "yes",
-                    "host": "8.8.8.8",
-                    "advertised_host": "  qgis-client-01.local  ",
-                    "cors_origins": [
-                        "http://llama-server:8282",
-                        "https://example.invalid/path",
-                        "::1",
-                        "*",
-                        42,
-                        "http://llama-server:8282",
-                    ],
-                }
-            },
-            logger,
-        )
-
-        self.assertEqual(
-            config["service_network"],
-            {
-                "enabled": False,
+                "enabled": "yes",
                 "host": "127.0.0.1",
                 "advertised_host": "127.0.0.1",
                 "cors_origins": [],
             },
+            {
+                "enabled": True,
+                "host": "8.8.8.8",
+                "advertised_host": "127.0.0.1",
+                "cors_origins": [],
+            },
+            {
+                "enabled": True,
+                "host": "127.0.0.1",
+                "advertised_host": "qgis-client-01.local",
+                "cors_origins": [],
+            },
+            {
+                "enabled": True,
+                "host": "127.0.0.1",
+                "advertised_host": "127.0.0.1",
+                "cors_origins": ["*"],
+            },
         )
-        _assert_logger_warning_contains(self, logger, "not a boolean")
-        _assert_logger_warning_contains(self, logger, "non-loopback")
-        _assert_logger_warning_contains(self, logger, "invalid")
-        _assert_logger_warning_contains(self, logger, "empty list")
+        for service_network in invalid_networks:
+            with self.subTest(service_network=service_network), self.assertRaises(
+                (TypeError, ValueError)
+            ):
+                candidate = _manager_config()
+                candidate["service_network"] = service_network
+                manager_plugin._normalize_manager_config(candidate)
 
-    def test_manager_config_load_failures_use_loopback_service_network_fallback(self):
+    def test_manager_config_load_failures_are_rejected(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
@@ -1549,26 +1738,15 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             missing_config = Path(tmp) / "missing.json"
             logger = _FakeLogger()
 
-            self.assertEqual(
-                manager_plugin._load_manager_config(missing_config, logger)["service_network"],
-                {
-                    "enabled": False,
-                    "host": "127.0.0.1",
-                    "advertised_host": "127.0.0.1",
-                    "cors_origins": [],
-                },
-            )
-            _assert_logger_warning_contains(self, logger, "missing")
+            with self.assertRaisesRegex(ValueError, "Could not read"):
+                manager_plugin._load_manager_config(missing_config, logger)
 
             bad_config = Path(tmp) / "bad.json"
             bad_config.write_text("{", encoding="utf-8")
             logger = _FakeLogger()
 
-            self.assertEqual(
-                manager_plugin._load_manager_config(bad_config, logger)["service_network"]["host"],
-                "127.0.0.1",
-            )
-            _assert_logger_warning_contains(self, logger, "Could not read")
+            with self.assertRaisesRegex(ValueError, "Could not read"):
+                manager_plugin._load_manager_config(bad_config, logger)
 
     def test_manager_service_network_overrides_manifest_endpoint(self):
         _install_manager_import_stubs()
@@ -1591,54 +1769,32 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertEqual(clamped.url(), "http://127.0.0.1:48211/mcp")
                 self.assertEqual(clamped.cors_origins, [])
 
-    def test_manager_runtime_normalization_rejects_wide_network_values(self):
+    def test_manager_runtime_validation_rejects_wide_network_values(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        logger = _FakeLogger()
-        config = manager_plugin._normalize_manager_config(
-            {
-                "service_network": {
-                    "enabled": True,
-                    "host": "0.0.0.0",
-                    "advertised_host": "127.0.0.2",
-                    "cors_origins": ["*"],
-                }
-            },
-            logger,
-        )
-
-        self.assertEqual(
-            config["service_network"],
-            {
-                "enabled": True,
-                "host": "127.0.0.1",
-                "advertised_host": "127.0.0.1",
-                "cors_origins": [],
-            },
-        )
-        _assert_logger_warning_contains(self, logger, "non-loopback")
-        _assert_logger_warning_contains(self, logger, "empty list")
+        candidate = _manager_config()
+        candidate["service_network"] = {
+            "enabled": True,
+            "host": "0.0.0.0",
+            "advertised_host": "127.0.0.2",
+            "cors_origins": ["*"],
+        }
+        with self.assertRaisesRegex(ValueError, "service_network"):
+            manager_plugin._normalize_manager_config(candidate)
 
     def test_manager_rejects_invalid_advertised_host_values(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        logger = _FakeLogger()
-        config = manager_plugin._normalize_manager_config(
-            {
-                "service_network": {
-                    "enabled": True,
-                    "advertised_host": "http://qgis-client-01.local/mcp",
-                }
-            },
-            logger,
+        candidate = _manager_config()
+        candidate["service_network"]["advertised_host"] = (
+            "http://qgis-client-01.local/mcp"
         )
-
-        self.assertEqual(config["service_network"]["advertised_host"], "127.0.0.1")
-        _assert_logger_warning_contains(self, logger, "advertised_host")
+        with self.assertRaisesRegex(ValueError, "advertised_host"):
+            manager_plugin._normalize_manager_config(candidate)
 
     def test_manager_discovery_applies_service_network_to_all_services(self):
         _install_manager_import_stubs()
@@ -1658,14 +1814,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
                 plugin.plugins_root = Path(tmp)
                 plugin._manager_config = manager_plugin._normalize_manager_config(
-                    {
-                        "service_network": {
-                            "enabled": True,
-                            "host": "0.0.0.0",
-                            "advertised_host": "qgis-client-01.local",
-                            "cors_origins": ["http://llama-server:8282"],
-                        }
-                    }
+                    _manager_config(service_network_enabled=True)
                 )
                 ports = [48211, 48212, 48213, 48214, 48215]
                 manifests = [
@@ -1706,7 +1855,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
                 plugin.plugins_root = Path(tmp)
                 plugin._manager_config = manager_plugin._normalize_manager_config(
-                    {"service_network": {"enabled": False}}
+                    _manager_config(service_network_enabled=False)
                 )
                 manifests = [
                     _manifest(tmp, "qcopilots.mcp_server_builtin_tools", ["tools"]),
@@ -1741,12 +1890,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         old_service_log_file = manager_plugin.service_log_file
         try:
             load_calls = []
-            cached_config = {
-                "default_startup": {
-                    "enabled": True,
-                    "service_ids": ["qcopilots.mcp_server_skills"],
-                }
-            }
+            cached_config = _manager_config(
+                service_ids=["qcopilots.mcp_server_skills"]
+            )
 
             class FakeManagerConfigStore:
                 def __init__(self, path, logger):
@@ -1791,25 +1937,15 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             manager_plugin.ProcessController = old_process_controller
             manager_plugin.service_log_file = old_service_log_file
 
-    def test_manager_ignores_legacy_workspace_root_config(self):
+    def test_manager_rejects_legacy_workspace_root_config(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
-        config = manager_plugin._normalize_manager_config(
-            {
-                "workspace_roots": [
-                    "C:/Data/QGISData/TestData",
-                    42,
-                ]
-            }
-        )
-
-        self.assertNotIn("workspace_roots", config)
-        self.assertEqual(
-            config["default_startup"]["service_ids"],
-            DEFAULT_STARTUP_SERVICE_IDS,
-        )
+        candidate = _manager_config()
+        candidate["workspace_roots"] = ["C:/Data/QGISData/TestData", 42]
+        with self.assertRaisesRegex(ValueError, "obsolete fields"):
+            manager_plugin._normalize_manager_config(candidate)
 
     def test_manager_dialog_populate_services_does_not_apply_default_startup(self):
         _install_manager_import_stubs()
@@ -1834,15 +1970,12 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 types.SimpleNamespace(service_id="qcopilots.mcp_server_builtin_tools"),
                 types.SimpleNamespace(service_id="qcopilots.mcp_server_skills"),
             ]
-            plugin.manager_config = lambda: {
-                "default_startup": {
-                    "enabled": True,
-                    "service_ids": [
-                        "qcopilots.mcp_server_builtin_tools",
-                        "qcopilots.mcp_server_skills",
-                    ],
-                }
-            }
+            plugin.manager_config = lambda: _manager_config(
+                service_ids=[
+                    "qcopilots.mcp_server_builtin_tools",
+                    "qcopilots.mcp_server_skills",
+                ]
+            )
             dialog = object.__new__(manager_plugin.ManagerDialog)
             dialog.plugin = plugin
             dialog.content_layout = _FakeLayout()
@@ -1925,6 +2058,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             CORS_ORIGINS_ENV,
             QGIS_BRIDGE_AUTH_TOKEN_ENV,
         )
+        from qcopilots_common.security_policy import SECURITY_POLICY_ENV
         from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1948,11 +2082,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 ["tools", "processing", "vector"],
             )
 
-            self.assertEqual(plugin._service_env(builtin_manifest), {CORS_ORIGINS_ENV: "[]"})
+            builtin_env = plugin._service_env(builtin_manifest)
+            self.assertEqual(builtin_env[CORS_ORIGINS_ENV], "[]")
+            self.assertIn(SECURITY_POLICY_ENV, builtin_env)
             self.assertEqual(
                 plugin._service_env(interactive_manifest),
                 {
                     CORS_ORIGINS_ENV: "[]",
+                    SECURITY_POLICY_ENV: builtin_env[SECURITY_POLICY_ENV],
                     BRIDGE_URL_ENV: "http://127.0.0.1:48200",
                     QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
                 },
@@ -1961,6 +2098,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 plugin._service_env(processing_manifest),
                 {
                     CORS_ORIGINS_ENV: "[]",
+                    SECURITY_POLICY_ENV: builtin_env[SECURITY_POLICY_ENV],
                     BRIDGE_URL_ENV: "http://127.0.0.1:48200",
                     QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
                 },
@@ -1975,6 +2113,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             CORS_ORIGINS_ENV,
             QGIS_BRIDGE_AUTH_TOKEN_ENV,
         )
+        from qcopilots_common.security_policy import SECURITY_POLICY_ENV
 
         with tempfile.TemporaryDirectory() as tmp:
             plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
@@ -1992,10 +2131,48 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 env,
                 {
                     CORS_ORIGINS_ENV: "[]",
+                    SECURITY_POLICY_ENV: env[SECURITY_POLICY_ENV],
                     BRIDGE_URL_ENV: "http://127.0.0.1:48200",
                     QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
                 },
             )
+
+    def test_manager_service_env_injects_formal_policy_without_credentials(self):
+        _install_manager_import_stubs()
+
+        from qcopilots_common.constants import CORS_ORIGINS_ENV
+        from qcopilots_common.security_policy import (
+            SECURITY_POLICY_ENV,
+            filesystem_policy_from_config,
+        )
+        from qcopilots_mcp_servers_manager.plugin import QCopilotsMCPServersManagerPlugin
+
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
+            plugin.bridge = types.SimpleNamespace(url="http://127.0.0.1:48200")
+            plugin._bridge_auth_token = "must-not-enter-builtin-env"
+            plugin._filesystem_policy = filesystem_policy_from_config(
+                {
+                    "mode": "formal_restricted",
+                    "shell": {"enabled": False, "executables": []},
+                    "network": {"enabled": False, "allowed_origins": []},
+                }
+            )
+            manifest = _manifest(
+                tmp,
+                "qcopilots.mcp_server_builtin_tools",
+                ["tools"],
+            )
+
+            env = plugin._service_env(manifest)
+
+            self.assertEqual(env[CORS_ORIGINS_ENV], "[]")
+            policy = json.loads(env[SECURITY_POLICY_ENV])
+            self.assertEqual(policy["mode"], "formal_restricted")
+            self.assertNotIn("read_roots", policy)
+            self.assertNotIn("write_roots", policy)
+            self.assertFalse(policy["shell"]["enabled"])
+            self.assertNotIn(plugin._bridge_auth_token, json.dumps(env))
 
     def test_manager_service_env_authoritatively_overrides_ambient_cors(self):
         _install_manager_import_stubs()
@@ -2041,6 +2218,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             CORS_ORIGINS_ENV,
             QGIS_BRIDGE_AUTH_TOKEN_ENV,
         )
+        from qcopilots_common.security_policy import SECURITY_POLICY_ENV
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -2064,7 +2242,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             plugin.start_service(builtin_manifest)
             first_token = plugin.controller.auth_token
             self.assertIsNone(plugin.controller.bridge_url)
-            self.assertEqual(plugin.controller.extra_env, {CORS_ORIGINS_ENV: "[]"})
+            builtin_env = plugin.controller.extra_env
+            self.assertEqual(builtin_env[CORS_ORIGINS_ENV], "[]")
+            self.assertIn(SECURITY_POLICY_ENV, builtin_env)
+            policy_env = builtin_env[SECURITY_POLICY_ENV]
             self.assertTrue(first_token)
 
             plugin.stop_service(builtin_manifest)
@@ -2077,6 +2258,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 plugin.controller.extra_env,
                 {
                     CORS_ORIGINS_ENV: "[]",
+                    SECURITY_POLICY_ENV: policy_env,
                     BRIDGE_URL_ENV: "http://127.0.0.1:48200",
                     QGIS_BRIDGE_AUTH_TOKEN_ENV: "bridge-session-token",
                 },
@@ -2635,18 +2817,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 plugin.bridge = RecordingBridge()
                 plugin.controller = _FakeProcessController()
                 plugin._bridge_auth_token = "bridge-session-token"
-                plugin._manager_config = {
-                    "default_startup": {
-                        "enabled": True,
-                        "service_ids": [manifest.service_id],
-                    },
-                    "service_network": {
-                        "enabled": True,
-                        "host": "127.0.0.1",
-                        "advertised_host": "127.0.0.1",
-                        "cors_origins": [],
-                    },
-                }
+                plugin._manager_config = _manager_config(
+                    service_ids=[manifest.service_id]
+                )
                 plugin._discover_services = lambda: [manifest]
                 plugin._event_relay = types.SimpleNamespace(
                     handle_default_start_result=lambda result: plugin._handle_default_start_result(result),
@@ -2797,18 +2970,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 manifest = _manifest(tmp, "qcopilots.first", ["tools"])
                 plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
                 _prime_manager_runtime(plugin)
-                plugin._manager_config = {
-                    "default_startup": {
-                        "enabled": False,
-                        "service_ids": [manifest.service_id],
-                    },
-                    "service_network": {
-                        "enabled": True,
-                        "host": "127.0.0.1",
-                        "advertised_host": "127.0.0.1",
-                        "cors_origins": [],
-                    },
-                }
+                plugin._manager_config = _manager_config(
+                    startup_enabled=False,
+                    service_ids=[manifest.service_id],
+                )
                 plugin._discover_services = lambda: [manifest]
 
                 plugin._discover_and_start_default_services()
@@ -4138,6 +4303,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_servers_manager",
             "qcopilots_mcp_server_builtin_tools",
             "qcopilots_mcp_server_interactive_tools",
+            "qcopilots_mcp_server_processing_general",
             "qcopilots_mcp_server_processing_raster",
             "qcopilots_mcp_server_processing_vector",
             "qcopilots_mcp_server_qgis_binary",
@@ -4188,6 +4354,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_server_processing_vector": "48214",
             "qcopilots_mcp_server_processing_raster": "48215",
             "qcopilots_mcp_server_qgis_binary": "48216",
+            "qcopilots_mcp_server_processing_general": "48217",
         }
 
         for plugin_dir_name in SERVICE_PLUGIN_DIR_NAMES:
@@ -4869,7 +5036,7 @@ class _FakeManagerPlugin:
         ]
 
     def manager_config(self):
-        return {"default_startup": {"enabled": False, "service_ids": []}}
+        return _manager_config(startup_enabled=False, service_ids=[])
 
     def remember_service_startup(self, service_id, enabled):
         self.remembered_service_states.append((service_id, enabled))

@@ -58,9 +58,10 @@ def build_qgis_binary_tools() -> list[McpTool]:
             (
                 "Discover the explicitly configured QGIS package binaries without "
                 "starting a process. Returns a filtered, cursor-paginated page of "
-                "binary summaries, including availability, risk, environment, and "
-                "disabled reasons, so a returned binary_id can be used with the "
-                "details or start tools."
+                "binary summaries, including catalog enablement, configured risk, "
+                "environment, package-relative path and disabled reasons, so a "
+                "returned binary_id can be used with the details or start tools. "
+                "Listing the catalog does not execute a configured probe or binary."
             ),
             _list_binaries_schema(),
             list_binaries,
@@ -70,8 +71,10 @@ def build_qgis_binary_tools() -> list[McpTool]:
             (
                 "Inspect one explicitly configured QGIS package binary without "
                 "running it. Given a binary_id from list_qgis_binaries, returns its "
-                "effective catalog policy, executable path, availability, risk, "
-                "environment, probe, exit-code rules, and resource limits."
+                "effective catalog policy, package-relative executable path, catalog "
+                "enablement, risk, environment, configured probe, exit-code rules, "
+                "and resource limits. This inspection does not execute the probe or "
+                "binary."
             ),
             _binary_id_schema(),
             binary_details,
@@ -83,7 +86,10 @@ def build_qgis_binary_tools() -> list[McpTool]:
                 "asynchronous QgsTask job. The service passes argv without a command "
                 "shell, applies the catalog environment and resource limits, requires "
                 "explicit confirmation for R2 binaries, blocks R3 binaries, and "
-                "returns a job snapshot for later polling or cancellation."
+                "returns a job snapshot for later polling or cancellation. Normal "
+                "local input and output paths may be anywhere the QGIS process account "
+                "can access. Formal restricted mode still rejects unsafe path forms, "
+                "unapproved network sources, and rejects non-empty stdin."
             ),
             _start_binary_schema(),
             start_binary,
@@ -217,7 +223,16 @@ def _start_binary_schema() -> dict[str, Any]:
                 "default": [],
                 "description": (
                     "Exact argv entries passed to the configured executable without "
-                    "a command shell or argument rewriting."
+                    "a command shell or argument rewriting. In formal restricted "
+                    "mode, normal local input and output paths, including key=value "
+                    "values and QGIS semicolon path lists, may be anywhere the QGIS "
+                    "process account can access. HTTP(S) sources must use an approved "
+                    "origin. "
+                    "Remote GDAL/OGR datasource connection strings and driver-prefixed "
+                    "local datasource paths are rejected. Indirect argv files, including "
+                    "@response files and GDAL/OGR --optfile forms, Windows device "
+                    "paths, and existing files with multiple hard links are also "
+                    "rejected."
                 ),
             },
             "working_directory": {
@@ -225,8 +240,9 @@ def _start_binary_schema() -> dict[str, Any]:
                 "minLength": 1,
                 "maxLength": 32768,
                 "description": (
-                    "Existing process working directory. Relative paths resolve from "
-                    "the QGIS package root; absolute paths are used as supplied."
+                    "Existing normal local process working directory. Omitted and "
+                    "relative paths resolve from the QGIS package root. Absolute paths "
+                    "may be anywhere the QGIS process account can access."
                 ),
             },
             "stdin": {
@@ -234,7 +250,10 @@ def _start_binary_schema() -> dict[str, Any]:
                 "maxLength": MAX_STDIN_CHARS,
                 "description": (
                     "UTF-8 text written to the process standard input. The selected "
-                    "binary may prohibit stdin or impose a smaller byte limit."
+                    "binary may prohibit stdin or impose a smaller byte limit. Formal "
+                    "restricted mode permits only omitted or empty stdin because this "
+                    "untyped channel could carry paths, data sources, or external "
+                    "references; non-empty stdin is rejected before job creation."
                 ),
             },
             "timeout_seconds": {

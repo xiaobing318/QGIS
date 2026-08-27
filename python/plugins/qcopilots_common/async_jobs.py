@@ -79,8 +79,9 @@ class AsyncJobStore:
         scope_field: str = "category",
         terminal_ttl_seconds: float = 24 * 60 * 60,
         max_terminal_jobs_per_scope: int = 200,
+        max_cleanup_audits_per_scope: int | None = None,
         now: Callable[[], float] | None = None,
-        on_evict: Callable[[str, Any], None] | None = None,
+        on_evict: Callable[[str, Any], Any] | None = None,
     ):
         ttl = float(terminal_ttl_seconds)
         if not math.isfinite(ttl) or ttl < 0:
@@ -92,11 +93,23 @@ class AsyncJobStore:
         self.scope_field = str(scope_field)
         self.terminal_ttl_seconds = ttl
         self.max_terminal_jobs_per_scope = int(max_terminal_jobs_per_scope)
+        if max_cleanup_audits_per_scope is None:
+            max_cleanup_audits_per_scope = max(
+                1, min(64, self.max_terminal_jobs_per_scope or 1)
+            )
+        if isinstance(max_cleanup_audits_per_scope, bool) or int(
+            max_cleanup_audits_per_scope
+        ) < 1:
+            raise ValueError("max_cleanup_audits_per_scope must be positive")
+        self.max_cleanup_audits_per_scope = min(
+            64, int(max_cleanup_audits_per_scope)
+        )
         self._now = now or time.monotonic
         self._on_evict = on_evict
         self._lock = threading.RLock()
         self._jobs: dict[str, _JobEntry] = {}
         self._idempotency: dict[tuple[str, str], str] = {}
+        self._cleanup_audits: dict[str, list[dict[str, Any]]] = {}
         self._accepting = True
         self._next_created_sequence = 0
         self._next_terminal_sequence = 0
@@ -242,6 +255,23 @@ class AsyncJobStore:
             entry.snapshot.update(copy.deepcopy(changes))
             return copy.deepcopy(entry.snapshot)
 
+    def patch_cleanup_receipt(
+        self,
+        job_id: str,
+        cleanup: dict[str, Any],
+        scope: str | None = None,
+    ) -> dict[str, Any]:
+        """Refresh cleanup evidence after a terminal job retries recovery."""
+
+        with self._lock:
+            entry = self._entry_locked(job_id, scope)
+            if entry.snapshot["state"] not in TERMINAL_JOB_STATES:
+                raise InvalidJobTransitionError(
+                    "Cleanup receipts can only be refreshed for terminal jobs"
+                )
+            entry.snapshot["cleanup"] = copy.deepcopy(cleanup)
+            return copy.deepcopy(entry.snapshot)
+
     def transition(
         self,
         job_id: str,
@@ -307,6 +337,28 @@ class AsyncJobStore:
                 if entry.snapshot["state"] not in TERMINAL_JOB_STATES
             ]
 
+    def terminal_runtime_items(self) -> list[tuple[str, str, Any]]:
+        with self._lock:
+            return [
+                (job_id, entry.scope, entry.runtime)
+                for job_id, entry in self._jobs.items()
+                if entry.snapshot["state"] in TERMINAL_JOB_STATES
+            ]
+
+    def cleanup_audits(
+        self,
+        scope: str,
+        *,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Return bounded cleanup evidence for jobs removed at eviction."""
+
+        if isinstance(limit, bool) or int(limit) < 1 or int(limit) > 100:
+            raise ValueError("limit must be an integer from 1 through 100")
+        with self._lock:
+            values = self._cleanup_audits.get(str(scope), [])
+            return copy.deepcopy(values[-int(limit) :][::-1])
+
     def purge(self) -> None:
         with self._lock:
             self._purge_locked()
@@ -352,15 +404,67 @@ class AsyncJobStore:
             self._evict_locked(job_id)
 
     def _evict_locked(self, job_id: str) -> None:
-        entry = self._jobs.pop(job_id, None)
+        entry = self._jobs.get(job_id)
         if entry is None:
             return
+        if self._on_evict:
+            try:
+                cleanup = self._on_evict(job_id, entry.runtime)
+            except Exception as err:
+                cleanup = {
+                    "complete": False,
+                    "retry_recommended": True,
+                    "residual_paths": [],
+                    "error": str(err),
+                }
+            if isinstance(cleanup, dict) and cleanup.get("complete") is False:
+                receipt = _bounded_cleanup_receipt(cleanup)
+                receipt["eviction_cleanup_failed"] = True
+                receipt["retry_recommended"] = True
+                self._record_cleanup_audit_locked(entry, receipt)
+        entry.runtime = None
+        self._jobs.pop(job_id, None)
         client_request_id = entry.snapshot.get("client_request_id")
         if client_request_id:
             self._idempotency.pop((entry.scope, client_request_id), None)
-        if self._on_evict:
-            try:
-                self._on_evict(job_id, entry.runtime)
-            except Exception:
-                # Retention cleanup must never make a public job API fail.
-                pass
+
+    def _record_cleanup_audit_locked(
+        self,
+        entry: _JobEntry,
+        cleanup: dict[str, Any],
+    ) -> None:
+        audit = {
+            "job_id": str(entry.snapshot.get("job_id", "")),
+            self.scope_field: entry.scope,
+            "state": str(entry.snapshot.get("state", "")),
+            "terminal_sequence": entry.terminal_sequence,
+            "cleanup": copy.deepcopy(cleanup),
+        }
+        values = self._cleanup_audits.setdefault(entry.scope, [])
+        values.append(audit)
+        excess = len(values) - self.max_cleanup_audits_per_scope
+        if excess > 0:
+            del values[:excess]
+
+
+def _bounded_cleanup_receipt(value: dict[str, Any]) -> dict[str, Any]:
+    receipt = {
+        "complete": False,
+        "retry_recommended": True,
+        "residual_paths": _bounded_cleanup_strings(
+            value.get("residual_paths")
+        ),
+        "residual_layer_ids": _bounded_cleanup_strings(
+            value.get("residual_layer_ids")
+        ),
+        "errors": _bounded_cleanup_strings(value.get("errors")),
+    }
+    if value.get("error"):
+        receipt["error"] = str(value["error"])[:4000]
+    return receipt
+
+
+def _bounded_cleanup_strings(value: Any) -> list[str]:
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [str(item)[:512] for item in value[:64]]

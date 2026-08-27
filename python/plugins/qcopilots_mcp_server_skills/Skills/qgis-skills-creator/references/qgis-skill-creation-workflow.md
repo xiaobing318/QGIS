@@ -110,7 +110,7 @@ CLI capability 必须记录实时解析后的 exact executable、文件 SHA-256 
 2. 解析 Creator、manifest、Skills 和 QGIS package roots。
 3. 枚举当前会话真实工具，而不是仅读取 manager 默认启动配置。
 4. 对活动 MCP 服务刷新工具描述与 input/output schema。
-5. 调用 Processing list，记录完整返回和 provider。
+5. 调用每个 Processing list 时首次显式设置 `max_results`。该值缺省时为 50，允许范围为 `1..2000`，单页固定最多 50。存在 `next_cursor` 时续页只传 `cursor`，不得同时重传 `max_results`。`truncated=true` 表示达到本轮总量上限但仍有更多算法，不得把该轮结果记录为完整 inventory。若完整性重要且需要超过 2000 项，使用已有 `qgis-process-discovery --json list` 结构化清单路径，并将 CLI 与 MCP live registry 记录为不同发现 surface。
 6. 对候选 exact algorithm 调用 details。
 7. 若 CLI 实际可用且宿主允许只读探测，用结构化 argv 获取 `--version`、`--json list` 和 `--json help <algorithm_id>`；不拼接 shell 字符串。
 8. 记录 deprecated、known issues、参数、defaults、enum、outputs、flags、cancel 能力和版本。

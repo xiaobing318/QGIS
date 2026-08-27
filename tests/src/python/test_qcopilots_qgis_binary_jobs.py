@@ -54,6 +54,10 @@ from qcopilots_common.qgis_binary_jobs import (
     QGISBinaryJobManager,
     _root_matches_markers,
 )
+from qcopilots_common.security_policy import (
+    FilesystemPolicy,
+    filesystem_policy_from_config,
+)
 
 
 class FakeSignal:
@@ -768,6 +772,872 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
         self.assertNotIn("result", summary)
         self.assertNotIn("stdout", json.dumps(summary))
 
+    def test_restricted_policy_allows_normal_local_working_directories(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        outside_root = Path(policy_workspace.name) / "outside"
+        relative_root = self.fixture.root / "relative"
+        runs_root.mkdir()
+        relative_root.mkdir()
+        outside_root.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+
+        default_job = self.manager.start(
+            {"binary_id": "alpha", "client_request_id": "restricted-default"}
+        )
+        explicit_job = self.manager.start(
+            {
+                "binary_id": "alpha",
+                "working_directory": str(runs_root),
+                "client_request_id": "restricted-explicit",
+            }
+        )
+        relative_job = self.manager.start(
+            {
+                "binary_id": "alpha",
+                "working_directory": "relative",
+                "client_request_id": "restricted-relative",
+            }
+        )
+        outside_job = self.manager.start(
+            {
+                "binary_id": "alpha",
+                "working_directory": str(outside_root),
+                "client_request_id": "restricted-outside",
+            }
+        )
+        self.assertEqual(default_job["state"], "queued")
+        self.assertEqual(explicit_job["state"], "queued")
+        self.assertEqual(relative_job["state"], "queued")
+        self.assertEqual(outside_job["state"], "queued")
+        self.assertEqual(
+            Path(self.fixture.executions[-4].values["working_directory"]),
+            self.fixture.root.resolve(),
+        )
+        self.assertEqual(
+            Path(self.fixture.executions[-3].values["working_directory"]),
+            runs_root.resolve(),
+        )
+        self.assertEqual(
+            Path(self.fixture.executions[-2].values["working_directory"]),
+            relative_root.resolve(),
+        )
+        self.assertEqual(
+            Path(self.fixture.executions[-1].values["working_directory"]),
+            outside_root.resolve(),
+        )
+
+    def test_restricted_default_working_directory_revalidates_package_root(self):
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        original_is_symlink = Path.is_symlink
+
+        def simulated_root_replacement(candidate):
+            return candidate == self.fixture.root or original_is_symlink(candidate)
+
+        with mock.patch.object(Path, "is_symlink", simulated_root_replacement):
+            with self.assertRaisesRegex(
+                PermissionError, "symbolic links and junctions"
+            ):
+                self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "client_request_id": "replaced-default-package-root",
+                    }
+                )
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_policy_allows_approved_argument_paths_and_nonpaths(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        input_directory = runs_root / "input"
+        output_directory = runs_root / "outputs"
+        runs_root.mkdir()
+        input_directory.mkdir()
+        output_directory.mkdir()
+        source = input_directory / "source.tif"
+        source.write_bytes(b"source")
+        second_source = input_directory / "second-source.gpkg"
+        second_source.write_bytes(b"second source")
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {
+                    "enabled": True,
+                    "allowed_origins": ["http://127.0.0.1:49180"],
+                },
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        argv = [
+            str(source),
+            f"--output={output_directory / 'result.tif'}",
+            f"INPUT={source}",
+            f"LAYERS={source};{second_source}",
+            (
+                f"LAYERS={source}|layername=first;"
+                f"{second_source}|layername=second"
+            ),
+            "outputs/relative-result.tif",
+            "--format=GTiff",
+            "EPSG:4326",
+            "urn:ogc:def:crs:EPSG::4326",
+            "field:value",
+            "field:CON",
+            "--sql=SELECT value FROM roads WHERE field = 'a:b';",
+            "--sql=SELECT 'CON' AS field;",
+            "3.14",
+            "foo.bar",
+            "http://127.0.0.1:49180/data.tif",
+            "http://127.0.0.1:49180/CON",
+            "--source=http://127.0.0.1:49180/input.tif?part=1",
+            "/vsimem/result.tif",
+            "/vsimem/CON",
+        ]
+
+        queued = self.manager.start(
+            {
+                "binary_id": "alpha",
+                "arguments": argv,
+                "working_directory": str(runs_root),
+            }
+        )
+
+        self.assertEqual(queued["state"], "queued")
+        self.assertEqual(self.fixture.executions[-1].values["arguments"], argv)
+
+    def test_restricted_policy_allows_normal_local_argument_paths_outside_cwd(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        read_source = self.fixture.root / "read-only-source.tif"
+        read_source.write_bytes(b"source")
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        allowed_argvs = (
+            [str(read_source)],
+            [f"--input={read_source}"],
+            [f"INPUT={read_source}"],
+            [f"LAYERS={runs_root / 'staged.tif'};{read_source}"],
+        )
+
+        for index, argv in enumerate(allowed_argvs):
+            with self.subTest(argv=argv):
+                queued = self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "arguments": argv,
+                        "working_directory": str(runs_root),
+                        "client_request_id": f"global-local-argv-{index}",
+                    }
+                )
+                self.assertEqual(queued["state"], "queued")
+                self.assertEqual(self.fixture.executions[-1].values["arguments"], argv)
+
+        task_count = len(self.fixture.task_manager.tasks)
+        with self.assertRaisesRegex(PermissionError, "prohibited local path"):
+            self.manager.start(
+                {
+                    "binary_id": "alpha",
+                    "arguments": [read_source.as_uri()],
+                    "working_directory": str(runs_root),
+                    "client_request_id": "file-uri-is-not-a-local-path",
+                }
+            )
+        self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+
+    @unittest.skipUnless(os.name == "nt", "Windows reserved device names")
+    def test_restricted_policy_rejects_device_arguments_before_path_probes(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        blocked_argvs = (
+            ["CON"],
+            ["--output=CON.txt"],
+            ["--output:CONOUT$"],
+            ["OUTPUT=COM1"],
+            ["LAYERS=staged.tif;LPT1|layername=blocked"],
+            ["--config=OUTPUT=AUX.txt"],
+            ["COM1:stream"],
+            ["--output=PRN."],
+        )
+
+        with mock.patch(
+            "qcopilots_common.qgis_binary_jobs._binary_argument_local_path_candidates",
+            side_effect=AssertionError("path metadata must not be probed"),
+        ) as path_candidates:
+            for index, argv in enumerate(blocked_argvs):
+                with self.subTest(argv=argv), mock.patch.object(
+                    self.manager.store,
+                    "lookup_idempotent",
+                    wraps=self.manager.store.lookup_idempotent,
+                ) as lookup_idempotent, mock.patch.object(
+                    self.manager.store,
+                    "create",
+                    wraps=self.manager.store.create,
+                ) as create_job:
+                    with self.assertRaisesRegex(
+                        PermissionError, "prohibited Windows device path"
+                    ):
+                        self.manager.start(
+                            {
+                                "binary_id": "alpha",
+                                "arguments": argv,
+                                "working_directory": str(runs_root),
+                                "client_request_id": f"device-argv-{index}",
+                            }
+                        )
+                    lookup_idempotent.assert_not_called()
+                    create_job.assert_not_called()
+        path_candidates.assert_not_called()
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_policy_rejects_hardlinked_argument_and_ads_base(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        source = self.fixture.root / "hardlink-source.gpkg"
+        source.write_bytes(b"source remains unchanged")
+        alias = runs_root / "alias.gpkg"
+        os.link(source, alias)
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        blocked_argvs = [([str(alias)], "multiple hard links")]
+        if os.name == "nt":
+            blocked_argvs.append(
+                ([f"--output={alias}:stream"], "alternate data streams")
+            )
+
+        for index, (argv, expected_error) in enumerate(blocked_argvs):
+            with self.subTest(argv=argv), mock.patch.object(
+                self.manager.store,
+                "lookup_idempotent",
+                wraps=self.manager.store.lookup_idempotent,
+            ) as lookup_idempotent, mock.patch.object(
+                self.manager.store,
+                "create",
+                wraps=self.manager.store.create,
+            ) as create_job:
+                with self.assertRaisesRegex(PermissionError, expected_error):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": argv,
+                            "working_directory": str(runs_root),
+                            "client_request_id": f"hardlink-argv-{index}",
+                        }
+                    )
+                lookup_idempotent.assert_not_called()
+                create_job.assert_not_called()
+                self.assertEqual(source.read_bytes(), b"source remains unchanged")
+
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_policy_rejects_nonempty_stdin_before_job_creation(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+
+        for index, stdin_value in enumerate(
+            (
+                str(self.fixture.root / "source.tif"),
+                "PG:host=example.invalid dbname=outside",
+                '<include href="file:///C:/outside.xml"/>',
+                "   ",
+                "\t\r\n",
+            )
+        ):
+            with self.subTest(stdin=stdin_value), mock.patch.object(
+                self.manager.store,
+                "lookup_idempotent",
+                wraps=self.manager.store.lookup_idempotent,
+            ) as lookup_idempotent, mock.patch.object(
+                self.manager.store,
+                "create",
+                wraps=self.manager.store.create,
+            ) as create_job:
+                task_count = len(self.fixture.task_manager.tasks)
+                execution_count = len(self.fixture.executions)
+                with self.assertRaisesRegex(PermissionError, "non-empty binary stdin"):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "working_directory": str(runs_root),
+                            "stdin": stdin_value,
+                            "client_request_id": f"restricted-stdin-{index}",
+                        }
+                    )
+                lookup_idempotent.assert_not_called()
+                create_job.assert_not_called()
+                self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+                self.assertEqual(len(self.fixture.executions), execution_count)
+
+        for index, stdin_value in enumerate((None, "")):
+            queued = self.manager.start(
+                {
+                    "binary_id": "alpha",
+                    "stdin": stdin_value,
+                    "client_request_id": f"restricted-empty-stdin-{index}",
+                }
+            )
+            self.assertEqual(queued["state"], "queued")
+            expected = None if stdin_value is None else b""
+            self.assertEqual(self.fixture.executions[-1].values["stdin_bytes"], expected)
+
+        self.assertEqual(len(self.manager.list_jobs({})["jobs"]), 2)
+
+    def test_restricted_policy_rejects_indirect_argv_before_idempotency_and_store(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        option_file = self.fixture.root / "approved-root-options.txt"
+        option_file.write_text(
+            "PG:host=example.invalid dbname=outside\n",
+            encoding="utf-8",
+        )
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        blocked_argvs = (
+            [f"@{option_file}"],
+            [f"--response=@{option_file}"],
+            ["--optfile", str(option_file)],
+            [f"--optfile={option_file}"],
+            [f"--optfile:{option_file}"],
+            ["--OPTFILE", str(option_file)],
+            ["--options-file", str(option_file)],
+        )
+
+        for index, argv in enumerate(blocked_argvs):
+            with self.subTest(argv=argv), mock.patch.object(
+                self.manager.store,
+                "lookup_idempotent",
+                wraps=self.manager.store.lookup_idempotent,
+            ) as lookup_idempotent, mock.patch.object(
+                self.manager.store,
+                "create",
+                wraps=self.manager.store.create,
+            ) as create_job, mock.patch.object(
+                Path,
+                "read_text",
+                side_effect=AssertionError("option file content must not be read"),
+            ), mock.patch.object(
+                Path,
+                "read_bytes",
+                side_effect=AssertionError("option file content must not be read"),
+            ):
+                task_count = len(self.fixture.task_manager.tasks)
+                execution_count = len(self.fixture.executions)
+                with self.assertRaisesRegex(PermissionError, "indirect argument file"):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": argv,
+                            "working_directory": str(runs_root),
+                            "client_request_id": f"indirect-argv-{index}",
+                        }
+                    )
+                lookup_idempotent.assert_not_called()
+                create_job.assert_not_called()
+                self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+                self.assertEqual(len(self.fixture.executions), execution_count)
+
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+
+    def test_restricted_working_directory_syntax_rejects_without_path_probes(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        blocked_working_directories = (
+            r"\\server.invalid\share",
+            r"\\?\C:\outside",
+            r"\\.\C:\outside",
+            r"\??\C:\outside",
+            r"C:outside",
+            str(runs_root / "NUL:stream"),
+            str(runs_root / "COM\u00b9.txt"),
+            str(runs_root / "CONOUT$"),
+            str(runs_root) + "\0outside",
+            runs_root.as_uri(),
+        )
+
+        with mock.patch.object(
+            FilesystemPolicy,
+            "resolve_path",
+            side_effect=AssertionError("policy.resolve_path must not be called"),
+        ) as resolve_path, mock.patch.object(
+            Path,
+            "resolve",
+            side_effect=AssertionError("Path.resolve must not be called"),
+        ), mock.patch.object(
+            Path,
+            "is_symlink",
+            side_effect=AssertionError("path metadata must not be probed"),
+        ), mock.patch.object(
+            Path,
+            "is_dir",
+            side_effect=AssertionError("path metadata must not be probed"),
+        ):
+            for index, working_directory in enumerate(blocked_working_directories):
+                with self.subTest(working_directory=working_directory):
+                    with self.assertRaises(PermissionError):
+                        self.manager.start(
+                            {
+                                "binary_id": "alpha",
+                                "working_directory": working_directory,
+                                "client_request_id": f"blocked-cwd-{index}",
+                            }
+                        )
+        resolve_path.assert_not_called()
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_policy_allows_global_paths_and_rejects_unsafe_forms(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        outside_root = Path(policy_workspace.name) / "outside"
+        runs_root.mkdir()
+        outside_root.mkdir()
+        outside_file = outside_root / "outside.tif"
+        outside_file.write_bytes(b"outside")
+        source = self.fixture.root / "source.tif"
+        source.write_bytes(b"source")
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        allowed_arguments = [
+            str(outside_file),
+            f"--output={outside_file}",
+            f"INPUT={outside_file}",
+            f"--config=PATH={outside_file}",
+            f"--output:{outside_file}",
+            f"INPUT={source};{outside_file}",
+            (
+                f"INPUT={source}|layername=inside;"
+                f"{outside_file}|layername=outside"
+            ),
+            f"--inputs={source};{outside_file}",
+        ]
+        for index, allowed_argument in enumerate(allowed_arguments):
+            with self.subTest(allowed_argument=allowed_argument):
+                queued = self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "arguments": [allowed_argument],
+                        "working_directory": str(runs_root),
+                        "client_request_id": f"global-argument-{index}",
+                    }
+                )
+                self.assertEqual(queued["state"], "queued")
+
+        blocked_arguments = [
+            f"@{outside_file}",
+            f"--response=@{outside_file}",
+            outside_file.as_uri(),
+            f"--input={outside_file.as_uri()}",
+            "../escape.tif",
+            r"..\escape.tif",
+            r"C:escape.tif",
+            r"\\server\share\escape.tif",
+            r"\\?\C:\escape.tif",
+            r"\\.\C:\escape.tif",
+            r"\??\C:\escape.tif",
+            f"GPKG:{source}",
+            f"SQLite:{source}",
+        ]
+
+        for index, blocked_argument in enumerate(blocked_arguments):
+            with self.subTest(argument=blocked_argument):
+                task_count = len(self.fixture.task_manager.tasks)
+                execution_count = len(self.fixture.executions)
+                job_count = len(self.manager.list_jobs({})["jobs"])
+                with self.assertRaisesRegex(
+                    PermissionError, "QGIS binary argument 0"
+                ):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": [blocked_argument],
+                            "working_directory": str(runs_root),
+                            "client_request_id": f"blocked-argument-{index}",
+                        }
+                    )
+                self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+                self.assertEqual(len(self.fixture.executions), execution_count)
+                self.assertEqual(len(self.manager.list_jobs({})["jobs"]), job_count)
+
+    def test_restricted_policy_rejects_reparse_argument_escape(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        reparse_directory = runs_root / "outside-link"
+        runs_root.mkdir()
+        reparse_directory.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        original_is_symlink = Path.is_symlink
+
+        def simulated_reparse(candidate):
+            return candidate == reparse_directory or original_is_symlink(candidate)
+
+        with mock.patch.object(Path, "is_symlink", simulated_reparse):
+            with self.assertRaisesRegex(PermissionError, "symbolic links and junctions"):
+                self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "arguments": ["--output=outside-link/result.tif"],
+                        "working_directory": str(runs_root),
+                    }
+                )
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_policy_enforces_argument_network_boundary(self):
+        policy_workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(policy_workspace.cleanup)
+        runs_root = Path(policy_workspace.name) / "runs"
+        runs_root.mkdir()
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {
+                    "enabled": True,
+                    "allowed_origins": ["http://127.0.0.1:49180"],
+                },
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+        blocked_sources = [
+            "http://example.com/data.tif",
+            "--url=https://127.0.0.1:49180/data.tif",
+            "ftp://127.0.0.1:49180/data.tif",
+            "SOURCE=ftp://127.0.0.1:49180/data.tif",
+            "/vsicurl/http://127.0.0.1:49180/data.tif",
+            "--source=/vsis3/bucket/data.tif",
+            "PG:host=example.com port=5432 dbname=outside",
+            "MYSQL:host=example.com,db=outside",
+            "MSSQL:server=example.com;database=outside",
+            "OCI:user/password@example.com/service",
+            "ODBC:DSN=outside",
+            "WFS:http://example.com/wfs",
+            "CouchDB:http://example.com/database",
+            "Elasticsearch:http://example.com/index",
+            "MongoDBv3:mongodb://example.com/database",
+            "--datasource=PG:host=example.com dbname=outside",
+            "--datasource:PG:host=127.0.0.1 dbname=outside",
+        ]
+
+        for blocked_source in blocked_sources:
+            with self.subTest(source=blocked_source):
+                with self.assertRaisesRegex(PermissionError, "prohibited source"):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": [blocked_source],
+                            "working_directory": str(runs_root),
+                        }
+                    )
+        disabled_network_policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = disabled_network_policy
+        for disabled_network_source in (
+            "http://127.0.0.1:49180/data.tif",
+            "PG:host=127.0.0.1 port=5432 dbname=outside",
+            "--datasource=MYSQL:host=127.0.0.1,db=outside",
+        ):
+            with self.subTest(disabled_network_source=disabled_network_source):
+                with self.assertRaisesRegex(PermissionError, "prohibited source"):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": [disabled_network_source],
+                            "working_directory": str(runs_root),
+                        }
+                    )
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+        self.assertEqual(self.fixture.task_manager.tasks, [])
+
+    def test_restricted_argument_validation_precedes_idempotent_replay(self):
+        outside = self.fixture.root.parent / "idempotent-outside.tif"
+        request = {
+            "binary_id": "alpha",
+            "arguments": [outside.as_uri()],
+            "client_request_id": "policy-transition",
+        }
+        original = self.manager.start(request)
+        policy = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        self.manager._dependencies["filesystem_policy"] = policy
+
+        with self.assertRaisesRegex(PermissionError, "prohibited local path"):
+            self.manager.start(request)
+
+        self.assertEqual(
+            [item["job_id"] for item in self.manager.list_jobs({})["jobs"]],
+            [original["job_id"]],
+        )
+        self.assertEqual(len(self.fixture.executions), 1)
+        self.assertEqual(len(self.fixture.task_manager.tasks), 1)
+
+    def test_compatible_policy_keeps_binary_argument_behavior(self):
+        outside = self.fixture.root.parent / "compatible-outside.tif"
+        argv = [
+            str(outside),
+            f"--output={outside}",
+            outside.as_uri(),
+            "../escape.tif",
+            "http://example.com/data.tif",
+            "/vsicurl/http://example.com/data.tif",
+            f"GPKG:{outside}",
+            f"--source=SQLite:{outside}",
+            f"CSV:{outside}",
+            "EPSG:4326",
+            "PG:host=example.com dbname=qgis",
+        ]
+
+        stdin_value = r"C:\outside.tif"
+        queued = self.manager.start(
+            {"binary_id": "alpha", "arguments": argv, "stdin": stdin_value}
+        )
+
+        self.assertEqual(queued["state"], "queued")
+        self.assertEqual(self.fixture.executions[-1].values["arguments"], argv)
+        self.assertEqual(
+            self.fixture.executions[-1].values["stdin_bytes"],
+            stdin_value.encode("utf-8"),
+        )
+        self.assertEqual(
+            Path(self.fixture.executions[-1].values["working_directory"]),
+            self.fixture.root.resolve(),
+        )
+
+        task_count = len(self.fixture.task_manager.tasks)
+        execution_count = len(self.fixture.executions)
+        for indirect_argument in (
+            f"@{outside}",
+            "--optfile",
+            f"--response-file={outside}",
+        ):
+            with self.subTest(indirect_argument=indirect_argument):
+                with self.assertRaisesRegex(PermissionError, "indirect argument file"):
+                    self.manager.start(
+                        {
+                            "binary_id": "alpha",
+                            "arguments": [indirect_argument],
+                        }
+                    )
+        self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+        self.assertEqual(len(self.fixture.executions), execution_count)
+
+    @unittest.skipUnless(os.name == "nt", "Windows local path safety")
+    def test_compatible_policy_rejects_unsafe_binary_local_paths(self):
+        base_file = self.fixture.root / "compatible-base.tif"
+        base_file.write_bytes(b"data")
+        blocked_arguments = (
+            r"\\server.invalid\share\outside.tif",
+            r"\\?\C:\outside.tif",
+            f"--output={base_file}:stream",
+            r"GPKG:\\server.invalid\share\outside.gpkg",
+            r"SQLite:\\?\C:\outside.sqlite",
+            f"--source=PGEO:{base_file}:stream",
+        )
+        for blocked_argument in blocked_arguments:
+            with self.subTest(blocked_argument=blocked_argument), self.assertRaises(
+                PermissionError
+            ):
+                self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "arguments": [blocked_argument],
+                    }
+                )
+        reparse_directory = self.fixture.root / "compatible-prefix-reparse"
+        reparse_directory.mkdir()
+        original_is_symlink = Path.is_symlink
+
+        def simulated_reparse(candidate):
+            return candidate == reparse_directory or original_is_symlink(candidate)
+
+        with mock.patch.object(Path, "is_symlink", simulated_reparse):
+            with self.assertRaisesRegex(PermissionError, "symbolic links and junctions"):
+                self.manager.start(
+                    {
+                        "binary_id": "alpha",
+                        "arguments": [f"GPKG:{reparse_directory / 'outside.gpkg'}"],
+                    }
+                )
+        self.assertEqual(self.manager.list_jobs({})["jobs"], [])
+        self.assertEqual(self.fixture.executions, [])
+
+    def test_binary_argument_path_with_equals_is_validated_as_a_whole(self):
+        from qcopilots_common.security_policy import FilesystemPolicy
+
+        argument_path = self.fixture.root / "data=a.tif"
+        original_resolve_path = FilesystemPolicy.resolve_path
+        resolved_values = []
+
+        def resolve_path(policy, value, *, access, base=None):
+            resolved_values.append((str(value), access))
+            return original_resolve_path(policy, value, access=access, base=base)
+
+        with mock.patch.object(FilesystemPolicy, "resolve_path", resolve_path):
+            queued = self.manager.start(
+                {
+                    "binary_id": "alpha",
+                    "arguments": [str(argument_path)],
+                }
+            )
+
+        self.assertEqual(queued["state"], "queued")
+        self.assertIn((str(argument_path), "write"), resolved_values)
+
+    def test_compatible_working_directory_uses_shared_filesystem_policy(self):
+        runs_root = self.fixture.root / "compatible-runs"
+        runs_root.mkdir()
+        original_resolve_path = FilesystemPolicy.resolve_path
+        resolve_calls = []
+
+        def resolve_path(policy, value, *, access, base=None):
+            resolve_calls.append((value, access, base))
+            return original_resolve_path(
+                policy,
+                value,
+                access=access,
+                base=base,
+            )
+
+        with mock.patch.object(
+            FilesystemPolicy,
+            "resolve_path",
+            autospec=True,
+            side_effect=resolve_path,
+        ):
+            queued = self.manager.start(
+                {
+                    "binary_id": "alpha",
+                    "working_directory": "compatible-runs",
+                    "client_request_id": "compatible-safe-cwd",
+                }
+            )
+
+        self.assertEqual(queued["state"], "queued")
+        self.assertIn(
+            ("compatible-runs", "write", self.fixture.root),
+            resolve_calls,
+        )
+        self.assertEqual(
+            Path(self.fixture.executions[-1].values["working_directory"]),
+            runs_root.resolve(),
+        )
+
+        task_count = len(self.fixture.task_manager.tasks)
+        execution_count = len(self.fixture.executions)
+        with self.assertRaisesRegex(PermissionError, "device paths"):
+            self.manager.start(
+                {
+                    "binary_id": "alpha",
+                    "working_directory": r"\\?\C:\outside",
+                    "client_request_id": "compatible-unsafe-cwd",
+                }
+            )
+        self.assertEqual(len(self.fixture.task_manager.tasks), task_count)
+        self.assertEqual(len(self.fixture.executions), execution_count)
+
     def test_indeterminate_success_keeps_null_progress(self):
         document = _catalog_document()
         document["binaries"][0]["progress_parser"] = None
@@ -1368,8 +2238,9 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
         instances = []
 
         class FakeManager:
-            def __init__(self, iface):
+            def __init__(self, iface, dependencies=None):
                 self.iface = iface
+                self.dependencies = dict(dependencies or {})
                 self.shutdown_calls = []
                 instances.append(self)
 
@@ -1383,9 +2254,13 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
             "qcopilots_common.qgis_binary_jobs.QGISBinaryJobManager",
             FakeManager,
         ):
-            controller = QgisBridgeController(iface=object(), port=0)
+            policy = FilesystemPolicy()
+            controller = QgisBridgeController(
+                iface=object(), port=0, filesystem_policy=policy
+            )
             first = controller._get_qgis_binary_job_manager()
             self.assertIs(controller._get_qgis_binary_job_manager(), first)
+            self.assertIs(first.dependencies["filesystem_policy"], policy)
             self.assertEqual(len(instances), 1)
             controller.stop(timeout_seconds=0.25)
             self.assertEqual(first.shutdown_calls, [0.25])
@@ -1397,6 +2272,25 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
             self.assertIsNot(second, first)
             self.assertEqual(len(instances), 2)
             restarted.stop(timeout_seconds=0)
+
+    def test_direct_bridge_tools_passes_binary_filesystem_policy(self):
+        instances = []
+
+        class FakeManager:
+            def __init__(self, iface, dependencies=None):
+                self.iface = iface
+                self.dependencies = dict(dependencies or {})
+                instances.append(self)
+
+        policy = FilesystemPolicy()
+        with mock.patch(
+            "qcopilots_common.qgis_binary_jobs.QGISBinaryJobManager",
+            FakeManager,
+        ):
+            tools = QgisBridgeTools(iface=object(), filesystem_policy=policy)
+            manager = tools._qgis_binary_jobs()
+        self.assertEqual(len(instances), 1)
+        self.assertIs(manager.dependencies["filesystem_policy"], policy)
 
     def test_bridge_stop_shares_one_timeout_budget(self):
         class FakeManager:

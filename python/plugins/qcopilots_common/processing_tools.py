@@ -14,9 +14,20 @@ from dataclasses import dataclass
 from typing import Any
 
 from qcopilots_common.bridge import BridgeClient
-from qcopilots_common.constants import BRIDGE_URL_ENV
+from qcopilots_common.constants import (
+    BRIDGE_URL_ENV,
+    DEFAULT_PROCESSING_ALGORITHM_RESULTS,
+    MAX_PROCESSING_ALGORITHM_CURSOR_LENGTH,
+    MAX_PROCESSING_ALGORITHM_RESULTS,
+    PROCESSING_ALGORITHM_CURSOR_ERROR_PREFIX,
+)
 from qcopilots_common.interactive_layer_tools import build_interactive_layer_tools
-from qcopilots_common.mcp_http import McpTool
+from qcopilots_common.mcp_http import McpTool, ToolError
+from qcopilots_common.processing_metadata import (
+    processing_algorithm_matches_domain,
+    processing_algorithm_owner,
+    processing_algorithm_start_policy,
+)
 
 
 @dataclass(frozen=True)
@@ -59,25 +70,21 @@ class ProcessingToolRegistry:
 
 
 def classify_processing_algorithm(algorithm: Any) -> str | None:
-    haystack = " ".join(
-        str(value).lower()
-        for value in [
-            _call_optional(algorithm, "id"),
-            _call_optional(algorithm, "displayName"),
-            _call_optional(algorithm, "groupId"),
-            " ".join(_call_optional(algorithm, "tags") or []),
-        ]
-        if value
-    )
-    if any(token in haystack for token in ("raster", "grid", "dem", "cell")):
-        return "raster"
-    if any(token in haystack for token in ("vector", "feature", "geometry", "attribute")):
-        return "vector"
-    return None
+    return processing_algorithm_owner(algorithm)
 
 
 def filter_processing_algorithms(algorithms: list[Any], category: str) -> list[Any]:
-    return [algorithm for algorithm in algorithms if classify_processing_algorithm(algorithm) == category]
+    if category not in {"vector", "raster", "general"}:
+        raise ValueError("category must be vector, raster or general")
+    return [
+        algorithm
+        for algorithm in algorithms
+        if processing_algorithm_matches_domain(algorithm, category)
+        and (
+            category != "general"
+            or processing_algorithm_start_policy(algorithm)["supported"]
+        )
+    ]
 
 
 def build_interactive_tools() -> list[McpTool]:
@@ -98,12 +105,24 @@ def build_interactive_tools() -> list[McpTool]:
             bridge,
             ["layer_id"],
         ),
-        _bridge_tool(
+        _custom_bridge_tool(
             "zoom_to_extent",
             "Zoom the map canvas to an extent [xmin, ymin, xmax, ymax].",
-            {"extent": "array"},
+            {
+                "type": "object",
+                "properties": {
+                    "extent": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "minItems": 4,
+                        "maxItems": 4,
+                    }
+                },
+                "required": ["extent"],
+                "additionalProperties": False,
+            },
+            "zoom_to_extent",
             bridge,
-            ["extent"],
         ),
         _bridge_tool("zoom_in", "Zoom the QGIS map canvas in.", {}, bridge),
         _bridge_tool("zoom_out", "Zoom the QGIS map canvas out.", {}, bridge),
@@ -122,14 +141,20 @@ def build_interactive_tools() -> list[McpTool]:
         ),
         _bridge_tool("zoom_to_last_extent", "Zoom the QGIS map canvas to the last extent.", {}, bridge),
         _bridge_tool("zoom_to_next_extent", "Zoom the QGIS map canvas to the next extent.", {}, bridge),
-        _bridge_tool("save_project", "Save the current QGIS project.", {"path": "string"}, bridge),
-        _bridge_tool("refresh_canvas", "Refresh the QGIS map canvas.", {}, bridge),
-        _bridge_tool(
-            "export_map_image",
-            "Export the current map canvas to an image.",
-            {"path": "string"},
+        _custom_bridge_tool(
+            "save_project",
+            "Save the current QGIS project with explicit no-overwrite behavior for a new path.",
+            _save_project_schema(),
+            "save_project",
             bridge,
-            ["path"],
+        ),
+        _bridge_tool("refresh_canvas", "Refresh the QGIS map canvas.", {}, bridge),
+        _custom_bridge_tool(
+            "export_map_image",
+            "Export the current map canvas to an image with explicit no-overwrite behavior.",
+            _export_map_image_schema(),
+            "export_map_image",
+            bridge,
         ),
     ] + build_interactive_layer_tools() + [
         _custom_bridge_tool(
@@ -157,10 +182,25 @@ def build_interactive_tools() -> list[McpTool]:
 
 
 def build_processing_tools(category: str) -> list[McpTool]:
+    if category not in {"vector", "raster", "general"}:
+        raise ValueError("category must be vector, raster or general")
     bridge = _bridge_client()
 
     def list_algorithms(arguments: dict[str, Any]) -> dict[str, Any]:
-        return bridge.call("processing_list_algorithms", {"category": category})
+        payload: dict[str, Any] = {"category": category}
+        if "cursor" in arguments:
+            payload["cursor"] = arguments["cursor"]
+        else:
+            payload["max_results"] = arguments.get(
+                "max_results",
+                DEFAULT_PROCESSING_ALGORITHM_RESULTS,
+            )
+        try:
+            return bridge.call("processing_list_algorithms", payload)
+        except RuntimeError as err:
+            if str(err).startswith(PROCESSING_ALGORITHM_CURSOR_ERROR_PREFIX):
+                raise ToolError(str(err)) from err
+            raise
 
     def algorithm_details(arguments: dict[str, Any]) -> dict[str, Any]:
         payload = dict(arguments)
@@ -171,6 +211,7 @@ def build_processing_tools(category: str) -> list[McpTool]:
         payload = dict(arguments)
         payload.setdefault("parameters", {})
         payload.setdefault("add_outputs_to_project", True)
+        payload.setdefault("overwrite_outputs", False)
         payload["category"] = category
         return bridge.call("processing_start_algorithm", payload)
 
@@ -192,19 +233,34 @@ def build_processing_tools(category: str) -> list[McpTool]:
     return [
         McpTool(
             f"list_{category}_processing_algorithms",
-            f"List QGIS Processing algorithms for {category} data.",
-            {"type": "object", "properties": {}, "additionalProperties": False},
+            (
+                f"List QGIS Processing algorithms for {category} data. "
+                "General algorithms include stable audited safety classifications."
+                if category == "general"
+                else f"List QGIS Processing algorithms for {category} data."
+            ),
+            _list_processing_algorithms_schema(),
             list_algorithms,
         ),
         McpTool(
             f"get_{category}_processing_algorithm_details",
-            f"Get QGIS Processing algorithm details for {category} data.",
-            _schema({"algorithm_id": "string"}, ["algorithm_id"]),
+            (
+                f"Inspect the parameters, outputs and availability of one {category} "
+                "QGIS Processing algorithm without starting a job."
+            ),
+            _processing_algorithm_id_schema(),
             algorithm_details,
         ),
         McpTool(
             f"start_{category}_processing_algorithm",
-            f"Start a QGIS Processing algorithm job for {category} data.",
+            (
+                f"Start an asynchronous QGIS Processing job for {category} data and "
+                "return its initial snapshot for polling or cancellation. Successful "
+                "outputs are added to the current project by default. Existing output "
+                "destinations are never overwritten without an explicit overwrite "
+                "request and the exact one-use confirmation token returned by its "
+                "preview."
+            ),
             _start_processing_algorithm_schema(),
             start_algorithm,
         ),
@@ -279,6 +335,8 @@ def _schema(properties: dict[str, str], required: list[str]) -> dict[str, Any]:
             converted[name] = {"type": "object"}
         else:
             converted[name] = {"type": schema_type}
+            if schema_type == "string":
+                converted[name]["minLength"] = 1
     return {
         "type": "object",
         "properties": converted,
@@ -292,8 +350,32 @@ def _start_processing_algorithm_schema() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "algorithm_id": {"type": "string", "minLength": 1},
-            "parameters": {"type": "object", "default": {}},
-            "add_outputs_to_project": {"type": "boolean", "default": True},
+            "parameters": {
+                "type": "object",
+                "default": {},
+                "description": "Algorithm parameter values keyed by parameter ID.",
+            },
+            "add_outputs_to_project": {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "Add compatible successful outputs to the current QGIS project "
+                    "during job post-processing."
+                ),
+            },
+            "overwrite_outputs": {
+                "type": "boolean",
+                "default": False,
+                "description": "Explicitly allow existing file or folder destinations to be overwritten.",
+            },
+            "overwrite_confirmation_token": {
+                "type": "string",
+                "minLength": 16,
+                "description": (
+                    "One-use token from an overwrite preview, bound to the "
+                    "algorithm, parameters, input versions and output targets."
+                ),
+            },
             "client_request_id": {
                 "type": "string",
                 "minLength": 1,
@@ -346,13 +428,17 @@ def _create_vector_layer_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "name": {"type": "string", "description": "Layer name."},
+            "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Layer name.",
+            },
             "geometry_type": {
                 "type": "string",
                 "enum": ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon", "NoGeometry"],
                 "default": "Point",
             },
-            "crs": {"type": "string", "default": "EPSG:4326"},
+            "crs": {"type": "string", "minLength": 1, "default": "EPSG:4326"},
             "fields": {
                 "type": "array",
                 "items": _field_schema(),
@@ -365,10 +451,25 @@ def _create_vector_layer_schema() -> dict[str, Any]:
             },
             "path": {
                 "type": "string",
+                "minLength": 1,
                 "description": "Optional output path. Suffix chooses GPKG, Shapefile or GeoJSON when possible.",
             },
-            "driver_name": {"type": "string", "description": "Optional OGR driver name override."},
+            "driver_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Optional OGR driver name override.",
+            },
             "add_to_project": {"type": "boolean", "default": True},
+            "overwrite": {
+                "type": "boolean",
+                "default": False,
+                "description": "Explicitly allow replacement of an existing output dataset.",
+            },
+            "overwrite_confirmation_token": {
+                "type": "string",
+                "minLength": 16,
+                "description": "One-use token returned by an overwrite preview.",
+            },
         },
         "required": ["name"],
         "additionalProperties": False,
@@ -379,7 +480,7 @@ def _add_vector_features_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "layer_id": {"type": "string"},
+            "layer_id": {"type": "string", "minLength": 1},
             "features": {
                 "type": "array",
                 "items": _feature_schema(),
@@ -387,6 +488,102 @@ def _add_vector_features_schema() -> dict[str, Any]:
             },
         },
         "required": ["layer_id", "features"],
+        "additionalProperties": False,
+    }
+
+
+def _processing_algorithm_id_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "algorithm_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Exact algorithm ID returned by the matching list tool.",
+            },
+        },
+        "required": ["algorithm_id"],
+        "additionalProperties": False,
+    }
+
+
+def _list_processing_algorithms_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "max_results": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_PROCESSING_ALGORITHM_RESULTS,
+                "default": DEFAULT_PROCESSING_ALGORITHM_RESULTS,
+                "description": (
+                    "Maximum number of algorithms to return across all pages. "
+                    "Omit for the default limit."
+                ),
+            },
+            "cursor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": MAX_PROCESSING_ALGORITHM_CURSOR_LENGTH,
+                "description": (
+                    "Opaque continuation cursor returned by the previous page. "
+                    "Do not send max_results with cursor."
+                ),
+            },
+        },
+        "oneOf": [
+            {
+                "title": "First page",
+                "properties": {"cursor": False},
+            },
+            {
+                "title": "Continuation page",
+                "required": ["cursor"],
+                "properties": {"max_results": False},
+            },
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _save_project_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": ".*\\.[qQ][gG][zZ]$",
+                "description": (
+                    "Optional .qgz project destination. Plain .qgs projects are "
+                    "unsupported because their auxiliary file family cannot be "
+                    "published atomically as one output."
+                ),
+            },
+            "overwrite": {"type": "boolean", "default": False},
+            "overwrite_confirmation_token": {
+                "type": "string",
+                "minLength": 16,
+                "description": "One-use token returned by an overwrite preview.",
+            },
+        },
+        "additionalProperties": False,
+    }
+
+
+def _export_map_image_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "overwrite": {"type": "boolean", "default": False},
+            "overwrite_confirmation_token": {
+                "type": "string",
+                "minLength": 16,
+                "description": "One-use token returned by an overwrite preview.",
+            },
+        },
+        "required": ["path"],
         "additionalProperties": False,
     }
 
@@ -402,7 +599,7 @@ def _update_vector_features_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "layer_id": {"type": "string"},
+            "layer_id": {"type": "string", "minLength": 1},
             "updates": {
                 "type": "array",
                 "items": update_schema,
@@ -418,7 +615,7 @@ def _field_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
+            "name": {"type": "string", "minLength": 1},
             "type": {
                 "type": "string",
                 "enum": ["string", "int", "integer", "long", "double", "float", "bool", "boolean", "date", "datetime"],
@@ -434,7 +631,7 @@ def _feature_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "geometry_wkt": {"type": "string"},
+            "geometry_wkt": {"type": "string", "minLength": 1},
             "attributes": {
                 "type": "object",
                 "additionalProperties": True,

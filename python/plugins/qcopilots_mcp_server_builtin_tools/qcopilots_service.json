@@ -3,7 +3,7 @@
   "service_id": "qcopilots.mcp_server_builtin_tools",
   "plugin_name": "QCopilots MCP Server Builtin Tools",
   "display_name": "QCopilots MCP Server Builtin Tools",
-  "description": "提供内置工具的本机工具服务，覆盖文件读取、文件搜索、文本检索、Shell 执行、文件写入、文本替换编辑和日期时间查询，适合在 QCopilots 或其它 MCP 客户端中完成本地资料检索、脚本辅助和受控自动化操作，由 QCopilots MCP Servers Manager 启动并绑定到本机 MCP HTTP 端点。",
+  "description": "提供内置工具的本机工具服务，覆盖文件读取、完整文件元数据和 SHA-256 查询、基于源 SHA-256 绑定且不覆盖目标的文件复制、文件搜索、文本检索、Shell 执行、文件写入、文本替换编辑和日期时间查询，适合在 QCopilots 或其它 MCP 客户端中完成本地资料检索、脚本辅助和受控自动化操作，由 QCopilots MCP Servers Manager 启动并绑定到本机 MCP HTTP 端点。",
   "entry_point": "server.py",
   "host": "127.0.0.1",
   "advertised_host": "127.0.0.1",

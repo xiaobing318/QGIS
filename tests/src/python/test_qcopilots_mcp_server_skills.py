@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 import tempfile
 import threading
 import unittest
@@ -33,6 +34,14 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
         original_tempdir = tempfile.tempdir
         self.addCleanup(setattr, tempfile, "tempdir", original_tempdir)
         tempfile.tempdir = str(Path(tempfile.gettempdir()).resolve())
+        original_dont_write_bytecode = sys.dont_write_bytecode
+        self.addCleanup(
+            setattr,
+            sys,
+            "dont_write_bytecode",
+            original_dont_write_bytecode,
+        )
+        sys.dont_write_bytecode = True
 
         environment = mock.patch.dict(
             os.environ,
@@ -253,9 +262,16 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                     {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
                 )["result"]["tools"]
             ]
-            self.assertIn("list_skills", tool_names)
-            self.assertIn("read_skill_resource", tool_names)
-            self.assertIn("qgis-example", tool_names)
+            self.assertEqual(
+                tool_names,
+                [
+                    "list_skills",
+                    "read_skill",
+                    "list_skill_resources",
+                    "read_skill_resource",
+                    "qgis-example",
+                ],
+            )
 
             skills = self._call_tool(server, "list_skills", {})["skills"]
             self.assertEqual(
@@ -386,6 +402,76 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
             )
             self.assertTrue(empty_task["result"]["isError"])
 
+    def test_resource_protocol_excludes_cache_and_temporary_artifacts(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer
+        from qcopilots_common.skills import SkillService
+
+        with tempfile.TemporaryDirectory(prefix="qcopilots-skill-cache-") as tmp:
+            temporary_root = Path(tmp)
+            root = temporary_root / "Skills"
+            skill_dir = self._write_skill(
+                root,
+                resources={"references/visible.md": "Visible resource."},
+            )
+            ignored_resources = {
+                "scripts/__pycache__/run.cpython-312.pyc": b"bytecode",
+                "scripts/run.pyc": b"bytecode",
+                "scripts/run.pyo": b"optimized-bytecode",
+                "references/notes.md.tmp": "temporary",
+                "references/notes.md.bak": "backup",
+                "references/.#notes.md": "editor lock",
+                "assets/~$draft.md": "office lock",
+                ".pytest_cache/state.json": "{}",
+                ".coverage.worker": "coverage cache",
+                ".DS_Store": b"finder cache",
+                "Thumbs.db": b"thumbnail cache",
+            }
+            for rel_path, content in ignored_resources.items():
+                path = skill_dir.joinpath(*rel_path.split("/"))
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if isinstance(content, bytes):
+                    path.write_bytes(content)
+                else:
+                    path.write_text(content, encoding="utf-8", newline="\n")
+            self._write_skill(root / ".ruff_cache", name="hidden-cache-skill")
+
+            service = SkillService([root], refresh_interval_seconds=0)
+            server = McpJsonRpcServer(
+                server_name="qcopilots-skills-test",
+                server_version="1.0.0",
+                tools=service.tools,
+                resources=service.resources,
+                prompts=service.prompts,
+            )
+            resources = server.handle_json_rpc(
+                {"jsonrpc": "2.0", "id": 1, "method": "resources/list", "params": {}}
+            )["result"]["resources"]
+            self.assertEqual(
+                [resource["uri"] for resource in resources],
+                ["resource://skillz/qgis-example/references/visible.md"],
+            )
+            self.assertEqual(
+                [skill.slug for skill in service.registry.skills],
+                ["qgis-example"],
+            )
+            hidden_read = server.handle_json_rpc(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "resources/read",
+                    "params": {
+                        "uri": (
+                            "resource://skillz/qgis-example/scripts/__pycache__/"
+                            "run.cpython-312.pyc"
+                        )
+                    },
+                }
+            )
+            self.assertIn("error", hidden_read)
+            self.assertNotIn("result", hidden_read)
+
+        self.assertFalse(temporary_root.exists())
+
     def test_management_tool_descriptions_include_current_skill_catalog(self):
         from qcopilots_common.mcp_http import McpJsonRpcServer
         from qcopilots_common.skills import SkillService
@@ -422,13 +508,96 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                             tools[tool_name]["inputSchema"]["properties"][
                                 selector
                             ],
-                            {"type": "string"},
+                            {"type": "string", "minLength": 1},
                         )
+                    self.assertEqual(
+                        tools[tool_name]["inputSchema"]["oneOf"],
+                        [
+                            {"required": ["slug"]},
+                            {"required": ["name"]},
+                            {"required": ["path"]},
+                        ],
+                    )
 
             self.assertEqual(
                 tools["read_skill_resource"]["inputSchema"]["required"],
                 ["resource"],
             )
+            self.assertEqual(
+                tools["read_skill_resource"]["inputSchema"]["properties"][
+                    "resource"
+                ],
+                {"type": "string", "minLength": 1},
+            )
+
+    def test_management_tools_require_exactly_one_nonempty_selector(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer, ToolError
+        from qcopilots_common.skills import SkillService
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Skills"
+            self._write_skill(root, name="selector-skill")
+            service = SkillService([root], refresh_interval_seconds=0)
+            server = McpJsonRpcServer(
+                server_name="qcopilots-skills-test",
+                server_version="1.0.0",
+                tools=service.tools,
+            )
+            tools = {tool.name: tool for tool in service.tools()}
+
+            for arguments in (
+                {},
+                {"slug": ""},
+                {"slug": "selector-skill", "name": "selector-skill"},
+            ):
+                with self.subTest(arguments=arguments):
+                    response = server.handle_json_rpc(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "tools/call",
+                            "params": {
+                                "name": "read_skill",
+                                "arguments": arguments,
+                            },
+                        }
+                    )
+                    self.assertEqual(response["error"]["code"], -32602)
+                    self.assertIn(
+                        "Invalid tool arguments",
+                        response["error"]["message"],
+                    )
+
+            for arguments in (
+                {"slug": "selector-skill", "resource": ""},
+                {
+                    "slug": "selector-skill",
+                    "path": str(root / "selector-skill"),
+                    "resource": "references/details.md",
+                },
+            ):
+                with self.subTest(resource_arguments=arguments):
+                    response = server.handle_json_rpc(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 2,
+                            "method": "tools/call",
+                            "params": {
+                                "name": "read_skill_resource",
+                                "arguments": arguments,
+                            },
+                        }
+                    )
+                    self.assertEqual(response["error"]["code"], -32602)
+                    self.assertIn(
+                        "Invalid tool arguments",
+                        response["error"]["message"],
+                    )
+
+            with self.assertRaisesRegex(ToolError, "Exactly one"):
+                tools["read_skill"].handler(
+                    {"slug": "selector-skill", "name": "selector-skill"}
+                )
 
     def test_management_tool_catalog_note_is_bounded(self):
         import qcopilots_common.skills as skills_module
@@ -914,6 +1083,13 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                 )
                 archive.writestr("zip-skill/references/guide.md", "Zip guide.")
                 archive.writestr("zip-skill/scripts/run.py", "print('resource only')")
+                archive.writestr(
+                    "zip-skill/scripts/__pycache__/run.cpython-312.pyc",
+                    b"bytecode",
+                )
+                archive.writestr("zip-skill/scripts/run.pyo", b"optimized-bytecode")
+                archive.writestr("zip-skill/references/guide.md.tmp", "temporary")
+                archive.writestr("zip-skill/__MACOSX/metadata", "macOS metadata")
             with zipfile.ZipFile(root / "missing-skill.zip", "w") as archive:
                 archive.writestr("readme.md", "No skill here.")
             (root / "broken.skill").write_bytes(b"not a zip")
@@ -931,6 +1107,11 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                 list(skill.iter_resource_paths()),
                 ["references/guide.md", "scripts/run.py"],
             )
+            with self.assertRaises(PermissionError):
+                registry.read_resource(
+                    "zip-skill",
+                    "scripts/__pycache__/run.cpython-312.pyc",
+                )
 
             service = SkillService([root], validation_mode="compatible")
             server = McpJsonRpcServer(
@@ -5486,10 +5667,83 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
         self.assertIn("file(GLOB_RECURSE SKILL_FILES", cmake)
         self.assertIn("CONFIGURE_DEPENDS", cmake)
         self.assertIn('RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "Skills/*"', cmake)
+        self.assertIn("__pycache__", cmake)
+        self.assertIn("(bak|orig|pyc|pyo|swp|swo|temp|tmp)", cmake)
+        self.assertIn("continue()", cmake)
         self.assertIn(
             "PLUGIN_INSTALL(qcopilots_mcp_server_skills ${SKILL_SUBDIR} ${SKILL_FILE})",
             cmake,
         )
+
+    def test_source_qgis_skills_creator_protocol_has_frozen_resources(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer
+        from qcopilots_common.skills import SkillService
+
+        repo_root = Path(__file__).resolve().parents[3]
+        source_root = (
+            repo_root / "python" / "plugins" / "qcopilots_mcp_server_skills" / "Skills"
+        )
+        expected_paths = {
+            "agents/openai.yaml",
+            "assets/generated-skill-openai.template.yaml",
+            "assets/generated-skill-SKILL.template.md",
+            "assets/qgis-skill-plan.template.json",
+            "references/geospatial-domain-checklists.md",
+            "references/qgis-skill-creation-workflow.md",
+            "references/qgis-skill-plan.schema.json",
+            "references/qgis-tools.catalog.json",
+            "references/qgis-tools.catalog.schema.json",
+            "scripts/plan_gate.py",
+        }
+
+        with tempfile.TemporaryDirectory(prefix="qcopilots-frozen-skill-") as tmp:
+            temporary_root = Path(tmp)
+            staged_root = temporary_root / "Skills"
+            shutil.copytree(source_root, staged_root)
+            skill_root = staged_root / "qgis-skills-creator"
+            cache_files = {
+                "scripts/__pycache__/plan_gate.cpython-312.pyc": b"bytecode",
+                "scripts/plan_gate.pyo": b"optimized-bytecode",
+                "references/catalog.json.tmp": "temporary",
+                ".pytest_cache/state.json": "{}",
+            }
+            for rel_path, content in cache_files.items():
+                path = skill_root.joinpath(*rel_path.split("/"))
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if isinstance(content, bytes):
+                    path.write_bytes(content)
+                else:
+                    path.write_text(content, encoding="utf-8", newline="\n")
+
+            service = SkillService([staged_root], refresh_interval_seconds=0)
+            server = McpJsonRpcServer(
+                server_name="qcopilots-skills-test",
+                server_version="1.0.0",
+                tools=service.tools,
+                resources=service.resources,
+                prompts=service.prompts,
+            )
+            resources = server.handle_json_rpc(
+                {"jsonrpc": "2.0", "id": 1, "method": "resources/list", "params": {}}
+            )["result"]["resources"]
+            expected_uris = {
+                f"resource://skillz/qgis-skills-creator/{path}"
+                for path in expected_paths
+            }
+            self.assertEqual(len(resources), 10)
+            self.assertSetEqual(
+                {resource["uri"] for resource in resources},
+                expected_uris,
+            )
+            self.assertFalse(
+                any(
+                    "__pycache__" in resource["uri"]
+                    or resource["uri"].endswith((".pyc", ".pyo", ".tmp"))
+                    for resource in resources
+                )
+            )
+
+        self.assertFalse(temporary_root.exists())
 
     def test_service_manifest_and_entrypoint_expose_prompts(self):
         import qcopilots_mcp_server_skills.server as server_module
@@ -9791,11 +10045,22 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
             )
             self.assertEqual(
                 set(command_result),
-                {"exit_code", "timed_out", "stdout", "stderr"},
+                {
+                    "capture_error",
+                    "exit_code",
+                    "stderr",
+                    "stderr_truncated",
+                    "stdout",
+                    "stdout_truncated",
+                    "timed_out",
+                },
             )
             self.assertEqual(command_result["exit_code"], 0)
             self.assertIs(command_result["timed_out"], False)
             self.assertEqual(command_result["stderr"], "")
+            self.assertIs(command_result["capture_error"], None)
+            self.assertIs(command_result["stdout_truncated"], False)
+            self.assertIs(command_result["stderr_truncated"], False)
             stdout_lines = command_result["stdout"].splitlines()
             self.assertEqual(len(stdout_lines), 2)
             self.assertTrue(stdout_lines[0].startswith("cwd="))
@@ -10006,6 +10271,202 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
         catalog_schema = json.loads(
             resource_contents["references/qgis-tools.catalog.schema.json"]
         )
+        from qcopilots_common.builtin_tools import build_builtin_tools
+        from qcopilots_common.processing_tools import (
+            build_interactive_tools,
+            build_processing_tools,
+        )
+        from qcopilots_common.security_policy import FilesystemPolicy
+
+        builtin_catalog = next(
+            service
+            for service in catalog_data["mcp_services"]
+            if service["service_id"] == "qcopilots.mcp_server_builtin_tools"
+        )
+        live_builtin_tool_names = {
+            tool.name
+            for tool in build_builtin_tools(
+                root_path=skill_root,
+                allowed_roots=[skill_root],
+                allow_full_access=False,
+                filesystem_policy=FilesystemPolicy(),
+            )
+        }
+        self.assertSetEqual(
+            {tool["name"] for tool in builtin_catalog["tools"]},
+            live_builtin_tool_names,
+        )
+        builtin_catalog_text = json.dumps(builtin_catalog, ensure_ascii=False)
+        self.assertNotIn("read_roots", builtin_catalog_text)
+        self.assertNotIn("write_roots", builtin_catalog_text)
+        live_interactive_tools = build_interactive_tools()
+        interactive_catalog = next(
+            service
+            for service in catalog_data["mcp_services"]
+            if service["service_id"] == "qcopilots.mcp_server_interactive_tools"
+        )
+        self.assertEqual(
+            [tool["name"] for tool in interactive_catalog["tools"]],
+            [tool.name for tool in live_interactive_tools],
+        )
+        remove_layers_catalog = next(
+            tool
+            for tool in interactive_catalog["tools"]
+            if tool["name"] == "remove_map_layers"
+        )
+        remove_layers_policy = remove_layers_catalog["invocation_policy"]
+        remove_layers_schema = next(
+            tool.input_schema
+            for tool in live_interactive_tools
+            if tool.name == "remove_map_layers"
+        )
+        manager_config = json.loads(
+            (
+                repo_root
+                / "python"
+                / "plugins"
+                / "qcopilots_mcp_servers_manager"
+                / "qcopilots_manager_config.json"
+            ).read_text(encoding="utf-8")
+        )
+        catalog_default_services = {
+            service["service_id"]
+            for service in catalog_data["mcp_services"]
+            if service["enabled_by_default_observed"]
+        }
+        manager_default_services = set(
+            manager_config["default_startup"]["service_ids"]
+        )
+        self.assertSetEqual(catalog_default_services, manager_default_services)
+        self.assertIn(
+            "qcopilots.mcp_server_qgis_binary", catalog_default_services
+        )
+        for category in ("vector", "raster", "general"):
+            processing_catalog = next(
+                service
+                for service in catalog_data["mcp_services"]
+                if service["service_id"]
+                == f"qcopilots.mcp_server_processing_{category}"
+            )
+            live_processing_tools = build_processing_tools(category)
+            self.assertEqual(
+                [tool["name"] for tool in processing_catalog["tools"]],
+                [tool.name for tool in live_processing_tools],
+            )
+            list_tool_name = f"list_{category}_processing_algorithms"
+            list_description = next(
+                tool["description"]
+                for tool in processing_catalog["tools"]
+                if tool["name"] == list_tool_name
+            )
+            for term in (
+                "max_results 默认为 50",
+                "最大 2000",
+                "单页固定最多 50",
+                "next_cursor",
+                "续页只传 cursor",
+                "truncated=true",
+                "不得将结果视为完整清单",
+            ):
+                with self.subTest(
+                    processing_list_tool=list_tool_name,
+                    pagination_term=term,
+                ):
+                    self.assertIn(term, list_description)
+        self.assertTrue(catalog_data["observed_at"].startswith("2026-08-24"))
+        observed_versions = catalog_data["runtime_profile"]["observed_versions"]
+        self.assertEqual(observed_versions["processing_algorithm_count_total"], 761)
+        self.assertEqual(
+            observed_versions["processing_algorithm_count_surface"],
+            "packaged qgis-process CLI catalog snapshot",
+        )
+        self.assertEqual(
+            observed_versions["processing_mcp_live_registry_count_total"],
+            772,
+        )
+        live_processing_notes = {
+            item["id"]: item["notes"]
+            for item in catalog_data["processing_discovery"]
+            if item["transport"] == "mcp"
+        }
+        self.assertSetEqual(
+            set(live_processing_notes),
+            {
+                "mcp-vector-processing",
+                "mcp-raster-processing",
+                "mcp-general-processing",
+            },
+        )
+        for discovery_id, note in live_processing_notes.items():
+            for term in (
+                "max_results 默认为 50",
+                "最大 2000",
+                "单页固定最多 50",
+                "next_cursor",
+                "续页只传 cursor",
+                "truncated=true",
+                "完整 inventory",
+                "超过 2000",
+                "qgis-process-discovery --json list",
+                "不同发现 surface",
+            ):
+                with self.subTest(
+                    processing_discovery=discovery_id,
+                    pagination_term=term,
+                ):
+                    self.assertIn(term, note)
+        for discovery_id in ("mcp-vector-processing", "mcp-raster-processing"):
+            note = live_processing_notes[discovery_id]
+            with self.subTest(processing_inventory_note=note):
+                self.assertIn("772", note)
+                self.assertIn("vector-only 371", note)
+                self.assertIn("raster-only 282", note)
+                self.assertIn("mixed 69", note)
+                self.assertIn("无矢量栅格证据 50", note)
+                self.assertIn("单一 owner", note)
+                self.assertIn("不会在服务间重复", note)
+        general_note = live_processing_notes["mcp-general-processing"]
+        for term in (
+            "list 仅返回",
+            "unsupported",
+            "HTTP",
+            "PostGIS SQL",
+            "外部数据库写入",
+            "目录、多文件容器或原地容器输出",
+            "单文件数据库包可启动",
+            "原地修改",
+        ):
+            self.assertIn(term, general_note)
+        self.assertEqual(371 + 282 + 69 + 50, 772)
+        cli_processing = next(
+            item
+            for item in catalog_data["processing_discovery"]
+            if item["id"] == "cli-qgis-process-all"
+        )
+        self.assertIn("不同发现 surface", cli_processing["notes"])
+        self.assertIn("761", cli_processing["notes"])
+        self.assertIn("772", cli_processing["notes"])
+        creation_workflow = resource_contents[
+            "references/qgis-skill-creation-workflow.md"
+        ]
+        self.assertNotIn(
+            "调用 Processing list，记录完整返回和 provider",
+            creation_workflow,
+        )
+        for term in (
+            "首次显式设置 `max_results`",
+            "缺省时为 50",
+            "`1..2000`",
+            "单页固定最多 50",
+            "存在 `next_cursor` 时续页只传 `cursor`",
+            "`truncated=true`",
+            "不得把该轮结果记录为完整 inventory",
+            "需要超过 2000 项",
+            "`qgis-process-discovery --json list`",
+            "不同发现 surface",
+        ):
+            with self.subTest(processing_workflow_term=term):
+                self.assertIn(term, creation_workflow)
         gpsbabel_catalog_entry = next(
             item
             for item in catalog_data["cli_tools"]
@@ -10456,16 +10917,21 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                 assert_sentinel_absent("resource read")
 
         plan_gate_path = skill_root / "scripts" / "plan_gate.py"
-        plan_gate_helpers = runpy.run_path(
-            str(plan_gate_path),
-            run_name="qgis_skills_creator_plan_gate_test",
-        )
+        with mock.patch.object(sys, "dont_write_bytecode", True):
+            plan_gate_helpers = runpy.run_path(
+                str(plan_gate_path),
+                run_name="qgis_skills_creator_plan_gate_test",
+            )
         validate_schema_subset = plan_gate_helpers["validate_schema_subset"]
         validate_live_capability_contract = plan_gate_helpers[
             "validate_live_capability_contract"
         ]
         validate_common = plan_gate_helpers["validate_common"]
         validate_node_invocation = plan_gate_helpers["validate_node_invocation"]
+        validate_invocation_policy = plan_gate_helpers[
+            "validate_invocation_policy"
+        ]
+        policy_is_not_weaker = plan_gate_helpers["_policy_is_not_weaker"]
         validate_skills_root_binding = plan_gate_helpers["validate_skills_root_binding"]
         validate_openai_yaml = plan_gate_helpers["validate_openai_yaml"]
         build_processing_invocation_fixture = plan_gate_helpers[
@@ -10692,6 +11158,71 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                 ),
                 mismatched_algorithm_errors,
             )
+
+        remove_schema_properties = set(remove_layers_schema["properties"])
+
+        def validate_remove_arguments(arguments, target_arguments):
+            invocation_errors = []
+            bindings = {
+                name: {
+                    "target_kind": (
+                        "qgis-layer" if name in target_arguments else "none"
+                    )
+                }
+                for name in arguments
+            }
+            validate_invocation_policy(
+                "STEP-REMOVE",
+                arguments,
+                remove_schema_properties - set(arguments),
+                bindings,
+                remove_schema_properties,
+                remove_layers_policy,
+                invocation_errors,
+            )
+            return invocation_errors
+
+        self.assertEqual(
+            validate_remove_arguments(
+                {"layer_id": "layer-a", "allow_multiple": False},
+                {"layer_id"},
+            ),
+            [],
+        )
+        self.assertEqual(
+            validate_remove_arguments(
+                {"confirmation_token": "confirmation-token-value"},
+                set(),
+            ),
+            [],
+        )
+        for mixed_arguments in (
+            {
+                "confirmation_token": "confirmation-token-value",
+                "layer_id": "layer-a",
+            },
+            {
+                "confirmation_token": "confirmation-token-value",
+                "allow_multiple": False,
+            },
+        ):
+            with self.subTest(remove_confirmation_mixed=mixed_arguments):
+                mixed_errors = validate_remove_arguments(
+                    mixed_arguments,
+                    {"layer_id"} & set(mixed_arguments),
+                )
+                self.assertTrue(
+                    any("exactly one policy branch" in error for error in mixed_errors),
+                    mixed_errors,
+                )
+        self.assertTrue(
+            policy_is_not_weaker(remove_layers_policy, remove_layers_policy)
+        )
+        branchless_policy = copy.deepcopy(remove_layers_policy)
+        branchless_policy.pop("argument_branches")
+        self.assertFalse(
+            policy_is_not_weaker(branchless_policy, remove_layers_policy)
+        )
         self.assertEqual(
             validate_schema_subset(catalog_data, catalog_schema),
             [],

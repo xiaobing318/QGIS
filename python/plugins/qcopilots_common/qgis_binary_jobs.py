@@ -29,6 +29,7 @@ from qcopilots_common.async_jobs import (
     TERMINAL_JOB_STATES,
     utc_now_rfc3339,
 )
+from qcopilots_common.security_policy import FilesystemPolicy
 
 
 QGIS_BINARY_CATEGORY = "qgis_binary"
@@ -37,6 +38,45 @@ MAX_BINARY_OUTPUT_BYTES = 16 * 1024 * 1024
 MAX_BINARY_TIMEOUT_SECONDS = 24 * 60 * 60
 DEFAULT_LIST_LIMIT = 100
 MAX_LIST_LIMIT = 200
+
+_WINDOWS_DEVICE_PATH_PREFIXES = (
+    "\\\\?\\",
+    "\\\\.\\",
+    "\\??\\",
+    "//?/",
+    "//./",
+    "/??/",
+)
+_URI_WITH_AUTHORITY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
+_GDAL_VIRTUAL_PATH_RE = re.compile(r"^/vsi[A-Za-z0-9_]*(?:/|$)", re.IGNORECASE)
+_GDAL_REMOTE_DATASOURCE_RE = re.compile(
+    r"^(?:"
+    r"AMIGOCLOUD|CARTO|COUCHDB|DODS|ELASTICSEARCH|GFT|"
+    r"MONGODB(?:V3)?|MSSQL(?:SPATIAL)?|MYSQL|NGW|OAPIF|OCI|ODBC|"
+    r"PG|PLSCENES|WFS"
+    r")\s*:",
+    re.IGNORECASE,
+)
+_GDAL_FILE_DATASOURCE_RE = re.compile(
+    r"^(?:CSV|FILEGDB|GPKG|OPENFILEGDB|PGEO|SQLITE)\s*:",
+    re.IGNORECASE,
+)
+_COLON_OPTION_RE = re.compile(
+    r"^(?:--?|/)[A-Za-z][A-Za-z0-9_-]*:(.+)$",
+    re.DOTALL,
+)
+_INDIRECT_ARGUMENT_FILE_OPTION_RE = re.compile(
+    r"^--(?:"
+    r"optfile|options?-file|args?-file|arguments-file|response-file"
+    r")(?:$|[=:])",
+    re.IGNORECASE,
+)
+_WINDOWS_RESERVED_DEVICE_RE = re.compile(
+    r"^(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|"
+    r"COM(?:[1-9]|\u00b9|\u00b2|\u00b3)|"
+    r"LPT(?:[1-9]|\u00b9|\u00b2|\u00b3))$",
+    re.IGNORECASE,
+)
 
 
 class BinaryCatalogError(RuntimeError):
@@ -640,6 +680,22 @@ class QGISBinaryJobManager:
             raise ValueError("confirmed_risk must be a boolean")
         client_request_id = _client_request_id(arguments.get("client_request_id"))
 
+        filesystem_policy = self._filesystem_policy()
+        if filesystem_policy.restricted and stdin_value:
+            raise PermissionError(
+                "Formal restricted mode does not permit non-empty binary stdin"
+            )
+        working_directory = _resolve_working_directory(
+            working_directory_value,
+            self.package_root,
+            filesystem_policy,
+        )
+        _validate_binary_argument_paths(
+            argv,
+            working_directory,
+            filesystem_policy,
+        )
+
         fingerprint = _fingerprint(
             {
                 "binary_id": binary_id,
@@ -670,9 +726,6 @@ class QGISBinaryJobManager:
             )
 
         executable = _resolve_catalog_executable(self.package_root, binary["path"])
-        working_directory = _resolve_working_directory(
-            working_directory_value, self.package_root
-        )
         stdin_bytes = stdin_value.encode("utf-8") if stdin_value is not None else None
         if stdin_bytes is not None and len(stdin_bytes) > binary["max_stdin_bytes"]:
             raise ValueError(
@@ -960,6 +1013,10 @@ class QGISBinaryJobManager:
         from qgis.core import QgsApplication
 
         return QgsApplication.taskManager()
+
+    def _filesystem_policy(self) -> FilesystemPolicy:
+        policy = self._dependencies.get("filesystem_policy")
+        return policy if isinstance(policy, FilesystemPolicy) else FilesystemPolicy()
 
     def _on_begun(self, job_id: str) -> None:
         try:
@@ -1579,18 +1636,488 @@ def _resolve_catalog_executable(
     return candidate
 
 
-def _resolve_working_directory(value: Any, package_root: Path) -> Path:
+def _resolve_working_directory(
+    value: Any,
+    package_root: Path,
+    filesystem_policy: FilesystemPolicy | None = None,
+) -> Path:
+    policy = (
+        filesystem_policy
+        if isinstance(filesystem_policy, FilesystemPolicy)
+        else FilesystemPolicy()
+    )
     if value is None or value == "":
-        return package_root
-    if not isinstance(value, str):
-        raise ValueError("working_directory must be a string")
-    candidate = Path(value).expanduser()
-    if not candidate.is_absolute():
-        candidate = package_root / candidate
-    candidate = candidate.resolve(strict=True)
+        candidate = policy.resolve_path(
+            package_root,
+            access="write",
+        )
+    else:
+        if not isinstance(value, str):
+            raise ValueError("working_directory must be a string")
+        if policy.restricted:
+            _validate_restricted_working_directory_syntax(value)
+        candidate = policy.resolve_path(
+            value,
+            access="write",
+            base=package_root,
+        )
     if not candidate.is_dir():
         raise ValueError("working_directory must identify an existing directory")
     return candidate
+
+
+def _validate_binary_argument_paths(
+    arguments: list[str],
+    working_directory: Path,
+    filesystem_policy: FilesystemPolicy,
+) -> None:
+    """Bound explicit local argv paths without guessing every binary's grammar."""
+
+    for index, argument in enumerate(arguments):
+        reserved_device = _binary_argument_reserved_device_value(argument)
+        if reserved_device is not None:
+            raise PermissionError(
+                f"QGIS binary argument {index} contains a prohibited Windows "
+                f"device path: {reserved_device}"
+            )
+        if _INDIRECT_ARGUMENT_FILE_OPTION_RE.match(argument.strip()):
+            raise PermissionError(
+                f"QGIS binary argument {index} uses an indirect argument file, "
+                "which the filesystem policy does not permit"
+            )
+        local_candidates = _binary_argument_local_path_candidates(
+            argument, working_directory
+        )
+        if any(
+            response_file for _candidate, response_file in local_candidates
+        ):
+            raise PermissionError(
+                f"QGIS binary argument {index} uses an indirect argument file, "
+                "which the filesystem policy does not permit"
+            )
+        if not filesystem_policy.restricted:
+            for value in _binary_argument_value_fragments(argument):
+                datasource_path = _binary_file_datasource_local_path(value)
+                if datasource_path is None:
+                    continue
+                try:
+                    if datasource_path.casefold().startswith("file:"):
+                        filesystem_policy.resolve_file_uri(
+                            datasource_path,
+                            access="write",
+                        )
+                    else:
+                        filesystem_policy.resolve_path(
+                            datasource_path,
+                            access="write",
+                            base=working_directory,
+                        )
+                except PermissionError as err:
+                    raise PermissionError(
+                        f"QGIS binary argument {index} contains a prohibited local "
+                        f"path: {err}"
+                    ) from err
+        if filesystem_policy.restricted:
+            for value in _binary_argument_nonlocal_values(argument):
+                try:
+                    _validate_binary_argument_nonlocal_value(value, filesystem_policy)
+                except PermissionError as err:
+                    raise PermissionError(
+                        f"QGIS binary argument {index} contains a prohibited source: {err}"
+                    ) from err
+        for candidate, response_file in local_candidates:
+            try:
+                _validate_binary_argument_path(
+                    candidate,
+                    response_file=response_file,
+                    working_directory=working_directory,
+                    filesystem_policy=filesystem_policy,
+                )
+            except PermissionError as err:
+                raise PermissionError(
+                    f"QGIS binary argument {index} contains a prohibited local "
+                    f"path: {err}"
+                ) from err
+
+
+def _validate_restricted_working_directory_syntax(value: str) -> None:
+    raw = value.strip()
+    if "\0" in raw:
+        raise PermissionError(
+            "Formal restricted mode does not permit NUL characters in working directories"
+        )
+    if raw.lower().startswith("file:"):
+        raise PermissionError(
+            "Formal restricted mode does not permit file URI working directories"
+        )
+    if _is_windows_device_path(raw):
+        raise PermissionError(
+            "Formal restricted mode does not permit Windows device working directories"
+        )
+    if _is_windows_unc_path(raw):
+        raise PermissionError(
+            "Formal restricted mode does not permit UNC working directories"
+        )
+    if os.name == "nt" and _contains_windows_reserved_device_name(raw):
+        raise PermissionError(
+            "Formal restricted mode does not permit Windows device working directories"
+        )
+    windows_path = PureWindowsPath(raw)
+    if windows_path.drive and not windows_path.is_absolute():
+        raise PermissionError(
+            "Formal restricted mode does not permit drive-relative working directories"
+        )
+
+
+def _validate_binary_argument_path(
+    value: str,
+    *,
+    response_file: bool,
+    working_directory: Path,
+    filesystem_policy: FilesystemPolicy,
+) -> None:
+    if _is_windows_device_path(value):
+        raise PermissionError(
+            "Formal restricted mode does not permit Windows device paths"
+        )
+    if _is_windows_unc_path(value):
+        raise PermissionError(
+            "Formal restricted mode does not permit UNC paths in binary arguments"
+        )
+    if filesystem_policy.restricted and response_file and (
+        _URI_WITH_AUTHORITY_RE.match(value) or _GDAL_VIRTUAL_PATH_RE.match(value)
+    ):
+        raise PermissionError(
+            "Formal restricted mode requires response files to use approved local paths"
+        )
+
+    if value.casefold().startswith("file:"):
+        if filesystem_policy.restricted:
+            raise PermissionError(
+                "Formal restricted mode requires plain approved local paths "
+                "instead of file URIs"
+            )
+        filesystem_policy.resolve_file_uri(
+            value,
+            access="read" if response_file else "write",
+        )
+        return
+
+    windows_path = PureWindowsPath(value)
+    if filesystem_policy.restricted:
+        if windows_path.drive and not windows_path.is_absolute():
+            raise PermissionError(
+                "Formal restricted mode does not permit drive-relative paths"
+            )
+        if _contains_parent_path_segment(value):
+            raise PermissionError(
+                "Formal restricted mode does not permit parent-directory path traversal"
+            )
+        if os.name != "nt" and windows_path.is_absolute():
+            raise PermissionError(
+                "Formal restricted mode cannot validate Windows paths on this platform"
+            )
+    filesystem_policy.resolve_path(
+        value,
+        access="read" if response_file else "write",
+        base=working_directory,
+    )
+
+
+def _validate_binary_argument_nonlocal_value(
+    value: str, filesystem_policy: FilesystemPolicy
+) -> None:
+    if _GDAL_REMOTE_DATASOURCE_RE.match(value):
+        raise PermissionError(
+            "Formal restricted mode does not permit GDAL/OGR remote datasource "
+            "connection strings"
+        )
+    if _GDAL_FILE_DATASOURCE_RE.match(value):
+        raise PermissionError(
+            "Formal restricted mode requires file-backed GDAL/OGR datasources "
+            "to use plain approved local paths without driver prefixes"
+        )
+    if _GDAL_VIRTUAL_PATH_RE.match(value):
+        if re.match(r"^/vsimem(?:/|$)", value, re.IGNORECASE):
+            return
+        raise PermissionError(
+            "Formal restricted mode does not permit GDAL virtual filesystem "
+            "arguments other than /vsimem"
+        )
+
+    scheme = value.partition(":")[0].lower()
+    if scheme in {"http", "https"}:
+        filesystem_policy.validate_network_url(value)
+        return
+    raise PermissionError(
+        "Formal restricted mode does not permit remote URI schemes other than "
+        "approved HTTP(S) origins"
+    )
+
+
+def _binary_argument_nonlocal_values(argument: str) -> list[str]:
+    raw = _strip_argument_path_quotes(argument.strip())
+    if not raw or raw.startswith("@"):
+        return []
+    values = []
+    for value in _binary_argument_value_fragments(raw):
+        value = _strip_argument_path_quotes(value.strip())
+        if value and not value.startswith("@") and _is_nonlocal_argument_value(value):
+            values.append(value)
+    return list(dict.fromkeys(values))
+
+
+def _binary_argument_local_path_candidates(
+    argument: str, working_directory: Path
+) -> list[tuple[str, bool]]:
+    raw = _strip_argument_path_quotes(argument.strip())
+    if not raw:
+        return []
+    if raw.startswith("@"):
+        response_file = _strip_argument_path_quotes(raw[1:].strip())
+        return [(response_file, True)] if response_file else []
+    if _is_nonlocal_argument_value(raw):
+        return []
+
+    embedded_values = _binary_argument_embedded_values(raw)
+    source_values = list(embedded_values)
+    if _is_explicit_local_path_value(raw) or not embedded_values:
+        source_values.insert(0, raw)
+    candidates = []
+    for value in source_values:
+        candidates.extend(
+            _binary_local_path_candidates_from_value(value, working_directory)
+        )
+    return list(dict.fromkeys(candidates))
+
+
+def _binary_argument_reserved_device_value(argument: str) -> str | None:
+    if os.name != "nt":
+        return None
+    raw = _strip_argument_path_quotes(argument.strip())
+    if not raw:
+        return None
+    values = [raw]
+    option_match = re.match(
+        r"^(?:--?|/)([A-Za-z][A-Za-z0-9_-]*)(?:=|:)(.*)$",
+        raw,
+        re.DOTALL,
+    )
+    parameter_match = re.match(
+        r"^([A-Za-z_][A-Za-z0-9_-]*)=(.*)$",
+        raw,
+        re.DOTALL,
+    )
+    assignment = option_match or parameter_match
+    if assignment is not None:
+        key = assignment.group(1).lower().replace("-", "_")
+        if key in {"sql", "where", "expression", "filter", "subset", "query"}:
+            return None
+        values = [assignment.group(2)]
+
+    for value in values:
+        for component in re.split(r"[;|]", value):
+            candidate = _strip_argument_path_quotes(component.strip())
+            nested = re.match(
+                r"^[A-Za-z_][A-Za-z0-9_-]*=(.*)$",
+                candidate,
+                re.DOTALL,
+            )
+            while nested is not None:
+                candidate = _strip_argument_path_quotes(nested.group(1).strip())
+                nested = re.match(
+                    r"^[A-Za-z_][A-Za-z0-9_-]*=(.*)$",
+                    candidate,
+                    re.DOTALL,
+                )
+            if candidate and _is_nonlocal_argument_value(candidate):
+                continue
+            if candidate and _contains_windows_reserved_device_name(candidate):
+                return candidate
+    return None
+
+
+def _binary_argument_embedded_values(argument: str) -> list[str]:
+    values = [
+        _strip_argument_path_quotes(argument[index + 1 :].strip())
+        for index, character in enumerate(argument)
+        if character == "="
+    ]
+    colon_option = _COLON_OPTION_RE.match(argument)
+    if colon_option is not None:
+        values.append(_strip_argument_path_quotes(colon_option.group(1).strip()))
+    return list(dict.fromkeys(value for value in values if value))
+
+
+def _binary_argument_value_fragments(value: str) -> list[str]:
+    fragments = [value]
+    fragments.extend(_binary_argument_embedded_values(value))
+    for item in list(fragments):
+        for component in re.split(r"[;|]", item):
+            fragments.append(component)
+            fragments.extend(_binary_argument_embedded_values(component))
+    return list(dict.fromkeys(fragment for fragment in fragments if fragment))
+
+
+def _binary_file_datasource_local_path(value: str) -> str | None:
+    raw = _strip_argument_path_quotes(value.strip())
+    match = _GDAL_FILE_DATASOURCE_RE.match(raw)
+    if match is None:
+        return None
+    datasource_path = _strip_argument_path_quotes(
+        raw[match.end() :].split("|", 1)[0].strip()
+    )
+    if not datasource_path or datasource_path.casefold().startswith("/vsi"):
+        return None
+    return datasource_path
+
+
+def _binary_local_path_candidates_from_value(
+    value: str, working_directory: Path
+) -> list[tuple[str, bool]]:
+    candidates = []
+    whole_path_value = _strip_argument_path_quotes(value.split("|", 1)[0].strip())
+    whole_components = whole_path_value.split(";")
+    is_path_list = len(whole_components) > 1 and any(
+        _is_explicit_local_path_value(component.strip())
+        for component in whole_components[1:]
+    )
+    if _is_explicit_local_path_value(whole_path_value) and not is_path_list:
+        candidates.append((whole_path_value, False))
+    for item in value.split(";"):
+        path_value = _strip_argument_path_quotes(item.split("|", 1)[0].strip())
+        if not path_value or _is_nonlocal_argument_value(path_value):
+            continue
+        if "=" in path_value:
+            nested_value = _strip_argument_path_quotes(
+                path_value.rsplit("=", 1)[1].strip()
+            )
+            if nested_value and nested_value != path_value:
+                candidates.extend(
+                    _binary_local_path_candidates_from_value(
+                        nested_value,
+                        working_directory,
+                    )
+                )
+            continue
+        if path_value.startswith("@"):
+            response_file = _strip_argument_path_quotes(path_value[1:].strip())
+            if response_file:
+                candidates.append((response_file, True))
+            continue
+        if _is_explicit_local_path_value(
+            path_value
+        ) or _looks_like_local_relative_path(path_value, working_directory):
+            candidates.append((path_value, False))
+    return candidates
+
+
+def _is_explicit_local_path_value(value: str) -> bool:
+    if value.lower().startswith("file:"):
+        return True
+    if _is_nonlocal_argument_value(value):
+        return False
+    return bool(
+        _is_windows_device_path(value)
+        or _looks_like_windows_drive_path(value)
+        or value.startswith(("\\", "/"))
+        or PurePosixPath(value).is_absolute()
+        or value.startswith("~")
+        or _contains_parent_path_segment(value)
+    )
+
+
+def _looks_like_windows_drive_path(value: str) -> bool:
+    match = re.match(r"^[A-Za-z]:(.*)$", value)
+    if match is None:
+        return False
+    remainder = match.group(1)
+    return bool(
+        not remainder
+        or remainder.startswith(("\\", "/", ".", "~"))
+        or "\\" in remainder
+        or "/" in remainder
+        or PureWindowsPath(remainder).suffix
+    )
+
+
+def _looks_like_local_relative_path(value: str, working_directory: Path) -> bool:
+    if not value or _is_nonlocal_argument_value(value):
+        return False
+    if value in {".", ".."} or "/" in value or "\\" in value:
+        return True
+    try:
+        candidate = working_directory / value
+        ads_base = _existing_windows_ads_base_path(candidate)
+        if ads_base is not None:
+            return True
+        is_junction = getattr(candidate, "is_junction", None)
+        if candidate.is_symlink() or bool(is_junction and is_junction()):
+            return True
+        return candidate.exists()
+    except OSError:
+        return False
+
+
+def _existing_windows_ads_base_path(path: Path) -> Path | None:
+    if os.name != "nt" or ":" not in path.name:
+        return None
+    base_name, stream_name = path.name.split(":", 1)
+    if not base_name or not stream_name:
+        return None
+    base_path = path.with_name(base_name)
+    try:
+        is_junction = getattr(base_path, "is_junction", None)
+        if base_path.is_symlink() or bool(is_junction and is_junction()):
+            return base_path
+        return base_path if base_path.exists() else None
+    except OSError:
+        return None
+
+
+def _is_nonlocal_argument_value(value: str) -> bool:
+    if value.lower().startswith("file:"):
+        return False
+    return bool(
+        _URI_WITH_AUTHORITY_RE.match(value)
+        or _GDAL_VIRTUAL_PATH_RE.match(value)
+        or _GDAL_REMOTE_DATASOURCE_RE.match(value)
+        or _GDAL_FILE_DATASOURCE_RE.match(value)
+    )
+
+
+def _is_windows_device_path(value: str) -> bool:
+    normalized = value.replace("/", "\\")
+    prefixes = tuple(
+        item.replace("/", "\\") for item in _WINDOWS_DEVICE_PATH_PREFIXES
+    )
+    return normalized.startswith(prefixes)
+
+
+def _is_windows_unc_path(value: str) -> bool:
+    normalized = value.replace("/", "\\")
+    return normalized.startswith("\\\\") and not _is_windows_device_path(value)
+
+
+def _contains_windows_reserved_device_name(value: str) -> bool:
+    for component in value.replace("/", "\\").split("\\"):
+        component = component.rstrip(" .")
+        if not component or re.fullmatch(r"[A-Za-z]:", component):
+            continue
+        basename = component.split(":", 1)[0].split(".", 1)[0].rstrip(" .")
+        if _WINDOWS_RESERVED_DEVICE_RE.fullmatch(basename):
+            return True
+    return False
+
+
+def _contains_parent_path_segment(value: str) -> bool:
+    return ".." in PurePosixPath(value.replace("\\", "/")).parts
+
+
+def _strip_argument_path_quotes(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1].strip()
+    return value
 
 
 def _resolve_trusted_setup_script(

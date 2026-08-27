@@ -38,17 +38,22 @@ EXPECTED_TOOL_DESCRIPTION_TERMS = {
         "without starting a process",
         "cursor-paginated",
         "binary_id",
+        "package-relative path",
+        "does not execute a configured probe",
     ),
     "get_qgis_binary_details": (
         "without running it",
         "effective catalog policy",
         "resource limits",
+        "does not execute the probe",
     ),
     "start_qgis_binary": (
         "asynchronous QgsTask job",
         "without a command shell",
         "blocks R3 binaries",
         "polling or cancellation",
+        "local input and output paths",
+        "rejects non-empty stdin",
     ),
     "get_qgis_binary_job": (
         "without waiting for or changing it",
@@ -119,6 +124,10 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
                 descriptions.append(description)
 
         self.assertEqual(len(set(descriptions)), len(descriptions))
+        self.assertNotIn(
+            "probe metadata",
+            tools["list_qgis_binaries"].description.casefold(),
+        )
 
     def test_every_public_input_property_has_a_description(self):
         for tool in self._tools():
@@ -178,6 +187,18 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
         self.assertEqual(start_properties["arguments"]["default"], [])
         self.assertIs(start_properties["confirmed_risk"]["default"], False)
         self.assertGreater(start_properties["stdin"]["maxLength"], 0)
+        self.assertIn(
+            "anywhere the QGIS process account can access",
+            start_properties["arguments"]["description"],
+        )
+        self.assertIn(
+            "resolve from the QGIS package root",
+            start_properties["working_directory"]["description"],
+        )
+        self.assertIn(
+            "non-empty stdin is rejected before job creation",
+            start_properties["stdin"]["description"],
+        )
         self.assertEqual(start_properties["client_request_id"]["maxLength"], 128)
         self.assertNotIn("executable", start_properties)
         self.assertNotIn("executable_path", start_properties)

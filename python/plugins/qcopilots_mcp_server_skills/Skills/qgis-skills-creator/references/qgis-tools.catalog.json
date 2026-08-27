@@ -1,8 +1,8 @@
 {
   "$schema": "./qgis-tools.catalog.schema.json",
-  "catalog_version": "1.3.0",
+  "catalog_version": "1.6.0",
   "profile_id": "qcopilots-qgis4-qt6-windows",
-  "observed_at": "2026-07-20T09:24:31+08:00",
+  "observed_at": "2026-08-24T18:00:00-07:00",
   "runtime_profile": {
     "os_family": "windows",
     "qt_major": 6,
@@ -21,6 +21,9 @@
       "processing_algorithm_count_total": 761,
       "processing_algorithm_count_nondeprecated": 738,
       "processing_algorithm_count_deprecated": 23,
+      "processing_algorithm_count_surface": "packaged qgis-process CLI catalog snapshot",
+      "processing_mcp_live_registry_count_total": 772,
+      "processing_mcp_live_registry_observed_at": "2026-08-24",
       "saga": "not-installed"
     }
   },
@@ -48,7 +51,7 @@
       "service_id": "qcopilots.mcp_server_qgis_binary",
       "availability_source": "manager-config-and-runtime-tool-list",
       "manager_config_path": "apps/qgis-qt6/python/plugins/qcopilots_mcp_servers_manager/qcopilots_manager_config.json",
-      "enabled_by_default_observed": false,
+      "enabled_by_default_observed": true,
       "dynamic_tools": false,
       "tools": [
         {
@@ -124,7 +127,7 @@
       "tools": [
         {
           "name": "read_file",
-          "description": "读取 UTF-8 文本文件。当前实现允许绝对路径且没有 workspace containment，调用前必须由模板自行验证输入根。",
+          "description": "读取 UTF-8 文本文件。相对路径从服务基目录解析，普通本机绝对路径在操作系统 ACL 允许时可访问，UNC、设备路径、ADS 和危险重解析点会被拒绝。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": false,
@@ -134,8 +137,31 @@
           "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
+          "name": "get_file_metadata",
+          "description": "读取常规文件的字节数、扩展名、文件签名字节和完整 SHA-256。相对路径从服务基目录解析，普通本机绝对路径在操作系统 ACL 允许时可访问。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": false,
+          "requires_gui": false,
+          "requires_explicit_confirmation": false,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "copy_file",
+          "description": "在操作系统 ACL 允许的普通本机路径间复制常规文件。必须使用 expected_source_sha256 绑定源版本，并拒绝覆盖已存在的目标。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": false,
+          "requires_gui": false,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["source", "target", "expected_source_sha256"], "required_any_argument_groups": [], "required_target_arguments": ["source", "target"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false},
+          "notes": "目标已存在时拒绝复制，源版本必须匹配完整 SHA-256。UNC、设备路径、ADS 和危险重解析点仍会被拒绝。"
+        },
+        {
           "name": "file_glob_search",
-          "description": "在受核验的根目录中发现文件。当前实现可接受绝对路径，不能把工具名中的搜索语义当作安全边界。",
+          "description": "在普通本机目录中发现文件。相对路径从服务基目录解析，绝对搜索根在操作系统 ACL 允许时可访问。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": false,
@@ -167,7 +193,7 @@
         },
         {
           "name": "write_file",
-          "description": "创建或覆盖文本文件。仅在当前修订计划获批后，对明确目标技能根使用，并显式设置 overwrite=false 创建新文件。",
+          "description": "以同目录原子替换创建或覆盖文本文件。默认 overwrite=false，覆盖现有文件时应同时提供匹配的 expected_sha256。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": false,
@@ -175,23 +201,23 @@
           "requires_explicit_confirmation": true,
           "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path", "content", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true},
-          "notes": "当前实现默认 overwrite=true，且不限制绝对路径。"
+          "notes": "默认拒绝覆盖并返回 SHA-256。普通本机绝对路径在操作系统 ACL 允许时可写，危险路径仍会被拒绝。"
         },
         {
           "name": "edit_file",
-          "description": "替换现有文本文件内容。仅用于获批的既有技能更新，执行前必须展示差异并建立可恢复副本。",
+          "description": "使用同目录临时文件和原子替换编辑文本。应提供读取时获得的 expected_sha256 防止覆盖并发修改。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": false,
           "requires_gui": false,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path"], "required_any_argument_groups": [["edits", "search"]], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path", "expected_sha256"], "required_any_argument_groups": [["edits", "search"]], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true},
-          "notes": "工具本身不创建备份。"
+          "notes": "工具返回修改前后 SHA-256，并在替换失败时清理临时文件。"
         },
         {
           "name": "exec_shell_command",
-          "description": "运行有界 Shell 命令。只允许执行计划中列出的确定性命令、参数和工作目录，禁止把未验证的用户文本拼入命令字符串。",
+          "description": "运行有界 Shell 命令并在超时时终止进程树。allowed_roots 只约束 cwd，不约束命令参数中的绝对路径或 ..，因此该工具不是文件系统沙箱。地理数据修改只能作用于一次性工作区副本。",
           "status": "restricted",
           "risk_level": "R3",
           "requires_qgis_bridge": false,
@@ -199,7 +225,7 @@
           "requires_explicit_confirmation": true,
           "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["command", "cwd"], "required_any_argument_groups": [], "required_target_arguments": ["command", "cwd"], "command_shape": "argv-only", "notes": "command 必须是 argv 数组，禁止字符串 shell；executable、完整 argv 和 cwd 都要进入 effect_targets 和逐次 permission。"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": false, "uses_network": true, "runs_shell": true, "destructive_possible": true},
-          "notes": "字符串 command 在 Windows 上使用 shell=True，最长 60 秒。"
+          "notes": "字符串 command 在 Windows 上使用 shell=True，最长 60 秒。正式 E2E 不使用 Shell 修改原始地理数据，只允许 argv 命令作用于 disposable workspace copies。"
         }
       ]
     },
@@ -262,26 +288,6 @@
         {
           "name": "list_layers",
           "description": "列出当前 QGIS 工程图层。",
-          "status": "allowed",
-          "risk_level": "R0",
-          "requires_qgis_bridge": true,
-          "requires_gui": true,
-          "requires_explicit_confirmation": false,
-          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
-        },
-        {
-          "name": "describe_layer_sources",
-          "description": "描述可加载的本地、OGC、ArcGIS、瓦片、网格、点云和三维图层来源。",
-          "status": "allowed",
-          "risk_level": "R0",
-          "requires_qgis_bridge": true,
-          "requires_gui": true,
-          "requires_explicit_confirmation": false,
-          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
-        },
-        {
-          "name": "list_map_layers",
-          "description": "列出当前 QGIS 工程地图图层，与 list_layers 语义部分重叠。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -390,6 +396,17 @@
           "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
+          "name": "save_project",
+          "description": "把当前工程保存为单文件 QGZ。现有目标需要绑定目标版本的一次性覆盖确认令牌，发布失败保留旧文件和工程状态。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        },
+        {
           "name": "refresh_canvas",
           "description": "刷新当前 QGIS 地图画布。",
           "status": "restricted",
@@ -400,26 +417,35 @@
           "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
-          "name": "save_project",
-          "description": "保存当前工程或写入新工程路径，可能覆盖现有工程文件。",
+          "name": "export_map_image",
+          "description": "把当前画布按路径后缀对应的编码器导出，并把图像和 world file 作为一个文件族原子发布。现有目标需要绑定整个文件族版本的一次性覆盖确认令牌。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
-          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         },
         {
-          "name": "export_map_image",
-          "description": "把当前画布导出为图像文件，必须使用获批输出路径和 no-overwrite 策略。",
-          "status": "restricted",
-          "risk_level": "R2",
+          "name": "describe_layer_sources",
+          "description": "描述可加载的本地、OGC、ArcGIS、瓦片、网格、点云和三维图层来源。",
+          "status": "allowed",
+          "risk_level": "R0",
           "requires_qgis_bridge": true,
           "requires_gui": true,
-          "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
-          "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_map_layers",
+          "description": "列出当前 QGIS 工程地图图层，与 list_layers 语义部分重叠。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
           "name": "load_map_layer",
@@ -434,24 +460,176 @@
         },
         {
           "name": "remove_map_layers",
-          "description": "从当前工程移除匹配图层。按名称或来源匹配时必须避免意外多选。",
+          "description": "从当前工程移除匹配图层。按名称或来源匹配时必须避免意外多选。预览阶段可选择编辑会话处理策略，默认拒绝，只有显式选择 discard 才会放弃修改。save 或 discard 最多只能处理一个处于编辑状态的目标图层。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": [], "required_any_argument_groups": [["layer_id", "layer_ids", "name", "names", "source", "sources"]], "required_any_target_argument_groups": [["layer_id", "layer_ids", "name", "names", "source", "sources"]], "required_target_arguments": [], "command_shape": "schema-defined"},
+          "invocation_policy": {
+            "require_all_schema_properties_explicit": true,
+            "required_arguments": [],
+            "required_any_argument_groups": [],
+            "required_any_target_argument_groups": [],
+            "required_target_arguments": [],
+            "argument_branches": [
+              {
+                "name": "preview",
+                "allowed_arguments": ["layer_id", "layer_ids", "name", "names", "source", "sources", "allow_multiple", "editable_changes"],
+                "required_arguments": [],
+                "required_any_argument_groups": [["layer_id", "layer_ids", "name", "names", "source", "sources"]],
+                "required_any_target_argument_groups": [["layer_id", "layer_ids", "name", "names", "source", "sources"]],
+                "required_target_arguments": []
+              },
+              {
+                "name": "confirm",
+                "allowed_arguments": ["confirmation_token"],
+                "required_arguments": ["confirmation_token"],
+                "required_any_argument_groups": [],
+                "required_any_target_argument_groups": [],
+                "required_target_arguments": []
+              }
+            ],
+            "command_shape": "schema-defined"
+          },
           "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         },
         {
-          "name": "create_vector_layer",
-          "description": "创建内存或文件矢量图层并可加入工程，必须声明 CRS、几何、字段、输出驱动和覆盖策略。",
+          "name": "get_layer_metadata",
+          "description": "读取图层 CRS、范围、字段、要素或波段数量、renderer 和标注状态，默认不返回 source URI。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": true, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "query_vector_features",
+          "description": "按 feature id、QGIS expression、选择集和字段列表分页查询矢量要素，单次最多返回 500 条。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": true, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "set_vector_selection",
+          "description": "替换、增加、移除或清空矢量图层选择集，单次最多匹配 10000 个要素。",
+          "status": "restricted",
+          "risk_level": "R1",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["layer_id", "mode"], "required_any_argument_groups": [["feature_ids", "filter_expression", "mode"]], "required_target_arguments": ["layer_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "delete_vector_features",
+          "description": "先预览精确要素集合并取得短期令牌，再使用绑定图层和要素内容指纹的一次性 confirmation_token 删除。编辑缓冲内回滚受保护，但 provider 提交原子性不保证。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["name"], "required_any_argument_groups": [], "required_target_arguments": ["name"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["layer_id"], "required_any_argument_groups": [["feature_ids", "filter_expression", "confirmation_token"]], "required_target_arguments": ["layer_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "get_project_crs",
+          "description": "读取当前 QGIS 工程 CRS。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "set_project_crs",
+          "description": "设置当前 QGIS 工程 CRS 并返回修改前后 CRS。",
+          "status": "restricted",
+          "risk_level": "R1",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["crs"], "required_any_argument_groups": [], "required_target_arguments": ["crs"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "get_raster_statistics",
+          "description": "按波段和显式 sample_size 计算最小值、最大值、均值、标准差等有界栅格统计。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": true, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "apply_layer_style",
+          "description": "读取现有本地 QML 或 SLD 文件并应用到指定图层，不写回样式文件。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["layer_id", "style_path"], "required_any_argument_groups": [], "required_target_arguments": ["layer_id", "style_path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "configure_vector_labels",
+          "description": "启停简单字段或 expression 标注，并设置字号与颜色。",
+          "status": "restricted",
+          "risk_level": "R1",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["layer_id", "enabled"], "required_any_argument_groups": [], "required_target_arguments": ["layer_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "create_print_layout",
+          "description": "使用受限的标题、页型、方向、地图框、图例和比例尺参数创建工程 print layout，不接受表达式或外部资源。",
+          "status": "restricted",
+          "risk_level": "R1",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["name"], "required_any_argument_groups": [], "required_target_arguments": ["name"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_print_layouts",
+          "description": "列出当前工程 print layout 名称和页数。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "export_print_layout",
+          "description": "把 layout 暂存导出为 PDF、PNG、JPEG 或 SVG，多页仅允许 PDF。格式必须匹配后缀，所有格式应用 DPI，现有目标需要一次性覆盖确认。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["layout_name", "path", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["layout_name", "path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "create_vector_layer",
+          "description": "创建内存或文件矢量图层并可加入工程。文件输出先暂存，现有数据集族需要绑定版本的一次性覆盖确认，失败时恢复旧数据集。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["name", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["name"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         },
         {
@@ -487,7 +665,7 @@
       "tools": [
         {
           "name": "list_vector_processing_algorithms",
-          "description": "按当前 bridge 的关键词规则列举矢量候选算法。结果不是完整或安全 allowlist。",
+          "description": "按参数、输出和数据类型元数据分页列举由矢量服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -497,7 +675,7 @@
         },
         {
           "name": "get_vector_processing_algorithm_details",
-          "description": "读取矢量算法的简化参数详情。制定精确计划时还要用 qgis_process JSON help 补足输出、默认值、枚举和 flags。",
+          "description": "读取矢量算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -513,7 +691,7 @@
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id", "overwrite_outputs"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": true, "runs_shell": false, "destructive_possible": true}
         },
         {
@@ -558,7 +736,7 @@
       "tools": [
         {
           "name": "list_raster_processing_algorithms",
-          "description": "按当前 bridge 的关键词规则列举栅格候选算法。结果不是完整或安全 allowlist。",
+          "description": "按参数、输出和数据类型元数据分页列举由栅格服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -568,7 +746,7 @@
         },
         {
           "name": "get_raster_processing_algorithm_details",
-          "description": "读取栅格算法的简化参数详情。制定精确计划时还要用 qgis_process JSON help 补足完整契约。",
+          "description": "读取栅格算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -584,7 +762,7 @@
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id", "overwrite_outputs"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": true, "runs_shell": false, "destructive_possible": true}
         },
         {
@@ -610,6 +788,77 @@
         {
           "name": "cancel_raster_processing_job",
           "description": "请求取消指定栅格 Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["job_id"], "required_any_argument_groups": [], "required_target_arguments": ["job_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        }
+      ]
+    },
+    {
+      "service_id": "qcopilots.mcp_server_processing_general",
+      "availability_source": "manager-config-and-runtime-tool-list",
+      "manager_config_path": "apps/qgis-qt6/python/plugins/qcopilots_mcp_servers_manager/qcopilots_manager_config.json",
+      "enabled_by_default_observed": true,
+      "dynamic_tools": false,
+      "tools": [
+        {
+          "name": "list_general_processing_algorithms",
+          "description": "分页列举由 General 服务单独拥有且 start_policy.supported 为 true 的算法。网络、任意 SQL、外部数据库写入、目录、多文件容器或原地容器输出、原地修改和副作用不确定的算法不会列出。新建且可原子发布的单文件数据库包可列出。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "get_general_processing_algorithm_details",
+          "description": "读取 General 算法参数、输出、范围、ownership evidence 和 start_policy。显式查询危险 General 算法时返回 supported=false 及稳定拒绝原因。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "start_general_processing_algorithm",
+          "description": "按 exact algorithm_id 启动安全的异步 General Processing 作业。启动前再次核验独占 ownership、start_policy、输入版本、独立文件输出与覆盖授权。",
+          "status": "restricted",
+          "risk_level": "R2",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["algorithm_id", "overwrite_outputs"], "required_any_argument_groups": [], "required_target_arguments": ["algorithm_id"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+        },
+        {
+          "name": "get_general_processing_job",
+          "description": "按 job_id 读取 General Processing 作业完整快照。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "list_general_processing_jobs",
+          "description": "列出当前 QGIS 进程保留的 General Processing 作业摘要。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "cancel_general_processing_job",
+          "description": "请求取消指定 General Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -1011,7 +1260,7 @@
       "cancel_job_entry": "cancel_vector_processing_job",
       "structured_output": true,
       "requires_qgis_bridge": true,
-      "notes": "用于当前 QGIS 工程上下文。分类是关键词启发式，不能证明算法全集。"
+      "notes": "用于当前 QGIS 工程上下文。2026-08-24 RWDI 原始 domain evidence 共 772 项，其中 vector-only 371、raster-only 282、mixed 69、无矢量栅格证据 50。运行时按参数和输出元数据选择单一 owner，稳定 group ID 只作兜底，算法不会在服务间重复。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整 inventory。若完整性重要且需要超过 2000 项，使用 qgis-process-discovery --json list 结构化清单路径，并将它视为不同发现 surface。"
     },
     {
       "id": "mcp-raster-processing",
@@ -1025,7 +1274,21 @@
       "cancel_job_entry": "cancel_raster_processing_job",
       "structured_output": true,
       "requires_qgis_bridge": true,
-      "notes": "用于当前 QGIS 工程上下文。分类是关键词启发式，不能证明算法全集。"
+      "notes": "用于当前 QGIS 工程上下文。2026-08-24 RWDI 原始 domain evidence 共 772 项，其中 vector-only 371、raster-only 282、mixed 69、无矢量栅格证据 50。运行时按参数和输出元数据选择单一 owner，稳定 group ID 只作兜底，算法不会在服务间重复。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整 inventory。若完整性重要且需要超过 2000 项，使用 qgis-process-discovery --json list 结构化清单路径，并将它视为不同发现 surface。"
+    },
+    {
+      "id": "mcp-general-processing",
+      "transport": "mcp",
+      "scope": "general",
+      "list_entry": "list_general_processing_algorithms",
+      "details_entry": "get_general_processing_algorithm_details",
+      "start_entry": "start_general_processing_algorithm",
+      "get_job_entry": "get_general_processing_job",
+      "list_jobs_entry": "list_general_processing_jobs",
+      "cancel_job_entry": "cancel_general_processing_job",
+      "structured_output": true,
+      "requires_qgis_bridge": true,
+      "notes": "General 使用参数和输出元数据及稳定 group ID 获得单一 ownership。list 仅返回可安全启动的算法。显式 details 可说明危险算法为何 unsupported，start 会在创建作业前拒绝 HTTP、上传下载、打开 URL、PostGIS SQL、外部数据库写入、目录、多文件容器或原地容器输出、原地修改及副作用不确定的算法。新建且可原子发布的单文件数据库包可启动。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整 inventory。若完整性重要且需要超过 2000 项，使用 qgis-process-discovery --json list 结构化清单路径，并将它视为不同发现 surface。"
     },
     {
       "id": "cli-qgis-process-all",
@@ -1036,7 +1299,7 @@
       "run_entry": "qgis-process-run --json run <algorithm_id> -",
       "structured_output": true,
       "requires_qgis_bridge": false,
-      "notes": "当前结构化清单包含 761 个算法，其中 23 个 deprecated。默认只允许非 deprecated 且无 known issues 的 exact algorithm_id。"
+      "notes": "打包的 qgis-process CLI 结构化清单快照包含 761 个算法，其中 23 个 deprecated。该离线清单与 2026-08-24 QGIS GUI 进程内 MCP live registry 的 772 项属于不同发现 surface，不应直接比较。默认只允许非 deprecated 且无 known issues 的 exact algorithm_id。"
     }
   ],
   "selection_policy": {

@@ -65,6 +65,25 @@ MAX_SKILL_SNAPSHOT_ATTEMPTS = 3
 MAX_SKILL_SELECTOR_CATALOG_ITEMS = 20
 MAX_SKILL_SELECTOR_CATALOG_CHARS = 512
 DEFAULT_SKILL_REFRESH_INTERVAL_SECONDS = 0.25
+IGNORED_SKILL_RESOURCE_DIRECTORIES = frozenset(
+    {
+        "__pycache__",
+        "__macosx",
+        ".cache",
+        ".hypothesis",
+        ".mypy_cache",
+        ".nox",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".tox",
+    }
+)
+IGNORED_SKILL_RESOURCE_FILE_NAMES = frozenset(
+    {".coverage", ".ds_store", "desktop.ini", "thumbs.db"}
+)
+IGNORED_SKILL_RESOURCE_FILE_SUFFIXES = frozenset(
+    {".bak", ".orig", ".pyc", ".pyo", ".swp", ".swo", ".temp", ".tmp"}
+)
 RESERVED_TOOL_NAMES = frozenset(
     {
         "list_skills",
@@ -263,12 +282,16 @@ class Skill:
                     and _is_valid_relative_resource_path(
                         name[len(self.zip_root_prefix):]
                     )
+                    and not _is_ignored_skill_resource_path(
+                        name[len(self.zip_root_prefix):]
+                    )
                 )
             else:
                 self._zip_members = frozenset(
                     name
                     for name in members
                     if _is_valid_relative_resource_path(name)
+                    and not _is_ignored_skill_resource_path(name)
                 )
             return
 
@@ -332,6 +355,8 @@ class Skill:
     def open_bytes(self, rel_path: str) -> bytes:
         _validate_relative_resource_path(rel_path)
         if self.is_zip:
+            if rel_path not in (self._zip_members or frozenset()):
+                raise SkillError(f"Resource '{rel_path}' was not found")
             return self._read_archive_member(rel_path)
 
         identity = self._resource_identities.get(_resource_identity_key(rel_path))
@@ -357,8 +382,6 @@ class Skill:
         if self.zip_path is not None:
             for name in sorted(self._zip_members or set()):
                 if name.lower() == SKILL_MARKDOWN_LOWER:
-                    continue
-                if "__MACOSX/" in name or name.endswith(".DS_Store"):
                     continue
                 if not _is_valid_relative_resource_path(name):
                     continue
@@ -799,6 +822,8 @@ class SkillRegistry:
         files: list[Path] = []
         directories: list[Path] = []
         for entry in entries:
+            if _is_ignored_skill_resource_name(entry.name):
+                continue
             if _is_link_or_junction(entry, diagnostics):
                 diagnostics.append(
                     SkillDiagnostic(
@@ -2061,28 +2086,33 @@ def _resolve_skill(
     registry: SkillRegistry,
     arguments: dict[str, Any],
 ) -> Skill:
-    slug = str(arguments.get("slug") or "").strip()
-    if slug:
+    selectors = [
+        (selector, str(arguments.get(selector) or "").strip())
+        for selector in ("slug", "name", "path")
+        if str(arguments.get(selector) or "").strip()
+    ]
+    if len(selectors) != 1:
+        raise ToolError("Exactly one of slug, name or path is required")
+
+    selector, value = selectors[0]
+    if selector == "slug":
         try:
-            return registry.get(slug)
+            return registry.get(value)
         except (KeyError, SkillError) as exc:
             raise SkillError("The requested skill was not found.") from exc
-    name = str(arguments.get("name") or "").strip()
-    if name:
+    if selector == "name":
         try:
-            return registry.get_skill(name)
+            return registry.get_skill(value)
         except (KeyError, SkillError) as exc:
             raise SkillError("The requested skill was not found.") from exc
-    path = str(arguments.get("path") or "").strip()
-    if path:
-        candidate = Path(path).expanduser().resolve(strict=False)
-        for skill in registry.skills:
-            if skill.is_zip and candidate == skill.zip_path:
-                return skill
-            if not skill.is_zip and candidate == skill.directory:
-                return skill
-        raise SkillError("The requested skill was not found.")
-    raise ToolError("name, slug or path is required")
+
+    candidate = Path(value).expanduser().resolve(strict=False)
+    for skill in registry.skills:
+        if skill.is_zip and candidate == skill.zip_path:
+            return skill
+        if not skill.is_zip and candidate == skill.directory:
+            return skill
+    raise SkillError("The requested skill was not found.")
 
 
 def _skill_response(
@@ -2449,12 +2479,30 @@ def _find_skill_markdown_file(directory: Path) -> Path | None:
 
 
 def _is_ignored_zip_member(name: str) -> bool:
+    return _is_ignored_skill_resource_path(name)
+
+
+def _is_ignored_skill_resource_name(name: str) -> bool:
+    normalized = name.casefold()
     return (
-        name.startswith("__MACOSX/")
-        or "/__MACOSX/" in name
-        or name.endswith(".DS_Store")
-        or "/.DS_Store" in name
+        normalized in IGNORED_SKILL_RESOURCE_DIRECTORIES
+        or normalized in IGNORED_SKILL_RESOURCE_FILE_NAMES
+        or any(
+            normalized.endswith(suffix)
+            for suffix in IGNORED_SKILL_RESOURCE_FILE_SUFFIXES
+        )
+        or normalized.startswith((".#", "~$"))
+        or normalized.startswith(".coverage.")
+        or normalized.endswith("~")
     )
+
+
+def _is_ignored_skill_resource_path(path: str) -> bool:
+    normalized = path.replace("\\", "/").strip("/")
+    if not normalized:
+        return False
+    parts = normalized.split("/")
+    return any(_is_ignored_skill_resource_name(part) for part in parts)
 
 
 def _validate_relative_resource_path(rel_path: str) -> None:
@@ -4167,6 +4215,8 @@ def _bounded_tree_entries(
             ) from exc
         child_directories: list[Path] = []
         for child in children:
+            if _is_ignored_skill_resource_name(child.name):
+                continue
             if _is_link_or_junction(child, diagnostics):
                 if diagnostics is not None:
                     diagnostics.append(
@@ -4678,16 +4728,21 @@ def _read_skill_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "slug": {"type": "string"},
-            "path": {"type": "string"},
+            "name": {"type": "string", "minLength": 1},
+            "slug": {"type": "string", "minLength": 1},
+            "path": {"type": "string", "minLength": 1},
         },
+        "oneOf": [
+            {"required": ["slug"]},
+            {"required": ["name"]},
+            {"required": ["path"]},
+        ],
         "additionalProperties": False,
     }
 
 
 def _resource_read_schema() -> dict[str, Any]:
     schema = _read_skill_schema()
-    schema["properties"]["resource"] = {"type": "string"}
+    schema["properties"]["resource"] = {"type": "string", "minLength": 1}
     schema["required"] = ["resource"]
     return schema

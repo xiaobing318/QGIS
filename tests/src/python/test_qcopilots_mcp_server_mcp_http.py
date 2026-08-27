@@ -24,6 +24,7 @@ import unittest
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -33,6 +34,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
     def _http_headers(self, headers=None):
         return {
+            "Accept": "application/json, text/event-stream",
             "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
             **(headers or {}),
         }
@@ -51,6 +53,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         request = (
             f"POST {path} HTTP/1.1\r\n"
             f"Host: 127.0.0.1:{port}\r\n"
+            "Accept: application/json, text/event-stream\r\n"
             f"Content-Type: {content_type}\r\n"
             f"Content-Length: {content_length}\r\n"
             f"{additional_headers}"
@@ -586,6 +589,83 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         self.assertEqual(call_b["result"]["content"][0]["text"], "client-b")
         self.assertEqual(call_without_session["result"]["content"][0]["text"], "")
 
+    def test_strict_dispatcher_enforces_mcp_lifecycle(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer
+
+        server = McpJsonRpcServer(
+            server_name="qcopilots-lifecycle-test",
+            server_version="1.0.0",
+            tools=[],
+            enforce_lifecycle=True,
+        )
+        session_id = server.create_session()
+        second_session_id = server.create_session()
+        self.assertNotEqual(session_id, second_session_id)
+        self.assertTrue(all(0x21 <= ord(value) <= 0x7E for value in session_id))
+        self.assertTrue(server.clear_session(second_session_id))
+
+        before_initialize = server.handle_json_rpc(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            session_id=session_id,
+        )
+        self.assertEqual(before_initialize["error"]["code"], -32600)
+        self.assertIn("first MCP interaction", before_initialize["error"]["message"])
+
+        initialize = server.handle_json_rpc(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "strict-dispatcher-test",
+                        "version": "1.0",
+                    },
+                },
+            },
+            session_id=session_id,
+        )
+        self.assertEqual(initialize["result"]["protocolVersion"], "2025-06-18")
+
+        too_early = server.handle_json_rpc(
+            {"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
+            session_id=session_id,
+        )
+        self.assertEqual(too_early["error"]["code"], -32600)
+        self.assertIn("notifications/initialized", too_early["error"]["message"])
+        self.assertEqual(
+            server.handle_json_rpc(
+                {"jsonrpc": "2.0", "id": 4, "method": "ping"},
+                session_id=session_id,
+            )["result"],
+            {},
+        )
+        self.assertIsNone(
+            server.handle_json_rpc(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/initialized",
+                },
+                session_id=session_id,
+            )
+        )
+        self.assertEqual(
+            server.handle_json_rpc(
+                {"jsonrpc": "2.0", "id": 5, "method": "tools/list"},
+                session_id=session_id,
+            )["result"],
+            {"tools": []},
+        )
+        self.assertTrue(server.clear_session(session_id))
+        after_delete = server.handle_json_rpc(
+            {"jsonrpc": "2.0", "id": 6, "method": "tools/list"},
+            session_id=session_id,
+        )
+        self.assertEqual(after_delete["error"]["code"], -32600)
+        self.assertIn("unknown or expired", after_delete["error"]["message"])
+
     def test_session_contexts_use_lru_ttl_and_validate_client_info(self):
         from qcopilots_common.mcp_http import (
             MAX_MCP_CLIENT_INFO_FIELD_LENGTH,
@@ -861,24 +941,27 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             max_session_contexts=2,
             session_ttl_seconds=60.0,
         )
+        cleanup_session = controller.rpc_server.create_session()
         response = controller.rpc_server.handle_json_rpc(
             {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "initialize",
                 "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
                     "clientInfo": {
                         "name": "cleanup-client",
                         "version": "1.0",
                     }
                 },
             },
-            session_id="cleanup-session",
+            session_id=cleanup_session,
         )
         self.assertNotIn("error", response)
         self.assertEqual(
             tuple(controller.rpc_server._contexts),
-            ("cleanup-session",),
+            (cleanup_session,),
         )
 
         httpd = FakeHttpServer()
@@ -889,14 +972,19 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         self.assertTrue(httpd.closed)
         self.assertEqual(tuple(controller.rpc_server._contexts), ())
 
+        cleanup_after_error = controller.rpc_server.create_session()
         response = controller.rpc_server.handle_json_rpc(
             {
                 "jsonrpc": "2.0",
                 "id": 2,
                 "method": "initialize",
-                "params": {"clientInfo": {"name": "again", "version": "2.0"}},
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "again", "version": "2.0"},
+                },
             },
-            session_id="cleanup-after-error",
+            session_id=cleanup_after_error,
         )
         self.assertNotIn("error", response)
         failing_httpd = FakeHttpServer()
@@ -1368,6 +1456,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             ],
             port=0,
             auth_token=self.HTTP_AUTH_TOKEN,
+            enforce_lifecycle=False,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -1403,7 +1492,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             self._stop_http_server(httpd, thread)
 
-    def test_http_json_rpc_batch_limits_are_atomic_and_deterministic(self):
+    def test_http_rejects_all_json_rpc_batches(self):
         from qcopilots_common.mcp_http import (
             MAX_JSON_RPC_BATCH_ITEMS,
             McpHttpServer,
@@ -1449,19 +1538,18 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 headers=self._http_headers({"Content-Type": "application/json"}),
                 method="POST",
             )
-            with urlopen(request, timeout=5) as response:
-                self.assertEqual(response.status, 200)
-                return json.loads(response.read().decode("utf-8"))
+            with self.assertRaises(HTTPError) as error_context:
+                urlopen(request, timeout=5)
+            response = error_context.exception
+            self.assertEqual(response.code, 400)
+            return json.loads(response.read().decode("utf-8"))
 
         expected_batch_error = {
             "jsonrpc": "2.0",
             "id": None,
             "error": {
                 "code": -32600,
-                "message": (
-                    "Invalid JSON-RPC batch: expected "
-                    f"1-{MAX_JSON_RPC_BATCH_ITEMS} requests"
-                ),
+                "message": "JSON-RPC batch requests are not supported by MCP 2025-06-18",
             },
         }
 
@@ -1485,21 +1573,8 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             self.assertEqual(calls, [])
 
             at_limit = over_limit[:MAX_JSON_RPC_BATCH_ITEMS]
-            responses = post_batch(at_limit)
-            self.assertIsInstance(responses, list)
-            self.assertEqual(len(responses), MAX_JSON_RPC_BATCH_ITEMS)
-            self.assertEqual(
-                [response["id"] for response in responses],
-                list(range(MAX_JSON_RPC_BATCH_ITEMS)),
-            )
-            self.assertEqual(
-                [
-                    response["result"]["structuredContent"]["value"]
-                    for response in responses
-                ],
-                list(range(MAX_JSON_RPC_BATCH_ITEMS)),
-            )
-            self.assertEqual(calls, list(range(MAX_JSON_RPC_BATCH_ITEMS)))
+            self.assertEqual(post_batch(at_limit), expected_batch_error)
+            self.assertEqual(calls, [])
         finally:
             self._stop_http_server(httpd, thread)
 
@@ -1937,6 +2012,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             port=0,
             auth_token=auth_token,
             logger=logger,
+            enforce_lifecycle=False,
         )
         httpd = server.create_http_server()
         port = httpd.server_address[1]
@@ -1985,6 +2061,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     self.assertEqual(error_context.exception.code, 401)
 
             authorized_headers = {
+                "Accept": "application/json, text/event-stream",
                 "Authorization": f"Bearer {auth_token}",
                 "Content-Type": "application/json",
             }
@@ -2016,6 +2093,52 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     timeout=5,
                 )
             self.assertEqual(origin_context.exception.code, 403)
+
+            raw_rejections = (
+                (
+                    f"Host: localhost:{port}\r\n"
+                    f"Authorization: Bearer {auth_token}\r\n",
+                    403,
+                    "host",
+                ),
+                (
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "Origin: https://example.invalid\r\n"
+                    f"Authorization: Bearer {auth_token}\r\n",
+                    403,
+                    "origin",
+                ),
+                (f"Host: 127.0.0.1:{port}\r\n", 401, "authorization"),
+            )
+            for rejection_headers, expected_status, name in raw_rejections:
+                with self.subTest(raw_rejection=name):
+                    request_headers = (
+                        "POST /mcp HTTP/1.1\r\n"
+                        f"{rejection_headers}"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 4\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    with socket.create_connection(
+                        ("127.0.0.1", port), timeout=2
+                    ) as connection:
+                        connection.sendall(request_headers)
+                        connection.settimeout(0.1)
+                        with self.assertRaises(socket.timeout):
+                            connection.recv(1)
+                        connection.sendall(b"body")
+                        connection.settimeout(2)
+                        response = bytearray()
+                        while True:
+                            chunk = connection.recv(4096)
+                            if not chunk:
+                                break
+                            response.extend(chunk)
+                    self.assertIn(
+                        f" {expected_status} ",
+                        response.decode("iso-8859-1").splitlines()[0],
+                    )
 
             with self.assertRaises(HTTPError) as options_context:
                 urlopen(
@@ -2091,6 +2214,111 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             self._stop_http_server(httpd, thread)
 
+    def test_http_post_requires_both_streamable_accept_types(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        server = McpHttpServer(
+            name="qcopilots-http-accept-test",
+            version="1.0.0",
+            tools=[],
+            port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
+            enforce_lifecycle=False,
+        )
+        httpd = server.create_http_server()
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        payload = json.dumps(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        ).encode("utf-8")
+
+        try:
+            rejected_accepts = (
+                None,
+                "*/*",
+                "application/json",
+                "text/event-stream",
+                "application/json, text/event-stream;q=0",
+                "application/json;q=2, text/event-stream",
+            )
+            for accept in rejected_accepts:
+                headers = {
+                    "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
+                    "Content-Type": "application/json",
+                }
+                if accept is not None:
+                    headers["Accept"] = accept
+                with self.subTest(rejected_accept=accept):
+                    request = Request(
+                        f"http://127.0.0.1:{port}/mcp",
+                        data=payload,
+                        headers=headers,
+                        method="POST",
+                    )
+                    with self.assertRaises(HTTPError) as error_context:
+                        urlopen(request, timeout=5)
+                    response = error_context.exception
+                    self.assertEqual(response.code, 406)
+                    body = json.loads(response.read().decode("utf-8"))
+                    self.assertEqual(
+                        body,
+                        {
+                            "error": "streamable_http_accept_required",
+                            "required": ["application/json", "text/event-stream"],
+                        },
+                    )
+
+            accepted_values = (
+                "application/json, text/event-stream",
+                "TEXT/EVENT-STREAM;q=0.5, APPLICATION/JSON; charset=utf-8",
+            )
+            for accept in accepted_values:
+                with self.subTest(accepted=accept):
+                    request = Request(
+                        f"http://127.0.0.1:{port}/mcp",
+                        data=payload,
+                        headers={
+                            "Accept": accept,
+                            "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
+                            "Content-Type": "application/json",
+                        },
+                        method="POST",
+                    )
+                    with urlopen(request, timeout=5) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertEqual(
+                            json.loads(response.read().decode("utf-8"))["result"],
+                            {"tools": []},
+                        )
+
+            raw_request = (
+                "POST /mcp HTTP/1.1\r\n"
+                f"Host: 127.0.0.1:{port}\r\n"
+                f"Authorization: Bearer {self.HTTP_AUTH_TOKEN}\r\n"
+                "Accept: application/json\r\n"
+                "Accept: text/event-stream\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(payload)}\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            ).encode("ascii") + payload
+            with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+                connection.settimeout(2)
+                connection.sendall(raw_request)
+                raw_response = bytearray()
+                while True:
+                    chunk = connection.recv(4096)
+                    if not chunk:
+                        break
+                    raw_response.extend(chunk)
+            self.assertIn(
+                " 200 ",
+                raw_response.decode("iso-8859-1").splitlines()[0],
+            )
+        finally:
+            self._stop_http_server(httpd, thread)
+
     def test_http_initialize_notification_and_tools_list_sequence(self):
         from qcopilots_common.mcp_http import McpHttpServer
 
@@ -2159,6 +2387,28 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     "2025-06-18",
                 )
 
+            with post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": "too-early",
+                    "method": "tools/list",
+                    "params": {},
+                },
+                session_id,
+            ) as response:
+                body = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(body["error"]["code"], -32600)
+            self.assertIn("notifications/initialized", body["error"]["message"])
+
+            with post(
+                {"jsonrpc": "2.0", "id": "ping", "method": "ping"},
+                session_id,
+            ) as response:
+                self.assertEqual(
+                    json.loads(response.read().decode("utf-8"))["result"],
+                    {},
+                )
+
             with post(initialized_notification, session_id) as response:
                 self.assertEqual(response.status, 202)
                 self.assertEqual(response.headers["content-length"], "0")
@@ -2200,11 +2450,15 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     {"tools": []},
                 )
 
-            with post([initialized_notification], session_id) as response:
-                self.assertEqual(response.status, 202)
-                self.assertEqual(response.headers["content-length"], "0")
-                self.assertEqual(response.headers["mcp-session-id"], session_id)
-                self.assertEqual(response.read(), b"")
+            with self.assertRaises(HTTPError) as batch_error:
+                post([initialized_notification], session_id)
+            self.assertEqual(batch_error.exception.code, 400)
+            self.assertEqual(
+                json.loads(batch_error.exception.read().decode("utf-8"))["error"][
+                    "code"
+                ],
+                -32600,
+            )
         finally:
             self._stop_http_server(httpd, thread)
 
@@ -2239,7 +2493,14 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "initialize",
-                    "params": {"clientInfo": {"name": "http-client", "version": "1.0"}},
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {
+                            "name": "http-client",
+                            "version": "1.0",
+                        },
+                    },
                 }
             ).encode("utf-8")
             initialize_request = Request(
@@ -2253,6 +2514,57 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 session_id = response.headers["mcp-session-id"]
                 self.assertTrue(session_id)
 
+            initialized_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "notifications/initialized",
+                    }
+                ).encode("utf-8"),
+                headers=self._http_headers(
+                    {
+                        "Content-Type": "application/json",
+                        "MCP-Protocol-Version": "2025-06-18",
+                        "MCP-Session-Id": session_id,
+                    }
+                ),
+                method="POST",
+            )
+            missing_session_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=initialized_request.data,
+                headers=self._http_headers(
+                    {
+                        "Content-Type": "application/json",
+                        "MCP-Protocol-Version": "2025-06-18",
+                    }
+                ),
+                method="POST",
+            )
+            with self.assertRaises(HTTPError) as missing_session_error:
+                urlopen(missing_session_request, timeout=5)
+            self.assertEqual(missing_session_error.exception.code, 400)
+
+            wrong_version_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=initialized_request.data,
+                headers=self._http_headers(
+                    {
+                        "Content-Type": "application/json",
+                        "MCP-Protocol-Version": "2025-03-26",
+                        "MCP-Session-Id": session_id,
+                    }
+                ),
+                method="POST",
+            )
+            with self.assertRaises(HTTPError) as wrong_version_error:
+                urlopen(wrong_version_request, timeout=5)
+            self.assertEqual(wrong_version_error.exception.code, 400)
+
+            with urlopen(initialized_request, timeout=5) as response:
+                self.assertEqual(response.status, 202)
+
             call_payload = json.dumps(
                 {
                     "jsonrpc": "2.0",
@@ -2265,8 +2577,10 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 f"http://127.0.0.1:{port}/mcp",
                 data=call_payload,
                 headers={
+                    "Accept": "application/json, text/event-stream",
                     "Content-Type": "application/json",
                     "mcp-session-id": session_id,
+                    "MCP-Protocol-Version": "2025-06-18",
                     "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
                 },
                 method="POST",
@@ -2281,19 +2595,24 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
             delete_request = Request(
                 f"http://127.0.0.1:{port}/mcp",
-                headers=self._http_headers({"mcp-session-id": session_id}),
+                headers=self._http_headers(
+                    {
+                        "mcp-session-id": session_id,
+                        "MCP-Protocol-Version": "2025-06-18",
+                    }
+                ),
                 method="DELETE",
             )
             with urlopen(delete_request, timeout=5) as response:
                 self.assertEqual(response.status, 204)
 
-            with urlopen(call_request, timeout=5) as response:
-                self.assertEqual(
-                    json.loads(response.read().decode("utf-8"))["result"]["content"][0][
-                        "text"
-                    ],
-                    "",
-                )
+            with self.assertRaises(HTTPError) as deleted_session_error:
+                urlopen(call_request, timeout=5)
+            self.assertEqual(deleted_session_error.exception.code, 404)
+
+            with self.assertRaises(HTTPError) as repeated_delete_error:
+                urlopen(delete_request, timeout=5)
+            self.assertEqual(repeated_delete_error.exception.code, 404)
         finally:
             self._stop_http_server(httpd, thread)
 
@@ -2310,6 +2629,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 tools=[],
                 port=0,
                 auth_token=self.HTTP_AUTH_TOKEN,
+                enforce_lifecycle=False,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -2426,6 +2746,8 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     "id": 1,
                     "method": "initialize",
                     "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
                         "clientInfo": {"name": "cors-client", "version": "1.0"}
                     },
                 }
@@ -2434,6 +2756,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 f"http://127.0.0.1:{port}/mcp",
                 data=initialize_payload,
                 headers={
+                    "Accept": "application/json, text/event-stream",
                     "Origin": allowed_origin,
                     "Content-Type": "application/json",
                 },
@@ -2477,6 +2800,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 f"http://127.0.0.1:{port}/mcp",
                 data=initialize_payload,
                 headers={
+                    "Accept": "application/json, text/event-stream",
                     "Origin": allowed_origin,
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {self.HTTP_AUTH_TOKEN}",
@@ -2644,6 +2968,18 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             host=DEFAULT_HOST,
         )
         self.assertEqual(loopback_server.host, DEFAULT_HOST)
+        bound_server = McpHttpServer(
+            name="qcopilots-http-bound-loopback-test",
+            version="1.0.0",
+            tools=[],
+            host=DEFAULT_HOST,
+            port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
+        ).create_http_server()
+        try:
+            self.assertEqual(bound_server.server_address[0], "127.0.0.1")
+        finally:
+            bound_server.server_close()
         for host in ("localhost", "0.0.0.0", "192.168.1.10", "::1", "8.8.8.8"):
             with self.subTest(host=host):
                 with self.assertRaises(ValueError):
@@ -2706,6 +3042,69 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             )
             self.assertIn(" 413 ", valid_path_response.splitlines()[0])
             self.assertIn("Connection: close", valid_path_response)
+        finally:
+            self._stop_http_server(httpd, thread)
+
+    def test_http_rejects_ambiguous_body_framing_and_closes_keep_alive(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        server = McpHttpServer(
+            name="qcopilots-http-framing-test",
+            version="1.0.0",
+            tools=[],
+            port=0,
+            auth_token=self.HTTP_AUTH_TOKEN,
+        )
+        httpd = server.create_http_server()
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            framing_cases = (
+                "Content-Length: 2\r\nContent-Length: 2\r\n",
+                "Content-Length: 2\r\nContent-Length: 3\r\n",
+                "Transfer-Encoding: chunked\r\n",
+                "Transfer-Encoding: chunked\r\nContent-Length: 2\r\n",
+            )
+            for framing_headers in framing_cases:
+                with self.subTest(framing_headers=framing_headers):
+                    first_request = (
+                        "POST /mcp HTTP/1.1\r\n"
+                        f"Host: 127.0.0.1:{port}\r\n"
+                        f"Authorization: Bearer {self.HTTP_AUTH_TOKEN}\r\n"
+                        "Accept: application/json, text/event-stream\r\n"
+                        "Content-Type: application/json\r\n"
+                        f"{framing_headers}"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    body = (
+                        b"2\r\n{}\r\n0\r\n\r\n"
+                        if "chunked" in framing_headers
+                        else b"{}"
+                    )
+                    second_request = (
+                        "GET /health HTTP/1.1\r\n"
+                        f"Host: 127.0.0.1:{port}\r\n"
+                        f"Authorization: Bearer {self.HTTP_AUTH_TOKEN}\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    with socket.create_connection(
+                        ("127.0.0.1", port), timeout=2
+                    ) as connection:
+                        connection.settimeout(2)
+                        connection.sendall(first_request + body + second_request)
+                        response = bytearray()
+                        while True:
+                            chunk = connection.recv(4096)
+                            if not chunk:
+                                break
+                            response.extend(chunk)
+                    decoded = response.decode("iso-8859-1")
+                    self.assertIn(" 400 ", decoded.splitlines()[0])
+                    self.assertIn("Connection: close", decoded)
+                    self.assertEqual(decoded.count("HTTP/1."), 1)
         finally:
             self._stop_http_server(httpd, thread)
 
@@ -2807,10 +3206,12 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 ]
                 + processing_tools.build_interactive_tools()
                 + processing_tools.build_processing_tools("vector")
-                + processing_tools.build_processing_tools("raster"),
+                + processing_tools.build_processing_tools("raster")
+                + processing_tools.build_processing_tools("general"),
                 host="127.0.0.1",
                 port=0,
                 auth_token=self.HTTP_AUTH_TOKEN,
+                enforce_lifecycle=False,
             )
             httpd = server.create_http_server()
             port = httpd.server_address[1]
@@ -2865,6 +3266,18 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "list_map_layers",
                         "load_map_layer",
                         "remove_map_layers",
+                        "get_layer_metadata",
+                        "query_vector_features",
+                        "set_vector_selection",
+                        "delete_vector_features",
+                        "get_project_crs",
+                        "set_project_crs",
+                        "get_raster_statistics",
+                        "apply_layer_style",
+                        "configure_vector_labels",
+                        "create_print_layout",
+                        "list_print_layouts",
+                        "export_print_layout",
                         "create_vector_layer",
                         "add_vector_features",
                         "update_vector_features",
@@ -2880,6 +3293,12 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "get_raster_processing_job",
                         "list_raster_processing_jobs",
                         "cancel_raster_processing_job",
+                        "list_general_processing_algorithms",
+                        "get_general_processing_algorithm_details",
+                        "start_general_processing_algorithm",
+                        "get_general_processing_job",
+                        "list_general_processing_jobs",
+                        "cancel_general_processing_job",
                     ],
                 )
                 for legacy_tool_name in (
@@ -2913,6 +3332,37 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 self.assertTrue(
                     listed_tools["start_vector_processing_algorithm"]["inputSchema"]["properties"]["add_outputs_to_project"]["default"]
                 )
+                self.assertFalse(
+                    listed_tools["start_vector_processing_algorithm"]["inputSchema"]["properties"]["overwrite_outputs"]["default"]
+                )
+                list_algorithm_schemas = [
+                    listed_tools[
+                        f"list_{category}_processing_algorithms"
+                    ]["inputSchema"]
+                    for category in ("vector", "raster", "general")
+                ]
+                self.assertEqual(
+                    list_algorithm_schemas[1:],
+                    [list_algorithm_schemas[0], list_algorithm_schemas[0]],
+                )
+                list_algorithm_schema = list_algorithm_schemas[0]
+                self.assertEqual(
+                    list_algorithm_schema["properties"]["max_results"]["default"],
+                    50,
+                )
+                self.assertEqual(
+                    list_algorithm_schema["properties"]["max_results"]["minimum"],
+                    1,
+                )
+                self.assertEqual(
+                    list_algorithm_schema["properties"]["max_results"]["maximum"],
+                    2000,
+                )
+                self.assertEqual(
+                    list_algorithm_schema["properties"]["cursor"]["maxLength"],
+                    2048,
+                )
+                self.assertEqual(len(list_algorithm_schema["oneOf"]), 2)
                 self.assertEqual(
                     listed_tools["list_vector_processing_jobs"]["inputSchema"]["properties"]["states"]["items"]["enum"],
                     [
@@ -2926,6 +3376,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 )
                 self.assertNotIn("run_vector_processing_algorithm", listed_tools)
                 self.assertNotIn("run_raster_processing_algorithm", listed_tools)
+                self.assertNotIn("run_general_processing_algorithm", listed_tools)
 
                 for index, (tool_name, arguments, expected_message) in enumerate(
                     (
@@ -3002,6 +3453,36 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "list_vector_processing_jobs",
                             {"limit": 201},
                             "$.limit must be <= 200",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"max_results": "50"},
+                            "$.max_results must be integer",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"max_results": 0},
+                            "$.max_results must be >= 1",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"max_results": -1},
+                            "$.max_results must be >= 1",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"max_results": 2001},
+                            "$.max_results must be <= 2000",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"unexpected": True},
+                            "$.unexpected is not allowed",
+                        ),
+                        (
+                            "list_vector_processing_algorithms",
+                            {"max_results": 51, "cursor": "opaque-cursor"},
+                            "$ must match exactly one oneOf alternative",
                         ),
                     )
                 ):
@@ -3132,6 +3613,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "algorithm_id": "native:buffer",
                             "parameters": {"OUTPUT": "memory:"},
                             "add_outputs_to_project": False,
+                            "overwrite_outputs": False,
                             "client_request_id": "vector-request",
                         },
                         "processing_start_algorithm",
@@ -3153,7 +3635,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     ),
                     (
                         "list_raster_processing_algorithms",
-                        {},
+                        {"max_results": 120},
                         "processing_list_algorithms",
                     ),
                     (
@@ -3174,6 +3656,39 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     (
                         "cancel_raster_processing_job",
                         {"job_id": "raster-job"},
+                        "processing_cancel_job",
+                    ),
+                    (
+                        "list_general_processing_algorithms",
+                        {"cursor": "opaque-cursor"},
+                        "processing_list_algorithms",
+                    ),
+                    (
+                        "get_general_processing_algorithm_details",
+                        {"algorithm_id": "native:shortestpathpointtopoint"},
+                        "processing_algorithm_details",
+                    ),
+                    (
+                        "start_general_processing_algorithm",
+                        {
+                            "algorithm_id": "native:shortestpathpointtopoint",
+                            "parameters": {"OUTPUT": "route.gpkg"},
+                        },
+                        "processing_start_algorithm",
+                    ),
+                    (
+                        "get_general_processing_job",
+                        {"job_id": "general-job"},
+                        "processing_get_job",
+                    ),
+                    (
+                        "list_general_processing_jobs",
+                        {},
+                        "processing_list_jobs",
+                    ),
+                    (
+                        "cancel_general_processing_job",
+                        {"job_id": "general-job"},
                         "processing_cancel_job",
                     ),
                 ):
@@ -3200,11 +3715,24 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         {"tool": bridge_tool_name},
                     )
                 self.assertIn(
-                    ("processing_list_algorithms", {"category": "vector"}),
+                    (
+                        "processing_list_algorithms",
+                        {"max_results": 50, "category": "vector"},
+                    ),
                     calls,
                 )
                 self.assertIn(
-                    ("processing_list_algorithms", {"category": "raster"}),
+                    (
+                        "processing_list_algorithms",
+                        {"max_results": 120, "category": "raster"},
+                    ),
+                    calls,
+                )
+                self.assertIn(
+                    (
+                        "processing_list_algorithms",
+                        {"cursor": "opaque-cursor", "category": "general"},
+                    ),
                     calls,
                 )
                 self.assertIn(
@@ -3214,6 +3742,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "algorithm_id": "native:buffer",
                             "parameters": {"OUTPUT": "memory:"},
                             "add_outputs_to_project": False,
+                            "overwrite_outputs": False,
                             "client_request_id": "vector-request",
                             "category": "vector",
                         },
@@ -3227,6 +3756,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "algorithm_id": "gdal:warpreproject",
                             "parameters": {},
                             "add_outputs_to_project": True,
+                            "overwrite_outputs": False,
                             "category": "raster",
                         },
                     ),
@@ -3239,6 +3769,19 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "states": ["running"],
                             "limit": 10,
                             "category": "vector",
+                        },
+                    ),
+                    calls,
+                )
+                self.assertIn(
+                    (
+                        "processing_start_algorithm",
+                        {
+                            "algorithm_id": "native:shortestpathpointtopoint",
+                            "parameters": {"OUTPUT": "route.gpkg"},
+                            "add_outputs_to_project": True,
+                            "overwrite_outputs": False,
+                            "category": "general",
                         },
                     ),
                     calls,
@@ -3336,6 +3879,25 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 os.environ.pop(QGIS_BRIDGE_AUTH_TOKEN_ENV, None)
             else:
                 os.environ[QGIS_BRIDGE_AUTH_TOKEN_ENV] = old_auth_token
+
+    def test_bridge_client_classifies_qgis_business_failure_as_tool_error(self):
+        import qcopilots_common.bridge as bridge_module
+        from qcopilots_common.bridge import BridgeClient
+        from qcopilots_common.mcp_http import ToolError
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                del exc_type, exc_value, traceback
+
+            def read(self):
+                return b'{"ok": false, "error": "expected policy rejection"}'
+
+        with mock.patch.object(bridge_module, "urlopen", return_value=FakeResponse()):
+            with self.assertRaisesRegex(ToolError, "expected policy rejection"):
+                BridgeClient("http://127.0.0.1:48200").call("restricted", {})
 
     def test_qgis_bridge_requires_bearer_and_rejects_origin(self):
         from qcopilots_common.bridge import QgisBridgeController
@@ -3454,6 +4016,143 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     controller_thread.is_alive(),
                     "QGIS bridge HTTP thread did not terminate",
                 )
+
+    def test_qgis_bridge_drains_rejected_request_bodies_with_a_bound(self):
+        from qcopilots_common.bridge import QgisBridgeController
+
+        auth_token = "unit-test-bridge-secret"
+        controller = QgisBridgeController(None, port=0, auth_token=auth_token)
+        try:
+            controller.start()
+            cases = (
+                (
+                    f"Host: localhost:{controller.port}\r\n"
+                    f"Authorization: Bearer {auth_token}\r\n",
+                    "host",
+                    403,
+                ),
+                (
+                    f"Host: 127.0.0.1:{controller.port}\r\n"
+                    "Origin: https://example.invalid\r\n"
+                    f"Authorization: Bearer {auth_token}\r\n",
+                    "origin",
+                    403,
+                ),
+                (
+                    f"Host: 127.0.0.1:{controller.port}\r\n",
+                    "authorization",
+                    401,
+                ),
+            )
+            for rejection_headers, name, expected_status in cases:
+                with self.subTest(rejection=name):
+                    request_headers = (
+                        "POST /call HTTP/1.1\r\n"
+                        f"{rejection_headers}"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 4\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    with socket.create_connection(
+                        ("127.0.0.1", controller.port), timeout=2
+                    ) as connection:
+                        connection.sendall(request_headers)
+                        connection.settimeout(0.1)
+                        with self.assertRaises(socket.timeout):
+                            connection.recv(1)
+                        connection.sendall(b"body")
+                        connection.settimeout(2)
+                        response = bytearray()
+                        while True:
+                            chunk = connection.recv(4096)
+                            if not chunk:
+                                break
+                            response.extend(chunk)
+                    self.assertIn(
+                        f" {expected_status} ",
+                        response.decode("iso-8859-1").splitlines()[0],
+                    )
+
+            bounded_headers = (
+                "POST /call HTTP/1.1\r\n"
+                f"Host: localhost:{controller.port}\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: 4\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            ).encode("ascii")
+            with socket.create_connection(
+                ("127.0.0.1", controller.port), timeout=2
+            ) as connection:
+                connection.sendall(bounded_headers)
+                connection.settimeout(2)
+                response = connection.recv(4096).decode("iso-8859-1")
+            self.assertIn(" 403 ", response.splitlines()[0])
+        finally:
+            controller.stop()
+
+    def test_qgis_bridge_rejects_ambiguous_body_framing_without_dispatch(self):
+        from qcopilots_common.bridge import QgisBridgeController
+
+        auth_token = "unit-test-bridge-secret"
+        controller = QgisBridgeController(None, port=0, auth_token=auth_token)
+        dispatch_calls = []
+        controller.dispatch = lambda tool, arguments: dispatch_calls.append(
+            (tool, arguments)
+        )
+        try:
+            controller.start()
+            framing_cases = (
+                "Content-Length: 2\r\nContent-Length: 2\r\n",
+                "Content-Length: 2, 2\r\n",
+                "Content-Length: +2\r\n",
+                "Content-Length: -1\r\n",
+                "Content-Length: 0x2\r\n",
+                "Transfer-Encoding: identity\r\n",
+                "Transfer-Encoding: chunked\r\nContent-Length: 2\r\n",
+            )
+            for framing_headers in framing_cases:
+                with self.subTest(framing_headers=framing_headers):
+                    first_request = (
+                        "POST /call HTTP/1.1\r\n"
+                        f"Host: 127.0.0.1:{controller.port}\r\n"
+                        f"Authorization: Bearer {auth_token}\r\n"
+                        "Content-Type: application/json\r\n"
+                        f"{framing_headers}"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    body = (
+                        b"2\r\n{}\r\n0\r\n\r\n"
+                        if "chunked" in framing_headers
+                        else b"{}"
+                    )
+                    second_request = (
+                        "GET /health HTTP/1.1\r\n"
+                        f"Host: 127.0.0.1:{controller.port}\r\n"
+                        f"Authorization: Bearer {auth_token}\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                    ).encode("ascii")
+                    with socket.create_connection(
+                        ("127.0.0.1", controller.port), timeout=2
+                    ) as connection:
+                        connection.settimeout(2)
+                        connection.sendall(first_request + body + second_request)
+                        response = bytearray()
+                        while True:
+                            chunk = connection.recv(4096)
+                            if not chunk:
+                                break
+                            response.extend(chunk)
+                    decoded = response.decode("iso-8859-1")
+                    self.assertIn(" 400 ", decoded.splitlines()[0])
+                    self.assertIn("Connection: close", decoded)
+                    self.assertEqual(decoded.count("HTTP/1."), 1)
+                    self.assertEqual(dispatch_calls, [])
+        finally:
+            controller.stop()
 
     def test_qgis_bridge_requires_token_and_literal_loopback_to_start(self):
         from qcopilots_common.bridge import QgisBridgeController
@@ -3778,6 +4477,28 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 ),
                 {"MASK": str((cwd.parent / "outside.gpkg").resolve())},
             )
+            uri_parameters = [
+                FakeParameter("INPUT", "raster", "QgsProcessingParameterRasterLayer"),
+                FakeParameter("OUTPUT", "destination", "QgsProcessingParameterFileDestination"),
+                FakeParameter("LAYER", "source", "QgsProcessingParameterFeatureSource"),
+            ]
+            file_uri_target = root / "file-uri-output.gpkg"
+            layer_source = root / "source.gpkg"
+            self.assertEqual(
+                _sanitize_processing_parameters(
+                    {
+                        "INPUT": "https://example.com/data/input.tif",
+                        "OUTPUT": file_uri_target.as_uri(),
+                        "LAYER": f"{layer_source}|layername=roads",
+                    },
+                    uri_parameters,
+                ),
+                {
+                    "INPUT": "https://example.com/data/input.tif",
+                    "OUTPUT": str(file_uri_target.resolve()),
+                    "LAYER": f"{layer_source.resolve()}|layername=roads",
+                },
+            )
 
     def test_qgis_bridge_absolute_paths_are_allowed_by_default(self):
         from qcopilots_common.bridge import (
@@ -3837,9 +4558,20 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
                 self.assertEqual(
                     tools.save_project({}),
-                    {"saved": True, "path": str(outside / "project.qgz")},
+                    {
+                        "saved": True,
+                        "path": str(outside / "project.qgz"),
+                        "cleanup": {
+                            "complete": True,
+                            "residual_paths": [],
+                            "retry_recommended": False,
+                        },
+                    },
                 )
-                self.assertEqual(fake_project.writes, [None])
+                self.assertEqual(len(fake_project.writes), 1)
+                self.assertIsNotNone(fake_project.writes[0])
+                self.assertEqual(Path(fake_project.writes[0]).parent, outside)
+                self.assertTrue((outside / "project.qgz").is_file())
         finally:
             for name, module in original_modules.items():
                 if module is None:

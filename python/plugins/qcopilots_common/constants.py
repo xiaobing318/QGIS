@@ -39,6 +39,7 @@ DEFAULT_SERVICE_PORTS = {
     "qcopilots.mcp_server_processing_vector": 48214,
     "qcopilots.mcp_server_processing_raster": 48215,
     "qcopilots.mcp_server_qgis_binary": 48216,
+    "qcopilots.mcp_server_processing_general": 48217,
 }
 
 MAX_FILE_READ_BYTES = 256 * 1024
@@ -51,6 +52,14 @@ MAX_GREP_RESULTS = 200
 MAX_GREP_SCANNED_FILES = 5000
 MAX_EXEC_TIMEOUT_SECONDS = 60
 MAX_EXEC_OUTPUT_CHARS = 128 * 1024
+
+DEFAULT_PROCESSING_ALGORITHM_RESULTS = 50
+MAX_PROCESSING_ALGORITHM_RESULTS = 2000
+PROCESSING_ALGORITHM_PAGE_SIZE = 50
+MAX_PROCESSING_ALGORITHM_CURSOR_LENGTH = 2048
+PROCESSING_ALGORITHM_CURSOR_ERROR_PREFIX = (
+    "Processing algorithms pagination error:"
+)
 
 
 def encode_cors_origins(origins: Iterable[str]) -> str:

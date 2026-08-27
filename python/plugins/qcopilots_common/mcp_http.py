@@ -20,7 +20,6 @@ import re
 import secrets
 import threading
 import time
-import uuid
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 from collections.abc import Callable, Mapping
@@ -52,6 +51,10 @@ class ToolError(Exception):
     """Raised when a tool call should return a structured MCP tool error."""
 
 
+class McpLifecycleError(Exception):
+    """Raised when a request violates the negotiated MCP lifecycle."""
+
+
 @dataclass(frozen=True)
 class McpRequestContext:
     client_name: str = ""
@@ -61,6 +64,13 @@ class McpRequestContext:
 @dataclass(frozen=True)
 class _SessionContextEntry:
     context: McpRequestContext
+    last_used: float
+
+
+@dataclass(frozen=True)
+class _LifecycleSessionEntry:
+    state: str
+    protocol_version: str
     last_used: float
 
 
@@ -120,6 +130,7 @@ McpResourceSource = list[McpResource] | Callable[[], list[McpResource]]
 McpPromptSource = list[McpPrompt] | Callable[[], list[McpPrompt]]
 MAX_JSON_RPC_BATCH_ITEMS = 64
 MAX_MCP_CLIENT_INFO_FIELD_LENGTH = 256
+MAX_MCP_SESSION_ID_LENGTH = 128
 # Disabled by default because llama-ui currently discovers tools and prompts
 # with one list call and does not follow nextCursor for those methods.
 DEFAULT_MCP_LIST_PAGE_SIZE = 0
@@ -136,6 +147,9 @@ CORS_ALLOWED_HEADERS = (
 )
 CORS_EXPOSED_HEADERS = ("Mcp-Session-Id", "WWW-Authenticate")
 CORS_PREFLIGHT_MAX_AGE_SECONDS = 600
+STREAMABLE_HTTP_REQUIRED_ACCEPT_TYPES = frozenset(
+    {"application/json", "text/event-stream"}
+)
 _CORS_ALLOWED_HEADER_NAMES = frozenset(
     name.casefold() for name in CORS_ALLOWED_HEADERS
 )
@@ -160,6 +174,7 @@ class McpJsonRpcServer:
         session_ttl_seconds: float = DEFAULT_SESSION_TTL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
         list_page_size: int = DEFAULT_MCP_LIST_PAGE_SIZE,
+        enforce_lifecycle: bool = False,
     ):
         self.server_name = server_name
         self.server_version = server_version
@@ -183,6 +198,10 @@ class McpJsonRpcServer:
         self._clock = _validate_clock(clock)
         _clock_value(self._clock)
         self._contexts: OrderedDict[str, _SessionContextEntry] = OrderedDict()
+        self._lifecycle_sessions: OrderedDict[
+            str, _LifecycleSessionEntry
+        ] = OrderedDict()
+        self._enforce_lifecycle = bool(enforce_lifecycle)
         self._pagination_secret = secrets.token_bytes(32)
         self._tool_names_cache = tuple(sorted(self._tools_by_name()))
         self.server_title = server_title
@@ -247,7 +266,13 @@ class McpJsonRpcServer:
                 raw_params = {}
             if not isinstance(raw_params, Mapping):
                 raise ToolError("JSON-RPC params must be an object")
+            if self._enforce_lifecycle:
+                self._validate_lifecycle_request(session_id, method, request_id)
             result = self._dispatch(method, raw_params, session_id)
+        except McpLifecycleError as err:
+            if is_notification:
+                return None
+            return _jsonrpc_error(request_id, -32600, str(err))
         except ToolError as err:
             if is_notification:
                 return None
@@ -273,7 +298,13 @@ class McpJsonRpcServer:
         session_id: str | None,
     ) -> Any:
         if method == "initialize":
+            negotiated_protocol_version = _validated_initialize_protocol_version(
+                params,
+                strict=self._enforce_lifecycle,
+            )
             client_info = _validated_client_info(params)
+            if self._enforce_lifecycle:
+                _validate_strict_initialize_params(params, client_info)
             self._set_context(
                 session_id,
                 McpRequestContext(
@@ -281,6 +312,13 @@ class McpJsonRpcServer:
                     client_version=_client_info_field(client_info, "version"),
                 ),
             )
+            if self._enforce_lifecycle:
+                self._transition_lifecycle_session(
+                    session_id,
+                    "created",
+                    "awaiting_initialized",
+                    protocol_version=negotiated_protocol_version,
+                )
             server_info = {"name": self.server_name, "version": self.server_version}
             if self.server_title:
                 server_info["title"] = self.server_title
@@ -296,7 +334,16 @@ class McpJsonRpcServer:
             }
 
         if method == "notifications/initialized":
+            if self._enforce_lifecycle:
+                self._transition_lifecycle_session(
+                    session_id,
+                    "awaiting_initialized",
+                    "operation",
+                )
             return None
+
+        if method == "ping":
+            return {}
 
         if method == "tools/list":
             tools = self._tools_by_name()
@@ -388,6 +435,136 @@ class McpJsonRpcServer:
 
         raise NotImplementedError(f"Unsupported method: {method}")
 
+    def create_session(self) -> str:
+        """Creates a server-owned, cryptographically random lifecycle session."""
+
+        now = _clock_value(self._clock)
+        with self._context_lock:
+            self._purge_expired_lifecycle_sessions(now)
+            if self._max_session_contexts == 0:
+                raise RuntimeError("MCP lifecycle session capacity is disabled")
+            while len(self._lifecycle_sessions) >= self._max_session_contexts:
+                expired_session_id, _entry = self._lifecycle_sessions.popitem(
+                    last=False
+                )
+                self._contexts.pop(expired_session_id, None)
+            while True:
+                session_id = secrets.token_urlsafe(32)
+                if session_id not in self._lifecycle_sessions:
+                    break
+            self._lifecycle_sessions[session_id] = _LifecycleSessionEntry(
+                "created",
+                "",
+                now,
+            )
+            return session_id
+
+    def lifecycle_protocol_version(self, session_id: str | None) -> str | None:
+        entry = self._lifecycle_session_entry(session_id, touch=True)
+        if entry is None:
+            return None
+        return entry.protocol_version
+
+    def has_lifecycle_session(self, session_id: str | None) -> bool:
+        return self._lifecycle_session_entry(session_id, touch=False) is not None
+
+    def _validate_lifecycle_request(
+        self,
+        session_id: str | None,
+        method: Any,
+        request_id: Any,
+    ) -> None:
+        if not session_id:
+            raise McpLifecycleError("MCP lifecycle session is required")
+        entry = self._lifecycle_session_entry(session_id, touch=True)
+        if entry is None:
+            raise McpLifecycleError("MCP lifecycle session is unknown or expired")
+        if entry.state == "created":
+            if method != "initialize":
+                raise McpLifecycleError("initialize must be the first MCP interaction")
+            if request_id is None:
+                raise McpLifecycleError("initialize must be a JSON-RPC request")
+            return
+        if entry.state == "awaiting_initialized":
+            if method == "notifications/initialized":
+                if request_id is not None:
+                    raise McpLifecycleError(
+                        "notifications/initialized must be a notification"
+                    )
+                return
+            if method == "ping":
+                return
+            raise McpLifecycleError(
+                "notifications/initialized is required before MCP operations"
+            )
+        if entry.state == "operation":
+            if method in ("initialize", "notifications/initialized"):
+                raise McpLifecycleError(
+                    "MCP initialization cannot be repeated for an active session"
+                )
+            return
+        raise McpLifecycleError("MCP lifecycle session has an invalid state")
+
+    def _transition_lifecycle_session(
+        self,
+        session_id: str | None,
+        expected_state: str,
+        next_state: str,
+        *,
+        protocol_version: str | None = None,
+    ) -> None:
+        if not session_id:
+            raise McpLifecycleError("MCP lifecycle session is required")
+        now = _clock_value(self._clock)
+        with self._context_lock:
+            self._purge_expired_lifecycle_sessions(now)
+            entry = self._lifecycle_sessions.pop(session_id, None)
+            if entry is None:
+                raise McpLifecycleError("MCP lifecycle session is unknown or expired")
+            if entry.state != expected_state:
+                self._lifecycle_sessions[session_id] = entry
+                raise McpLifecycleError("MCP lifecycle transition is invalid")
+            self._lifecycle_sessions[session_id] = _LifecycleSessionEntry(
+                next_state,
+                protocol_version
+                if protocol_version is not None
+                else entry.protocol_version,
+                now,
+            )
+
+    def _lifecycle_session_entry(
+        self,
+        session_id: str | None,
+        *,
+        touch: bool,
+    ) -> _LifecycleSessionEntry | None:
+        if not session_id:
+            return None
+        now = _clock_value(self._clock)
+        with self._context_lock:
+            self._purge_expired_lifecycle_sessions(now)
+            entry = self._lifecycle_sessions.get(session_id)
+            if entry is None or not touch:
+                return entry
+            self._lifecycle_sessions.pop(session_id, None)
+            touched = _LifecycleSessionEntry(
+                entry.state,
+                entry.protocol_version,
+                now,
+            )
+            self._lifecycle_sessions[session_id] = touched
+            return touched
+
+    def _purge_expired_lifecycle_sessions(self, now: float) -> None:
+        expired = [
+            session_id
+            for session_id, entry in self._lifecycle_sessions.items()
+            if now - entry.last_used >= self._session_ttl_seconds
+        ]
+        for session_id in expired:
+            self._lifecycle_sessions.pop(session_id, None)
+            self._contexts.pop(session_id, None)
+
     def _set_context(
         self,
         session_id: str | None,
@@ -424,15 +601,20 @@ class McpJsonRpcServer:
         for session_id in expired:
             self._contexts.pop(session_id, None)
 
-    def clear_session(self, session_id: str | None) -> None:
+    def clear_session(self, session_id: str | None) -> bool:
         if not session_id:
-            return
+            return False
         with self._context_lock:
-            self._contexts.pop(session_id, None)
+            context_removed = self._contexts.pop(session_id, None) is not None
+            lifecycle_removed = (
+                self._lifecycle_sessions.pop(session_id, None) is not None
+            )
+            return context_removed or lifecycle_removed
 
     def clear_all_sessions(self) -> None:
         with self._context_lock:
             self._contexts.clear()
+            self._lifecycle_sessions.clear()
 
     def _capabilities(self) -> dict[str, Any]:
         capabilities = {"tools": {}}
@@ -464,6 +646,7 @@ class McpHttpServer:
         clock: Callable[[], float] = time.monotonic,
         list_page_size: int = DEFAULT_MCP_LIST_PAGE_SIZE,
         auth_token: str | None = None,
+        enforce_lifecycle: bool = True,
     ):
         self.name = name
         self.version = version
@@ -492,6 +675,7 @@ class McpHttpServer:
             if "\r" in origin or "\n" in origin:
                 raise ValueError("QCopilots MCP services reject invalid CORS origins.")
         self._auth_token = auth_token or ""
+        self.enforce_lifecycle = bool(enforce_lifecycle)
         self.logger = logger or logging.getLogger(name)
         self.rpc_server = McpJsonRpcServer(
             name,
@@ -507,6 +691,7 @@ class McpHttpServer:
             session_ttl_seconds=session_ttl_seconds,
             list_page_size=list_page_size,
             clock=clock,
+            enforce_lifecycle=self.enforce_lifecycle,
         )
 
     @property
@@ -529,6 +714,7 @@ class McpHttpServer:
                 if not self.headers.get_all("Origin"):
                     if not self._request_allowed():
                         return
+                    self._discard_request_body()
                     self._send_empty(
                         HTTPStatus.METHOD_NOT_ALLOWED,
                         {"Allow": ", ".join(CORS_ALLOWED_METHODS)},
@@ -539,6 +725,7 @@ class McpHttpServer:
                     return
                 if not self._request_origin_allowed(require_origin=True):
                     return
+                self._discard_request_body()
                 if self.path != controller.path:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                     return
@@ -577,15 +764,28 @@ class McpHttpServer:
             def do_DELETE(self) -> None:
                 if not self._request_allowed():
                     return
+                self._discard_request_body()
                 if self.path != controller.path:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                     return
-                controller.rpc_server.clear_session(self.headers.get("mcp-session-id"))
+                if controller.enforce_lifecycle:
+                    session_id = self._validated_lifecycle_session()
+                    if session_id is None:
+                        return
+                else:
+                    session_id = self.headers.get("mcp-session-id")
+                if not controller.rpc_server.clear_session(session_id):
+                    self._send_json(
+                        HTTPStatus.NOT_FOUND,
+                        {"error": "session_not_found"},
+                    )
+                    return
                 self._send_empty(HTTPStatus.NO_CONTENT)
 
             def do_GET(self) -> None:
                 if not self._request_allowed():
                     return
+                self._discard_request_body()
                 if self.path.rstrip("/") == "/health":
                     self._send_json(
                         HTTPStatus.OK,
@@ -597,6 +797,9 @@ class McpHttpServer:
                     )
                     return
                 if self.path == controller.path:
+                    if controller.enforce_lifecycle:
+                        if self._validated_lifecycle_session() is None:
+                            return
                     self._send_empty(
                         HTTPStatus.METHOD_NOT_ALLOWED,
                         {"Allow": "POST, DELETE"},
@@ -616,6 +819,18 @@ class McpHttpServer:
                     self._send_json(
                         HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
                         {"error": "unsupported_media_type"},
+                    )
+                    return
+                if not self._request_accepts_streamable_http():
+                    self._discard_request_body()
+                    self._send_json(
+                        HTTPStatus.NOT_ACCEPTABLE,
+                        {
+                            "error": "streamable_http_accept_required",
+                            "required": sorted(
+                                STREAMABLE_HTTP_REQUIRED_ACCEPT_TYPES
+                            ),
+                        },
                     )
                     return
                 try:
@@ -642,44 +857,41 @@ class McpHttpServer:
                     return
 
                 if isinstance(payload, list):
-                    if not 1 <= len(payload) <= MAX_JSON_RPC_BATCH_ITEMS:
-                        self._send_json(
-                            HTTPStatus.OK,
-                            _jsonrpc_error(
-                                None,
-                                -32600,
-                                "Invalid JSON-RPC batch: expected "
-                                f"1-{MAX_JSON_RPC_BATCH_ITEMS} requests",
-                            ),
-                        )
-                        return
-                    session_id = self._request_session_id(payload)
-                    responses = [
-                        controller.rpc_server.handle_json_rpc(
-                            item,
-                            session_id=session_id,
-                        )
-                        for item in payload
-                    ]
-                    responses = [item for item in responses if item is not None]
-                    if not responses:
-                        self._send_empty(
-                            HTTPStatus.ACCEPTED,
-                            self._session_headers(session_id),
-                        )
-                    else:
-                        self._send_json(
-                            HTTPStatus.OK,
-                            responses,
-                            self._session_headers(session_id),
-                        )
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        _jsonrpc_error(
+                            None,
+                            -32600,
+                            "JSON-RPC batch requests are not supported by MCP 2025-06-18",
+                        ),
+                    )
                     return
 
-                session_id = self._request_session_id(payload)
+                is_initialize = self._payload_is_initialize(payload)
+                if controller.enforce_lifecycle:
+                    if is_initialize:
+                        if self.headers.get_all("mcp-session-id"):
+                            self.close_connection = True
+                            self._send_json(
+                                HTTPStatus.BAD_REQUEST,
+                                {"error": "initialize_session_not_allowed"},
+                            )
+                            return
+                        session_id = controller.rpc_server.create_session()
+                    else:
+                        session_id = self._validated_lifecycle_session()
+                        if session_id is None:
+                            return
+                else:
+                    session_id = self._request_session_id(payload)
                 response = controller.rpc_server.handle_json_rpc(
                     payload,
                     session_id=session_id,
                 )
+                if is_initialize and response is not None and "error" in response:
+                    controller.rpc_server.clear_session(session_id)
+                    session_id = None
                 if response is None:
                     self._send_empty(
                         HTTPStatus.ACCEPTED,
@@ -709,6 +921,7 @@ class McpHttpServer:
                     return True
 
                 self.close_connection = True
+                self._discard_request_body()
                 self._send_json(
                     HTTPStatus.UNAUTHORIZED,
                     {"error": "unauthorized"},
@@ -725,6 +938,7 @@ class McpHttpServer:
                     host_headers[0], expected_host
                 ):
                     self.close_connection = True
+                    self._discard_request_body()
                     self._send_json(
                         HTTPStatus.FORBIDDEN,
                         {"error": "host_not_allowed"},
@@ -738,6 +952,7 @@ class McpHttpServer:
                     if not require_origin:
                         return True
                     self.close_connection = True
+                    self._discard_request_body()
                     self._send_json(
                         HTTPStatus.FORBIDDEN,
                         {"error": "origin_required"},
@@ -752,6 +967,7 @@ class McpHttpServer:
                     return True
 
                 self.close_connection = True
+                self._discard_request_body()
                 self._send_json(
                     HTTPStatus.FORBIDDEN,
                     {"error": "origin_not_allowed"},
@@ -773,6 +989,40 @@ class McpHttpServer:
                     name.casefold() in _CORS_ALLOWED_HEADER_NAMES
                     for name in requested_headers
                 )
+
+            def _request_accepts_streamable_http(self) -> bool:
+                accepted: set[str] = set()
+                for line in self.headers.get_all("Accept") or []:
+                    for raw_item in line.split(","):
+                        parts = [part.strip() for part in raw_item.split(";")]
+                        media_type = parts[0].casefold()
+                        if media_type not in STREAMABLE_HTTP_REQUIRED_ACCEPT_TYPES:
+                            continue
+                        quality = Decimal("1")
+                        valid = True
+                        quality_seen = False
+                        for parameter in parts[1:]:
+                            name, separator, value = parameter.partition("=")
+                            if name.strip().casefold() != "q":
+                                continue
+                            if quality_seen or not separator:
+                                valid = False
+                                break
+                            quality_seen = True
+                            try:
+                                quality = Decimal(value.strip())
+                            except Exception:
+                                valid = False
+                                break
+                            if (
+                                not quality.is_finite()
+                                or not Decimal("0") <= quality <= Decimal("1")
+                            ):
+                                valid = False
+                                break
+                        if valid and quality > 0:
+                            accepted.add(media_type)
+                return STREAMABLE_HTTP_REQUIRED_ACCEPT_TYPES.issubset(accepted)
 
             def _is_protected_path(self) -> bool:
                 return (
@@ -855,20 +1105,57 @@ class McpHttpServer:
                 session_id = self.headers.get("mcp-session-id")
                 if session_id:
                     return session_id
-                if self._payload_contains_initialize(payload):
-                    return uuid.uuid4().hex
+                if self._payload_is_initialize(payload):
+                    return secrets.token_urlsafe(32)
                 return None
+
+            def _validated_lifecycle_session(self) -> str | None:
+                session_headers = self.headers.get_all("mcp-session-id") or []
+                if len(session_headers) != 1 or not _valid_mcp_session_id(
+                    session_headers[0]
+                ):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": "session_id_required"},
+                    )
+                    return None
+                session_id = session_headers[0]
+                if not controller.rpc_server.has_lifecycle_session(session_id):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.NOT_FOUND,
+                        {"error": "session_not_found"},
+                    )
+                    return None
+
+                version_headers = (
+                    self.headers.get_all("mcp-protocol-version") or []
+                )
+                negotiated_version = (
+                    controller.rpc_server.lifecycle_protocol_version(session_id)
+                )
+                if (
+                    len(version_headers) != 1
+                    or not negotiated_version
+                    or not hmac.compare_digest(
+                        version_headers[0], negotiated_version
+                    )
+                ):
+                    self.close_connection = True
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": "invalid_protocol_version"},
+                    )
+                    return None
+                return session_id
 
             def _session_headers(self, session_id: str | None) -> dict[str, str]:
                 if not session_id:
                     return {}
                 return {"mcp-session-id": session_id}
 
-            def _payload_contains_initialize(self, payload: Any) -> bool:
-                if isinstance(payload, list):
-                    return any(
-                        self._payload_contains_initialize(item) for item in payload
-                    )
+            def _payload_is_initialize(self, payload: Any) -> bool:
                 return (
                     isinstance(payload, dict)
                     and payload.get("method") == "initialize"
@@ -900,11 +1187,18 @@ class McpHttpServer:
                         self.close_connection = True
 
             def _request_body_length(self) -> int:
-                try:
-                    return max(0, int(self.headers.get("Content-Length", "0")))
-                except ValueError:
+                transfer_encodings = self.headers.get_all("Transfer-Encoding") or []
+                content_lengths = self.headers.get_all("Content-Length") or []
+                if transfer_encodings or len(content_lengths) > 1:
                     self.close_connection = True
                     return -1
+                if not content_lengths:
+                    return 0
+                value = content_lengths[0]
+                if not re.fullmatch(r"0|[1-9][0-9]*", value):
+                    self.close_connection = True
+                    return -1
+                return int(value)
 
         return ThreadingHTTPServer((self.host, self.port), Handler)
 
@@ -990,6 +1284,42 @@ def _jsonrpc_error(request_id: Any, code: int, message: str) -> dict[str, Any]:
         "id": request_id,
         "error": {"code": code, "message": message},
     }
+
+
+def _valid_mcp_session_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= MAX_MCP_SESSION_ID_LENGTH
+        and all(0x21 <= ord(character) <= 0x7E for character in value)
+    )
+
+
+def _validated_initialize_protocol_version(
+    params: Mapping[str, Any],
+    *,
+    strict: bool,
+) -> str:
+    requested = params.get("protocolVersion")
+    if strict and (not isinstance(requested, str) or not requested.strip()):
+        raise ToolError("initialize.protocolVersion must be a non-empty string")
+    if requested is not None and not isinstance(requested, str):
+        raise ToolError("initialize.protocolVersion must be a string")
+    return MCP_PROTOCOL_VERSION
+
+
+def _validate_strict_initialize_params(
+    params: Mapping[str, Any],
+    client_info: Mapping[str, Any],
+) -> None:
+    capabilities = params.get("capabilities")
+    if not isinstance(capabilities, Mapping):
+        raise ToolError("initialize.capabilities must be an object")
+    if "clientInfo" not in params:
+        raise ToolError("initialize.clientInfo is required")
+    for field_name in ("name", "version"):
+        value = _client_info_field(client_info, field_name)
+        if not value:
+            raise ToolError(f"clientInfo.{field_name} must be a non-empty string")
 
 
 def _validated_client_info(params: Mapping[str, Any]) -> Mapping[str, Any]:

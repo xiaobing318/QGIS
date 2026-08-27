@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from qcopilots_common.constants import DEFAULT_HOST, qcopilots_home
+from qcopilots_common.security_policy import filesystem_policy_from_config
 from qcopilots_common.service_id import is_safe_service_id
 
 
@@ -33,6 +34,7 @@ DEFAULT_STARTUP_SERVICE_IDS = (
     "qcopilots.mcp_server_interactive_tools",
     "qcopilots.mcp_server_processing_vector",
     "qcopilots.mcp_server_processing_raster",
+    "qcopilots.mcp_server_processing_general",
     "qcopilots.mcp_server_skills",
     "qcopilots.mcp_server_qgis_binary",
 )
@@ -44,8 +46,17 @@ DEFAULT_BROWSER_ACCESS = {
     "auth_token": "",
     "port_conflict_policy": "fail",
 }
-
-
+DEFAULT_SECURITY_POLICY = {
+    "mode": "compatible",
+    "shell": {
+        "enabled": True,
+        "executables": [],
+    },
+    "network": {
+        "enabled": True,
+        "allowed_origins": [],
+    },
+}
 @dataclass(frozen=True)
 class ConfigSaveResult:
     """Result of attempting to persist the current in-memory configuration."""
@@ -75,6 +86,7 @@ class ManagerConfigStore:
         self._lock = threading.RLock()
         self._dirty = False
         self._last_error = ""
+        self._blocked_error = ""
         self._user_config_usable = False
         self._config = self._load()
 
@@ -88,6 +100,16 @@ class ManagerConfigStore:
         with self._lock:
             return self._last_error
 
+    @property
+    def blocked(self) -> bool:
+        with self._lock:
+            return bool(self._blocked_error)
+
+    @property
+    def blocked_error(self) -> str:
+        with self._lock:
+            return self._blocked_error
+
     def snapshot(self) -> dict[str, Any]:
         """Return a defensive copy of the effective configuration."""
 
@@ -98,9 +120,10 @@ class ManagerConfigStore:
         """Reload the template and user override, discarding unsaved changes."""
 
         with self._lock:
+            self._blocked_error = ""
             self._config = self._load()
             self._dirty = False
-            self._last_error = ""
+            self._last_error = self._blocked_error
             return copy.deepcopy(self._config)
 
     def add_startup_service(self, service_id: str) -> ConfigSaveResult:
@@ -129,6 +152,8 @@ class ManagerConfigStore:
             raise TypeError("enabled must be a boolean")
 
         with self._lock:
+            if self._blocked_error:
+                return self._blocked_result(changed=False)
             startup = self._config["default_startup"]
             service_ids = list(startup["service_ids"])
             changed = False
@@ -166,9 +191,11 @@ class ManagerConfigStore:
         """
 
         with self._lock:
+            if self._blocked_error:
+                return self._blocked_result(changed=False)
             token = self._config["browser_access"]["auth_token"]
             if is_valid_browser_auth_token(token):
-                if self._user_config_usable:
+                if self._user_config_usable and not self._dirty:
                     return ConfigSaveResult(
                         changed=False,
                         saved=True,
@@ -188,6 +215,8 @@ class ManagerConfigStore:
                 "Browser auth token must contain 32 to 256 URL-safe characters"
             )
         with self._lock:
+            if self._blocked_error:
+                return self._blocked_result(changed=False)
             changed = self._config["browser_access"]["auth_token"] != auth_token
             if changed:
                 self._config["browser_access"]["auth_token"] = auth_token
@@ -203,27 +232,54 @@ class ManagerConfigStore:
 
     def _load(self) -> dict[str, Any]:
         config = _default_config()
-        template = _read_json_object(
-            self.template_path,
-            self.logger,
-            label="packaged manager config template",
-            missing_is_error=True,
-        )
-        if template is not None:
-            config = _apply_config_layer(config, template, self.logger, "packaged template")
+        try:
+            template = _read_json_object(
+                self.template_path,
+                self.logger,
+                label="packaged manager config template",
+                missing_is_error=True,
+                strict_existing=True,
+            )
+        except (OSError, TypeError, ValueError) as err:
+            return self._block_configuration(
+                f"Packaged manager configuration is invalid: {err}"
+            )
+        if template is None:
+            return self._block_configuration(
+                f"Packaged manager configuration is missing: {self.template_path}"
+            )
+        try:
+            config = validate_manager_config(template, "packaged template")
+        except (TypeError, ValueError) as err:
+            return self._block_configuration(
+                f"Packaged manager configuration is invalid: {err}"
+            )
 
-        user_config = _read_json_object(
-            self.user_path,
-            self.logger,
-            label="user manager config",
-            missing_is_error=False,
-        )
+        try:
+            user_config = _read_json_object(
+                self.user_path,
+                self.logger,
+                label="user manager config",
+                missing_is_error=False,
+                strict_existing=True,
+            )
+        except (OSError, TypeError, ValueError) as err:
+            return self._block_configuration(
+                f"User manager configuration is invalid: {err}"
+            )
         self._user_config_usable = user_config is not None
         if user_config is not None:
-            config = _apply_config_layer(config, user_config, self.logger, "user config")
+            try:
+                config = validate_manager_config(user_config, "user config")
+            except (TypeError, ValueError) as err:
+                return self._block_configuration(
+                    f"User manager configuration is invalid: {err}"
+                )
         return config
 
     def _save_locked(self, *, changed: bool) -> ConfigSaveResult:
+        if self._blocked_error:
+            return self._blocked_result(changed=changed)
         try:
             _atomic_write_json(self.user_path, self._config)
         except Exception as err:
@@ -251,6 +307,24 @@ class ManagerConfigStore:
             dirty=False,
         )
 
+    def _block_configuration(self, error: str) -> dict[str, Any]:
+        self._blocked_error = error
+        self._last_error = error
+        self._dirty = False
+        self._user_config_usable = False
+        _warning(self.logger, "QCopilots manager configuration is blocked: %s", error)
+        return _blocked_config()
+
+    def _blocked_result(self, *, changed: bool) -> ConfigSaveResult:
+        self._dirty = False
+        self._last_error = self._blocked_error
+        return ConfigSaveResult(
+            changed=changed,
+            saved=False,
+            dirty=False,
+            error=self._blocked_error,
+        )
+
 
 def _default_config() -> dict[str, Any]:
     return {
@@ -265,7 +339,17 @@ def _default_config() -> dict[str, Any]:
             "cors_origins": [],
         },
         "browser_access": copy.deepcopy(DEFAULT_BROWSER_ACCESS),
+        "security_policy": copy.deepcopy(DEFAULT_SECURITY_POLICY),
     }
+
+
+def _blocked_config() -> dict[str, Any]:
+    config = _default_config()
+    config["default_startup"] = {"enabled": False, "service_ids": []}
+    config["service_network"]["enabled"] = False
+    config["browser_access"]["enabled"] = False
+    config["browser_access"]["auth_token"] = ""
+    return config
 
 
 def _read_json_object(
@@ -274,6 +358,7 @@ def _read_json_object(
     *,
     label: str,
     missing_is_error: bool,
+    strict_existing: bool = False,
 ) -> dict[str, Any] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -283,161 +368,146 @@ def _read_json_object(
         return None
     except Exception as err:
         _warning(logger, "Could not read QCopilots %s %s: %s", label, path, err)
+        if strict_existing:
+            raise ValueError(f"Could not read {label}: {err}") from err
         return None
     if not isinstance(data, dict):
         _warning(logger, "Ignoring QCopilots %s because it is not a JSON object: %s", label, path)
+        if strict_existing:
+            raise TypeError(f"{label} must be a JSON object")
         return None
     return data
 
 
-def _apply_config_layer(
-    base: dict[str, Any],
-    layer: dict[str, Any],
-    logger,
-    label: str,
-) -> dict[str, Any]:
-    result = copy.deepcopy(base)
-    startup = layer.get("default_startup")
-    if startup is not None:
-        if not isinstance(startup, dict):
-            _warning(logger, "Ignoring QCopilots %s default_startup because it is not an object", label)
-        else:
-            if "enabled" in startup:
-                if isinstance(startup["enabled"], bool):
-                    result["default_startup"]["enabled"] = startup["enabled"]
-                else:
-                    _warning(logger, "Ignoring QCopilots %s default_startup.enabled because it is not a boolean", label)
-            if "service_ids" in startup:
-                service_ids = _normalized_service_ids(startup["service_ids"], logger, label)
-                if service_ids is not None:
-                    result["default_startup"]["service_ids"] = service_ids
-
-    network = layer.get("service_network")
-    if network is not None:
-        if not isinstance(network, dict):
-            _warning(logger, "Ignoring QCopilots %s service_network because it is not an object", label)
-        else:
-            _apply_network_fields(result["service_network"], network, logger, label)
-
-    browser_access = layer.get("browser_access")
-    if browser_access is not None:
-        if not isinstance(browser_access, dict):
-            _warning(
-                logger,
-                "Ignoring QCopilots %s browser_access because it is not an object",
-                label,
-            )
-        else:
-            _apply_browser_access_fields(
-                result["browser_access"],
-                browser_access,
-                logger,
-                label,
-            )
-    return result
-
-
-def _normalized_service_ids(value: Any, logger, label: str) -> list[str] | None:
-    if not isinstance(value, list):
-        _warning(logger, "Ignoring QCopilots %s default_startup.service_ids because it is not a list", label)
-        return None
-
-    result = []
-    for item in value:
-        if not isinstance(item, str):
-            _warning(logger, "Ignoring non-string QCopilots %s startup service id", label)
-            continue
-        service_id = item.strip()
-        if not is_safe_service_id(service_id):
-            _warning(logger, "Ignoring unsafe QCopilots %s startup service id: %s", label, service_id)
-            continue
-        if service_id in result:
-            _warning(logger, "Ignoring duplicate QCopilots %s startup service id: %s", label, service_id)
-            continue
-        result.append(service_id)
-    return result
-
-
-def _apply_network_fields(
-    destination: dict[str, Any],
-    source: dict[str, Any],
-    logger,
-    label: str,
-) -> None:
-    if "enabled" in source:
-        if isinstance(source["enabled"], bool):
-            destination["enabled"] = source["enabled"]
-        else:
-            _warning(logger, "Ignoring QCopilots %s service_network.enabled because it is not a boolean", label)
-
-    for field in ("host", "advertised_host"):
-        if field not in source:
-            continue
-        if source[field] == DEFAULT_HOST:
-            destination[field] = DEFAULT_HOST
-        else:
-            _warning(
-                logger,
-                "Ignoring QCopilots %s service_network.%s because it is not %s",
-                label,
-                field,
-                DEFAULT_HOST,
-            )
-
-    if "cors_origins" in source:
-        if isinstance(source["cors_origins"], list) and not source["cors_origins"]:
-            destination["cors_origins"] = []
-        else:
-            _warning(
-                logger,
-                "Ignoring QCopilots %s service_network.cors_origins because it is not an empty list",
-                label,
-            )
-
-
-def _apply_browser_access_fields(
-    destination: dict[str, Any],
-    source: dict[str, Any],
-    logger,
-    label: str,
-) -> None:
-    if "enabled" in source:
-        if isinstance(source["enabled"], bool):
-            destination["enabled"] = source["enabled"]
-        else:
-            _warning(
-                logger,
-                "Ignoring QCopilots %s browser_access.enabled because it is not a boolean",
-                label,
-            )
-
-    for field, expected in (
-        ("origin_source", "configured_qcopilots_url"),
-        ("port_conflict_policy", "fail"),
+def validate_manager_config(value: Any, label: str = "manager config") -> dict[str, Any]:
+    """Return a normalized copy of a complete latest-format configuration."""
+    if not isinstance(value, dict):
+        raise TypeError(f"{label} must be a JSON object")
+    required = {
+        "default_startup",
+        "service_network",
+        "browser_access",
+        "security_policy",
+    }
+    obsolete = {"read_roots", "write_roots", "workspace_roots"}.intersection(value)
+    if obsolete:
+        raise ValueError(
+            f"{label} contains obsolete fields: " + ", ".join(sorted(obsolete))
+        )
+    missing = required - set(value)
+    unexpected = set(value) - required - {"$schema"}
+    if missing:
+        raise ValueError(
+            f"{label} is missing required fields: " + ", ".join(sorted(missing))
+        )
+    if unexpected:
+        raise ValueError(
+            f"{label} contains unsupported fields: "
+            + ", ".join(sorted(str(item) for item in unexpected))
+        )
+    if "$schema" in value and (
+        not isinstance(value["$schema"], str) or not value["$schema"].strip()
     ):
-        if field not in source:
-            continue
-        if source[field] == expected:
-            destination[field] = expected
-        else:
-            _warning(
-                logger,
-                "Ignoring QCopilots %s browser_access.%s because it is not %s",
-                label,
-                field,
-                expected,
-            )
+        raise TypeError(f"{label}.$schema must be a non-empty string")
 
-    if "auth_token" in source:
-        token = source["auth_token"]
-        if token == "" or is_valid_browser_auth_token(token):
-            destination["auth_token"] = token
-        else:
-            _warning(
-                logger,
-                "Ignoring invalid QCopilots %s browser_access.auth_token",
-                label,
+    startup = value["default_startup"]
+    _require_object(startup, f"{label}.default_startup")
+    _require_exact_fields(
+        startup,
+        {"enabled", "service_ids"},
+        f"{label}.default_startup",
+    )
+    if not isinstance(startup["enabled"], bool):
+        raise TypeError(f"{label}.default_startup.enabled must be a boolean")
+    service_ids = startup["service_ids"]
+    if not isinstance(service_ids, list):
+        raise TypeError(f"{label}.default_startup.service_ids must be a list")
+    normalized_ids = []
+    for item in service_ids:
+        service_id = _validated_service_id(item)
+        if service_id != item:
+            raise ValueError(
+                f"{label}.default_startup.service_ids entries must not contain surrounding whitespace"
             )
+        if service_id in normalized_ids:
+            raise ValueError(
+                f"{label}.default_startup.service_ids contains a duplicate: {service_id}"
+            )
+        normalized_ids.append(service_id)
+
+    service_network = value["service_network"]
+    _require_object(service_network, f"{label}.service_network")
+    _require_exact_fields(
+        service_network,
+        {"enabled", "host", "advertised_host", "cors_origins"},
+        f"{label}.service_network",
+    )
+    if not isinstance(service_network["enabled"], bool):
+        raise TypeError(f"{label}.service_network.enabled must be a boolean")
+    for field in ("host", "advertised_host"):
+        if service_network[field] != DEFAULT_HOST:
+            raise ValueError(f"{label}.service_network.{field} must be {DEFAULT_HOST}")
+    if service_network["cors_origins"] != []:
+        raise ValueError(f"{label}.service_network.cors_origins must be an empty list")
+
+    browser_access = value["browser_access"]
+    _require_object(browser_access, f"{label}.browser_access")
+    _require_exact_fields(
+        browser_access,
+        {"enabled", "origin_source", "auth_token", "port_conflict_policy"},
+        f"{label}.browser_access",
+    )
+    if not isinstance(browser_access["enabled"], bool):
+        raise TypeError(f"{label}.browser_access.enabled must be a boolean")
+    if browser_access["origin_source"] != "configured_qcopilots_url":
+        raise ValueError(
+            f"{label}.browser_access.origin_source must be configured_qcopilots_url"
+        )
+    token = browser_access["auth_token"]
+    if token != "" and not is_valid_browser_auth_token(token):
+        raise ValueError(f"{label}.browser_access.auth_token is invalid")
+    if browser_access["port_conflict_policy"] != "fail":
+        raise ValueError(f"{label}.browser_access.port_conflict_policy must be fail")
+
+    security_policy = filesystem_policy_from_config(value["security_policy"]).to_config()
+    return {
+        "default_startup": {
+            "enabled": startup["enabled"],
+            "service_ids": normalized_ids,
+        },
+        "service_network": {
+            "enabled": service_network["enabled"],
+            "host": DEFAULT_HOST,
+            "advertised_host": DEFAULT_HOST,
+            "cors_origins": [],
+        },
+        "browser_access": {
+            "enabled": browser_access["enabled"],
+            "origin_source": "configured_qcopilots_url",
+            "auth_token": token,
+            "port_conflict_policy": "fail",
+        },
+        "security_policy": security_policy,
+    }
+
+
+def _require_object(value: Any, label: str) -> None:
+    if not isinstance(value, dict):
+        raise TypeError(f"{label} must be an object")
+
+
+def _require_exact_fields(value: dict[str, Any], expected: set[str], label: str) -> None:
+    missing = expected - set(value)
+    unexpected = set(value) - expected
+    if missing:
+        raise ValueError(
+            f"{label} is missing required fields: " + ", ".join(sorted(missing))
+        )
+    if unexpected:
+        raise ValueError(
+            f"{label} contains unsupported fields: "
+            + ", ".join(sorted(str(item) for item in unexpected))
+        )
 
 
 def _validated_service_id(service_id: str) -> str:

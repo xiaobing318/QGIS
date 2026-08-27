@@ -7,6 +7,7 @@
       "qcopilots.mcp_server_interactive_tools",
       "qcopilots.mcp_server_processing_vector",
       "qcopilots.mcp_server_processing_raster",
+      "qcopilots.mcp_server_processing_general",
       "qcopilots.mcp_server_skills",
       "qcopilots.mcp_server_qgis_binary"
     ]
@@ -16,6 +17,17 @@
     "host": "127.0.0.1",
     "advertised_host": "127.0.0.1",
     "cors_origins": []
+  },
+  "security_policy": {
+    "mode": "compatible",
+    "shell": {
+      "enabled": true,
+      "executables": []
+    },
+    "network": {
+      "enabled": true,
+      "allowed_origins": []
+    }
   },
   "browser_access": {
     "enabled": true,

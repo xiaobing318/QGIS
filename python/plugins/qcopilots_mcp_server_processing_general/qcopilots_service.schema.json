@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qgis.org/qcopilots/qcopilots_service.schema.json",
+  "title": "QCopilots MCP service manifest",
+  "description": "描述一个 QCopilots MCP 服务插件的运行清单。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "service_id",
+    "plugin_name",
+    "display_name",
+    "description",
+    "entry_point",
+    "host",
+    "advertised_host",
+    "default_port",
+    "mcp_path",
+    "category",
+    "capabilities",
+    "runtime",
+    "cors_origins"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "字段作用是指定 JSON 校验文件。候选值通常是本地相对路径，不同路径会影响编辑器提示。"
+    },
+    "service_id": {
+      "type": "string",
+      "pattern": "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9_.-]+$",
+      "examples": [
+        "qcopilots.mcp_server_processing_general"
+      ],
+      "description": "字段作用是提供稳定的服务编号。候选值由安全字符组成，不同编号会影响服务发现、排序和状态文件。"
+    },
+    "plugin_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是声明所属 QGIS 插件名称。候选值为非空名称，不同名称会影响日志和管理器显示。"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是声明客户端显示名称。候选值为非空说明，不同名称会影响用户识别服务。"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是说明服务能力和安全边界。候选值为非空文本，不同说明会影响客户端选择工具。"
+    },
+    "entry_point": {
+      "type": "string",
+      "default": "server.py",
+      "description": "字段作用是指定服务入口脚本。候选值通常是 server.py，不同入口会影响实际启动程序。"
+    },
+    "host": {
+      "type": "string",
+      "const": "127.0.0.1",
+      "enum": ["127.0.0.1"],
+      "default": "127.0.0.1",
+      "description": "字段作用是限定 HTTP 绑定主机。候选值只有 127.0.0.1，不同值会被拒绝以保持本机边界。"
+    },
+    "advertised_host": {
+      "type": "string",
+      "const": "127.0.0.1",
+      "enum": ["127.0.0.1"],
+      "default": "127.0.0.1",
+      "description": "字段作用是限定管理器发布主机。候选值只有 127.0.0.1，不同值会被拒绝以保持本机边界。"
+    },
+    "default_port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "字段作用是指定 MCP HTTP 默认端口。候选值为 1 到 65535，不同端口会影响服务启动和客户端重连。"
+    },
+    "mcp_path": {
+      "type": "string",
+      "default": "/mcp",
+      "pattern": "^/",
+      "description": "字段作用是指定 MCP 路径。候选值通常为 /mcp，不同路径会影响客户端连接。"
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "字段作用是提供可选的嵌套传输配置。候选字段为类型、主机、端口和路径，不同配置会影响 MCP 端点。",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["http"],
+          "default": "http",
+          "description": "字段作用是声明传输类型。候选值只有 http，不同值会被拒绝。"
+        },
+        "host": {
+          "type": "string",
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
+          "default": "127.0.0.1",
+          "description": "字段作用是声明嵌套绑定主机。候选值只有 127.0.0.1，不同值会被拒绝。"
+        },
+        "advertised_host": {
+          "type": "string",
+          "const": "127.0.0.1",
+          "enum": ["127.0.0.1"],
+          "default": "127.0.0.1",
+          "description": "字段作用是声明嵌套发布主机。候选值只有 127.0.0.1，不同值会被拒绝。"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "字段作用是覆盖默认端口。候选值为 1 到 65535，不同端口会影响服务启动。"
+        },
+        "path": {
+          "type": "string",
+          "default": "/mcp",
+          "pattern": "^/",
+          "description": "字段作用是覆盖 MCP 路径。候选值必须以斜杠开头，不同路径会影响连接地址。"
+        }
+      }
+    },
+    "category": {
+      "type": "string",
+      "enum": ["qcopilots"],
+      "default": "qcopilots",
+      "description": "字段作用是声明管理器逻辑分组。候选值只有 qcopilots，不同值会被 schema 拒绝。"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "字段作用是声明 tools、qgis-bridge、processing 和领域能力。候选值包括 general，不同标签会影响客户端理解服务。",
+      "items": {
+        "type": "string",
+        "enum": ["tools", "prompts", "skills", "qgis-bridge", "processing", "vector", "raster", "general", "qgis-binary"],
+        "description": "字段作用是声明单个能力标签。候选值包括 tools、qgis-bridge、processing 和 general，不同标签会影响能力展示。"
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "requirements"],
+      "description": "字段作用是声明 uv 运行时和 requirements lock file。候选配置使用锁文件，不同配置会影响依赖准备。",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["uv"],
+          "description": "字段作用是声明运行时启动器。候选值只有 uv，不同值会导致服务无法准备。"
+        },
+        "requirements": {
+          "type": "string",
+          "default": "requirements.lock",
+          "description": "字段作用是声明依赖锁文件。候选值通常是 requirements.lock，不同文件会影响依赖集合。"
+        }
+      }
+    },
+    "cors_origins": {
+      "type": "array",
+      "enum": [[]],
+      "maxItems": 0,
+      "default": [],
+      "description": "字段作用是声明浏览器 CORS origins。候选值只有空数组 []，不同值会被拒绝且浏览器访问必须通过 QGIS 原生桥。"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "字段作用是控制默认发现。候选值为 true 或 false，不同值会影响管理器是否显示服务。"
+    },
+    "icon": {
+      "type": "string",
+      "description": "字段作用是声明服务图标。候选值为插件内路径或可访问资源，不同值会影响管理器显示。"
+    }
+  }
+}

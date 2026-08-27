@@ -1499,11 +1499,9 @@ def validate_capability_state(
         errors.append(f"{label}: eligible must be boolean")
 
 
-def _policy_is_not_weaker(reviewed: dict[str, Any], baseline: dict[str, Any]) -> bool:
-    if baseline.get(
-        "require_all_schema_properties_explicit"
-    ) is True and not reviewed.get("require_all_schema_properties_explicit"):
-        return False
+def _required_policy_constraints_are_not_weaker(
+    reviewed: dict[str, Any], baseline: dict[str, Any]
+) -> bool:
     for field in ("required_arguments", "required_target_arguments"):
         if not set(baseline.get(field, [])).issubset(reviewed.get(field, [])):
             return False
@@ -1514,6 +1512,51 @@ def _policy_is_not_weaker(reviewed: dict[str, Any], baseline: dict[str, Any]) ->
         reviewed_groups = {tuple(sorted(group)) for group in reviewed.get(field, [])}
         for group in baseline.get(field, []):
             if tuple(sorted(group)) not in reviewed_groups:
+                return False
+    return True
+
+
+def _policy_is_not_weaker(reviewed: dict[str, Any], baseline: dict[str, Any]) -> bool:
+    if baseline.get(
+        "require_all_schema_properties_explicit"
+    ) is True and not reviewed.get("require_all_schema_properties_explicit"):
+        return False
+    if not _required_policy_constraints_are_not_weaker(reviewed, baseline):
+        return False
+    baseline_branches = baseline.get("argument_branches", [])
+    if baseline_branches:
+        reviewed_branches = reviewed.get("argument_branches")
+        if not isinstance(reviewed_branches, list):
+            return False
+        baseline_by_name = {
+            branch.get("name"): branch
+            for branch in baseline_branches
+            if isinstance(branch, dict) and isinstance(branch.get("name"), str)
+        }
+        reviewed_by_name = {
+            branch.get("name"): branch
+            for branch in reviewed_branches
+            if isinstance(branch, dict) and isinstance(branch.get("name"), str)
+        }
+        if (
+            len(baseline_by_name) != len(baseline_branches)
+            or len(reviewed_by_name) != len(reviewed_branches)
+            or set(reviewed_by_name) != set(baseline_by_name)
+        ):
+            return False
+        for name, baseline_branch in baseline_by_name.items():
+            reviewed_branch = reviewed_by_name[name]
+            baseline_allowed = baseline_branch.get("allowed_arguments")
+            reviewed_allowed = reviewed_branch.get("allowed_arguments")
+            if not isinstance(baseline_allowed, list) or not isinstance(
+                reviewed_allowed, list
+            ):
+                return False
+            if not set(reviewed_allowed).issubset(baseline_allowed):
+                return False
+            if not _required_policy_constraints_are_not_weaker(
+                reviewed_branch, baseline_branch
+            ):
                 return False
     return reviewed.get("command_shape") == baseline.get("command_shape")
 
@@ -1825,27 +1868,59 @@ def validate_invocation_policy(
     errors: list[str],
 ) -> None:
     argument_names = set(arguments)
-    required = set(policy.get("required_arguments", []))
-    missing = required - argument_names
-    if missing:
-        errors.append(
-            f"{node_id}: invocation policy arguments missing {sorted(missing)}"
-        )
-    for group in policy.get("required_any_argument_groups", []):
-        if isinstance(group, list) and not argument_names.intersection(group):
-            errors.append(f"{node_id}: invocation policy requires one of {group}")
-    for group in policy.get("required_any_target_argument_groups", []):
-        supplied = argument_names.intersection(group)
-        if not supplied or not all(
-            bindings.get(name, {}).get("target_kind") != "none" for name in supplied
-        ):
+    effective_policies = [policy]
+    branches = policy.get("argument_branches", [])
+    if branches:
+        matching_branches = []
+        for branch in branches:
+            if not isinstance(branch, dict):
+                continue
+            allowed = branch.get("allowed_arguments")
+            if not isinstance(allowed, list) or not argument_names.issubset(allowed):
+                continue
+            required = set(branch.get("required_arguments", []))
+            if not required.issubset(argument_names):
+                continue
+            groups = branch.get("required_any_argument_groups", [])
+            if any(
+                isinstance(group, list)
+                and not argument_names.intersection(group)
+                for group in groups
+            ):
+                continue
+            matching_branches.append(branch)
+        if len(matching_branches) != 1:
             errors.append(
-                f"{node_id}: invocation policy requires target bindings for {group}"
+                f"{node_id}: invocation arguments must match exactly one policy branch"
             )
-    for name in policy.get("required_target_arguments", []):
-        binding = bindings.get(name)
-        if binding is None or binding.get("target_kind") == "none":
-            errors.append(f"{node_id}: argument {name!r} needs an exact target")
+        else:
+            effective_policies.append(matching_branches[0])
+
+    for effective_policy in effective_policies:
+        required = set(effective_policy.get("required_arguments", []))
+        missing = required - argument_names
+        if missing:
+            errors.append(
+                f"{node_id}: invocation policy arguments missing {sorted(missing)}"
+            )
+        for group in effective_policy.get("required_any_argument_groups", []):
+            if isinstance(group, list) and not argument_names.intersection(group):
+                errors.append(f"{node_id}: invocation policy requires one of {group}")
+        for group in effective_policy.get(
+            "required_any_target_argument_groups", []
+        ):
+            supplied = argument_names.intersection(group)
+            if not supplied or not all(
+                bindings.get(name, {}).get("target_kind") != "none"
+                for name in supplied
+            ):
+                errors.append(
+                    f"{node_id}: invocation policy requires target bindings for {group}"
+                )
+        for name in effective_policy.get("required_target_arguments", []):
+            binding = bindings.get(name)
+            if binding is None or binding.get("target_kind") == "none":
+                errors.append(f"{node_id}: argument {name!r} needs an exact target")
     if (
         policy.get("require_all_schema_properties_explicit") is True
         and argument_names | omitted != schema_properties
