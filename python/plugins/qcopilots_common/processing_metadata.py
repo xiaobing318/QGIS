@@ -611,6 +611,17 @@ def processing_definition_metadata(definition: Any, *, parameter: bool) -> dict[
         value = _call_optional(definition, method_name)
         if value is not None:
             metadata[key] = json_safe_value(value)
+    if definition_type == "enum" and isinstance(metadata.get("options"), list):
+        uses_static_strings = bool(
+            _call_optional(definition, "usesStaticStrings") or False
+        )
+        metadata["enum_options"] = [
+            {
+                "value": str(label) if uses_static_strings else index,
+                "label": str(label),
+            }
+            for index, label in enumerate(metadata["options"])
+        ]
     definition_metadata = _call_optional(definition, "metadata")
     if definition_metadata:
         metadata["metadata"] = json_safe_value(definition_metadata)

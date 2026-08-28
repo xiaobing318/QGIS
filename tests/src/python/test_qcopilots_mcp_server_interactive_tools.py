@@ -115,6 +115,48 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 tools_by_name["update_vector_features"].input_schema["properties"]["updates"]["minItems"],
                 1,
             )
+            update_items = tools_by_name["update_vector_features"].input_schema[
+                "properties"
+            ]["updates"]["items"]
+            self.assertNotIn("properties", update_items)
+            self.assertEqual(len(update_items["anyOf"]), 2)
+            self.assertEqual(
+                [branch["required"] for branch in update_items["anyOf"]],
+                [
+                    ["feature_id", "attributes"],
+                    ["feature_id", "geometry_wkt"],
+                ],
+            )
+            for branch in update_items["anyOf"]:
+                self.assertEqual(
+                    list(branch["properties"]),
+                    ["feature_id", "attributes", "geometry_wkt"],
+                )
+                self.assertEqual(
+                    branch["properties"]["feature_id"]["examples"],
+                    [1],
+                )
+                self.assertIn(
+                    "query_vector_features",
+                    branch["properties"]["feature_id"]["description"],
+                )
+            self.assertEqual(
+                tools_by_name["update_vector_features"].input_schema[
+                    "properties"
+                ]["updates"]["examples"],
+                [[{"feature_id": 1, "attributes": {"name": "Roads"}}]],
+            )
+            for tool_name in (
+                "add_vector_features",
+                "update_vector_features",
+                "delete_vector_features",
+            ):
+                self.assertIn("staged=true", tools_by_name[tool_name].description)
+                self.assertIn("committed=false", tools_by_name[tool_name].description)
+                self.assertIn(
+                    "requires_user_commit=true",
+                    tools_by_name[tool_name].description,
+                )
             self.assertEqual(
                 tools_by_name["query_vector_features"].input_schema["properties"]["limit"]["maximum"],
                 500,
@@ -401,6 +443,54 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             },
         )
 
+        assert_valid(
+            "update_vector_features",
+            {
+                "layer_id": "layer-a",
+                "updates": [
+                    {"feature_id": 1, "attributes": {"name": "Roads"}}
+                ],
+            },
+        )
+        assert_valid(
+            "update_vector_features",
+            {
+                "layer_id": "layer-a",
+                "updates": [
+                    {"feature_id": 1, "geometry_wkt": "POINT (1 2)"}
+                ],
+            },
+        )
+        assert_valid(
+            "update_vector_features",
+            {
+                "layer_id": "layer-a",
+                "updates": [
+                    {
+                        "feature_id": 1,
+                        "attributes": {"name": "Roads"},
+                        "geometry_wkt": "POINT (1 2)",
+                    }
+                ],
+            },
+        )
+        assert_invalid(
+            "update_vector_features",
+            {
+                "layer_id": "layer-a",
+                "updates": [{"attributes": {"name": "Roads"}}],
+            },
+        )
+        assert_invalid(
+            "update_vector_features",
+            {
+                "layer_id": "layer-a",
+                "updates": [
+                    {"attributes": {"feature_id": 1, "name": "Roads"}}
+                ],
+            },
+        )
+
         for tool_name, property_name in (
             ("set_layer_visibility", "layer_id"),
             ("load_map_layer", "source"),
@@ -413,6 +503,23 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 ],
                 1,
             )
+
+    def test_vector_edit_result_state_is_explicitly_staged_only(self):
+        from qcopilots_common.bridge import _vector_edit_result_state
+
+        for started_edit_session, expected_state in (
+            (True, "staged_in_new_edit_session"),
+            (False, "staged_in_existing_edit_session"),
+        ):
+            with self.subTest(started_edit_session=started_edit_session):
+                result = _vector_edit_result_state(started_edit_session)
+                self.assertTrue(result["applied"])
+                self.assertTrue(result["staged"])
+                self.assertFalse(result["committed"])
+                self.assertEqual(result["edit_state"], expected_state)
+                self.assertTrue(result["edit_buffer_atomic"])
+                self.assertFalse(result["provider_commit_attempted"])
+                self.assertTrue(result["requires_user_commit"])
 
     @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
     def test_create_vector_layer_rejects_provider_field_failure(self):
@@ -1850,6 +1957,96 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             project.setDirty(previous_dirty)
 
     @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
+    def test_zoom_to_single_selected_point_uses_visible_fallback(self):
+        from qgis.core import QgsProject, QgsRectangle, QgsVectorLayer
+        from qgis.gui import QgsMapCanvas
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        layer = QgsVectorLayer(
+            "Point?crs=EPSG:4326&field=name:string",
+            "QCopilots zoom selection test",
+            "memory",
+        )
+        project.addMapLayer(layer)
+        canvas = QgsMapCanvas()
+        canvas.resize(800, 600)
+        canvas.setDestinationCrs(layer.crs())
+        canvas.setLayers([layer])
+
+        class FakeIface:
+            def activeLayer(self):
+                return layer
+
+            def mapCanvas(self):
+                return canvas
+
+        try:
+            tools = QgisBridgeTools(FakeIface())
+            added = tools.add_vector_features(
+                {
+                    "layer_id": layer.id(),
+                    "features": [
+                        {
+                            "attributes": {"name": "only"},
+                            "geometry_wkt": "POINT (1 1)",
+                        }
+                    ],
+                }
+            )
+            layer.selectByIds(added["added_feature_ids"])
+            canvas.setExtent(QgsRectangle(-4, -4, 6, 6))
+
+            result = tools.zoom_to_selection({"layer_id": layer.id()})
+
+            self.assertEqual(result["selected_count"], 1)
+            self.assertTrue(result["single_point_fallback"])
+            self.assertEqual(result["zoom_mode"], "single_point_zoom_in_fallback")
+            self.assertTrue(result["zoomed"])
+            self.assertLess(result["scale_after"], result["scale_before"])
+            self.assertEqual(canvas.center().x(), 1.0)
+            self.assertEqual(canvas.center().y(), 1.0)
+
+            canvas.setExtent(QgsRectangle(-5, -5, 5, 5))
+            recentered = tools.zoom_to_selection({"layer_id": layer.id()})
+            self.assertFalse(recentered["single_point_fallback"])
+            self.assertEqual(recentered["zoom_mode"], "native_selection_recenter")
+            self.assertTrue(recentered["extent_changed"])
+            self.assertFalse(recentered["scale_changed"])
+            self.assertEqual(canvas.center().x(), 1.0)
+            self.assertEqual(canvas.center().y(), 1.0)
+
+            without_geometry = tools.add_vector_features(
+                {
+                    "layer_id": layer.id(),
+                    "features": [{"attributes": {"name": "without geometry"}}],
+                }
+            )
+            layer.selectByIds(without_geometry["added_feature_ids"])
+            canvas.setExtent(QgsRectangle(-4, -4, 6, 6))
+
+            unavailable = tools.zoom_to_selection({"layer_id": layer.id()})
+
+            self.assertFalse(unavailable["selection_extent_available"])
+            self.assertFalse(unavailable["single_point_fallback"])
+            self.assertEqual(
+                unavailable["zoom_mode"],
+                "selection_extent_unavailable",
+            )
+            self.assertFalse(unavailable["zoomed"])
+            self.assertEqual(unavailable["extent_before"], unavailable["extent_after"])
+            self.assertEqual(canvas.center().x(), 1.0)
+            self.assertEqual(canvas.center().y(), 1.0)
+        finally:
+            if layer.isEditable():
+                layer.rollBack()
+            canvas.setLayers([])
+            canvas.deleteLater()
+            project.removeMapLayer(layer.id())
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
     def test_real_memory_layer_edit_query_selection_and_confirmed_delete(self):
         from qgis.core import QgsGeometry, QgsProject, QgsVectorLayer
         from qgis.testing import start_app
@@ -1880,6 +2077,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             )
             self.assertFalse(added["committed"])
             self.assertTrue(added["staged"])
+            self.assertTrue(added["requires_user_commit"])
             self.assertEqual(added["edit_state"], "staged_in_new_edit_session")
             self.assertFalse(added["provider_commit_attempted"])
             feature_id = added["added_feature_ids"][0]
@@ -1899,6 +2097,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             )
             self.assertFalse(updated["committed"])
             self.assertTrue(updated["staged"])
+            self.assertTrue(updated["requires_user_commit"])
             self.assertEqual(updated["edit_state"], "staged_in_existing_edit_session")
             feature = layer.getFeature(feature_id)
             self.assertEqual(feature["name"], "beta")
@@ -1958,6 +2157,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             self.assertFalse(deleted["committed"])
             self.assertTrue(deleted["applied"])
             self.assertTrue(deleted["staged"])
+            self.assertTrue(deleted["requires_user_commit"])
             self.assertFalse(deleted["provider_commit_attempted"])
             self.assertEqual(layer.featureCount(), 0)
             with self.assertRaisesRegex(RuntimeError, "already used"):
@@ -1982,6 +2182,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             self.assertTrue(staged["applied"])
             self.assertTrue(staged["staged"])
             self.assertFalse(staged["committed"])
+            self.assertTrue(staged["requires_user_commit"])
             self.assertEqual(
                 staged["edit_state"],
                 "staged_in_existing_edit_session",

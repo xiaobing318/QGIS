@@ -104,6 +104,59 @@ class FakeProcessingBridge:
 
 
 class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
+    def test_processing_enum_metadata_exposes_exact_values_and_keeps_options(self):
+        from qcopilots_common.processing_metadata import (
+            processing_definition_metadata,
+        )
+
+        class FakeEnumDefinition(FakeProcessingDefinition):
+            def __init__(self, name, options, *, uses_static_strings=False):
+                super().__init__(name, "enum", options=options)
+                self._uses_static_strings = uses_static_strings
+
+            def usesStaticStrings(self):
+                return self._uses_static_strings
+
+        numeric_definition = FakeEnumDefinition(
+            "UNITS",
+            ["Pixels", "Georeferenced units"],
+        )
+        numeric_metadata = processing_definition_metadata(
+            numeric_definition,
+            parameter=True,
+        )
+
+        self.assertEqual(
+            numeric_metadata["options"],
+            ["Pixels", "Georeferenced units"],
+        )
+        self.assertEqual(
+            numeric_metadata["enum_options"],
+            [
+                {"value": 0, "label": "Pixels"},
+                {"value": 1, "label": "Georeferenced units"},
+            ],
+        )
+
+        static_definition = FakeEnumDefinition(
+            "MODE",
+            ["fast", "precise"],
+            uses_static_strings=True,
+        )
+        static_metadata = processing_definition_metadata(
+            static_definition,
+            parameter=True,
+        )
+
+        self.assertEqual(static_metadata["options"], ["fast", "precise"])
+        self.assertEqual(
+            static_metadata["enum_options"],
+            [
+                {"value": "fast", "label": "fast"},
+                {"value": "precise", "label": "precise"},
+            ],
+        )
+
     def test_processing_algorithms_are_filtered_by_category(self):
         from qcopilots_common.processing_tools import (
             classify_processing_algorithm,

@@ -88,8 +88,11 @@ def build_qgis_binary_tools() -> list[McpTool]:
                 "explicit confirmation for R2 binaries, blocks R3 binaries, and "
                 "returns a job snapshot for later polling or cancellation. Normal "
                 "local input and output paths may be anywhere the QGIS process account "
-                "can access. Formal restricted mode still rejects unsafe path forms, "
-                "unapproved network sources, and rejects non-empty stdin."
+                "can access. For deterministic file outputs, pass absolute input and "
+                "output paths in argv, select an existing absolute working directory, "
+                "and create output parent directories before starting the job. Formal "
+                "restricted mode still rejects unsafe path forms, unapproved network "
+                "sources, and rejects non-empty stdin."
             ),
             _start_binary_schema(),
             start_binary,
@@ -223,11 +226,17 @@ def _start_binary_schema() -> dict[str, Any]:
                 "default": [],
                 "description": (
                     "Exact argv entries passed to the configured executable without "
-                    "a command shell or argument rewriting. In formal restricted "
-                    "mode, normal local input and output paths, including key=value "
-                    "values and QGIS semicolon path lists, may be anywhere the QGIS "
-                    "process account can access. HTTP(S) sources must use an approved "
-                    "origin. "
+                    "a command shell or argument rewriting. Each array item is one "
+                    "argv entry, so do not add shell quoting or combine a switch and "
+                    "its separate value into one item. Relative input and output paths "
+                    "are interpreted by the executable from the effective working "
+                    "directory, not from the MCP plugin directory. Prefer absolute "
+                    "paths for deterministic file locations and create output parent "
+                    "directories before starting because the service does not create "
+                    "them. In formal restricted mode, normal local input and output "
+                    "paths, including key=value values and QGIS semicolon path lists, "
+                    "may be anywhere the QGIS process account can access. HTTP(S) "
+                    "sources must use an approved origin. "
                     "Remote GDAL/OGR datasource connection strings and driver-prefixed "
                     "local datasource paths are rejected. Indirect argv files, including "
                     "@response files and GDAL/OGR --optfile forms, Windows device "
@@ -240,9 +249,13 @@ def _start_binary_schema() -> dict[str, Any]:
                 "minLength": 1,
                 "maxLength": 32768,
                 "description": (
-                    "Existing normal local process working directory. Omitted and "
-                    "relative paths resolve from the QGIS package root. Absolute paths "
-                    "may be anywhere the QGIS process account can access."
+                    "Existing normal local process working directory. The service does "
+                    "not create it. Omission uses the QGIS package root, relative paths "
+                    "resolve from that package root, and absolute paths are used as the "
+                    "process working directory when the QGIS process account can access "
+                    "them. Relative input and output argv paths then resolve from this "
+                    "effective directory. Prefer an existing absolute directory when "
+                    "file locations must be unambiguous."
                 ),
             },
             "stdin": {

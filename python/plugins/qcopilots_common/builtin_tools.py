@@ -773,11 +773,12 @@ def build_builtin_tools(
         ),
         McpTool(
             "exec_shell_command",
-            "Run a bounded shell command and terminate its process tree on timeout. "
+            "Run a bounded command from a non-empty argv string array and terminate "
+            "its process tree on timeout. Each array item is one argument and shell "
+            "quoting is not required. "
             "Relative cwd resolves from the current base directory. "
             f"Absolute cwd values must remain within {shell_scope}. Formal restricted "
-            "mode rejects string shell commands and validates the executable allowlist "
-            "and path arguments.",
+            "mode validates the executable allowlist and path arguments.",
             _exec_schema(),
             _builtin_mcp_handler(tools.exec_shell_command),
         ),
@@ -2031,7 +2032,15 @@ def _grep_schema() -> dict[str, Any]:
 def _exec_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "command": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+            "command": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string", "minLength": 1},
+                "description": (
+                    "Non-empty argv array. The first item is the executable and every "
+                    "remaining item is one argument."
+                ),
+            },
             "cwd": {"type": "string", "default": "."},
             "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": MAX_EXEC_TIMEOUT_SECONDS},
             "timeout": {"type": "integer", "minimum": 1, "maximum": MAX_EXEC_TIMEOUT_SECONDS},

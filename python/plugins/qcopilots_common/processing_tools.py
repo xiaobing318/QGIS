@@ -129,7 +129,12 @@ def build_interactive_tools() -> list[McpTool]:
         _bridge_tool("zoom_full", "Zoom the QGIS map canvas to the full project extent.", {}, bridge),
         _bridge_tool(
             "zoom_to_selection",
-            "Zoom the QGIS map canvas to selected features.",
+            (
+                "Zoom the QGIS map canvas to selected vector features and return "
+                "observable extent, scale and magnification changes. If QGIS leaves "
+                "a single selected point view completely unchanged, apply one native "
+                "zoom-in step centered on that point."
+            ),
             {"layer_id": "string"},
             bridge,
         ),
@@ -166,14 +171,24 @@ def build_interactive_tools() -> list[McpTool]:
         ),
         _custom_bridge_tool(
             "add_vector_features",
-            "Add vector features to an existing vector layer.",
+            (
+                "Stage vector feature additions in an existing vector layer edit "
+                "buffer. A successful result reports staged=true, committed=false "
+                "and requires_user_commit=true."
+            ),
             _add_vector_features_schema(),
             "add_vector_features",
             bridge,
         ),
         _custom_bridge_tool(
             "update_vector_features",
-            "Update vector feature attributes or geometry in an existing vector layer.",
+            (
+                "Stage vector feature attribute or geometry updates in an existing "
+                "layer edit buffer. Every updates item must include feature_id, such "
+                "as the feature_id returned by query_vector_features. A successful "
+                "result reports staged=true, committed=false and "
+                "requires_user_commit=true."
+            ),
             _update_vector_features_schema(),
             "update_vector_features",
             bridge,
@@ -485,6 +500,10 @@ def _add_vector_features_schema() -> dict[str, Any]:
                 "type": "array",
                 "items": _feature_schema(),
                 "minItems": 1,
+                "description": (
+                    "Features to stage in the layer edit buffer. The successful "
+                    "result remains uncommitted and requires a user commit."
+                ),
             },
         },
         "required": ["layer_id", "features"],
@@ -589,13 +608,39 @@ def _export_map_image_schema() -> dict[str, Any]:
 
 
 def _update_vector_features_schema() -> dict[str, Any]:
-    update_schema = _feature_schema()
-    update_schema["properties"]["feature_id"] = {"type": ["integer", "string"]}
-    update_schema["required"] = ["feature_id"]
-    update_schema["anyOf"] = [
-        {"required": ["attributes"], "properties": {"attributes": {"type": "object", "minProperties": 1}}},
-        {"required": ["geometry_wkt"], "properties": {"geometry_wkt": {"type": "string", "minLength": 1}}},
-    ]
+    feature_id_schema = {
+        "type": ["integer", "string"],
+        "description": (
+            "Required existing feature identifier. Copy the feature_id from "
+            "query_vector_features. For example, use 1 to update feature 1."
+        ),
+        "examples": [1],
+    }
+    update_properties = {
+        "feature_id": feature_id_schema,
+        "attributes": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": True,
+        },
+        "geometry_wkt": {"type": "string", "minLength": 1},
+    }
+    update_schema = {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": update_properties,
+                "required": ["feature_id", "attributes"],
+                "additionalProperties": False,
+            },
+            {
+                "type": "object",
+                "properties": update_properties,
+                "required": ["feature_id", "geometry_wkt"],
+                "additionalProperties": False,
+            },
+        ]
+    }
     return {
         "type": "object",
         "properties": {
@@ -604,6 +649,19 @@ def _update_vector_features_schema() -> dict[str, Any]:
                 "type": "array",
                 "items": update_schema,
                 "minItems": 1,
+                "description": (
+                    "Updates to stage. Every item requires feature_id and at least "
+                    "one non-empty attributes object or geometry_wkt value. Example: "
+                    '[{"feature_id": 1, "attributes": {"name": "Roads"}}].'
+                ),
+                "examples": [
+                    [
+                        {
+                            "feature_id": 1,
+                            "attributes": {"name": "Roads"},
+                        }
+                    ]
+                ],
             },
         },
         "required": ["layer_id", "updates"],

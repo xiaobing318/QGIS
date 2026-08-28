@@ -52,7 +52,9 @@ EXPECTED_TOOL_DESCRIPTION_TERMS = {
         "without a command shell",
         "blocks R3 binaries",
         "polling or cancellation",
-        "local input and output paths",
+        "absolute input and output paths",
+        "existing absolute working directory",
+        "create output parent directories",
         "rejects non-empty stdin",
     ),
     "get_qgis_binary_job": (
@@ -192,8 +194,24 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
             start_properties["arguments"]["description"],
         )
         self.assertIn(
-            "resolve from the QGIS package root",
+            "each array item is one argv entry",
+            start_properties["arguments"]["description"].casefold(),
+        )
+        self.assertIn(
+            "not from the MCP plugin directory",
+            start_properties["arguments"]["description"],
+        )
+        self.assertIn(
+            "service does not create them",
+            start_properties["arguments"]["description"],
+        )
+        self.assertIn(
+            "relative paths resolve from that package root",
             start_properties["working_directory"]["description"],
+        )
+        self.assertIn(
+            "prefer an existing absolute directory",
+            start_properties["working_directory"]["description"].casefold(),
         )
         self.assertIn(
             "non-empty stdin is rejected before job creation",

@@ -483,6 +483,7 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
         file_path.write_text("fixture", encoding="utf-8")
         self.assertEqual(registry.cleanup_filesystem(), [])
         self.assertFalse(registry.root.exists())
+        self.assertEqual(registry.cleanup_filesystem(), [])
 
     def test_registered_binary_output_prepares_its_parent_directory(self):
         registry = live.CleanupRegistry.create()
@@ -493,6 +494,169 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
         finally:
             errors = registry.cleanup_filesystem()
         self.assertEqual(errors, [])
+
+    def test_cleanup_registry_uses_workspace_base_and_preserves_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace_base = Path(temporary) / "workspace"
+            workspace_base.mkdir()
+            first = live.CleanupRegistry.create(workspace_base)
+            second = live.CleanupRegistry.create(workspace_base)
+            try:
+                self.assertEqual(first.workspace_base, workspace_base.resolve())
+                self.assertEqual(first.root.parent, workspace_base.resolve())
+                self.assertEqual(second.root.parent, workspace_base.resolve())
+                self.assertNotEqual(first.root, second.root)
+                first.reserve_output_path("nested/first.txt").write_text(
+                    "first",
+                    encoding="utf-8",
+                )
+                second.reserve_output_path("nested/second.txt").write_text(
+                    "second",
+                    encoding="utf-8",
+                )
+            finally:
+                first_errors = first.cleanup_filesystem()
+                second_errors = second.cleanup_filesystem()
+            self.assertEqual(first_errors, [])
+            self.assertEqual(second_errors, [])
+            self.assertTrue(workspace_base.is_dir())
+            self.assertEqual(list(workspace_base.iterdir()), [])
+
+    def test_runner_failure_cleans_workspace_run_but_preserves_base(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace_base = Path(temporary) / "workspace"
+            workspace_base.mkdir()
+            runner = live.AcceptanceRunner(
+                SYNTHETIC_TOKEN,
+                workspace_base=workspace_base,
+                output=lambda message: None,
+            )
+            run_root = runner.cleanup.root
+            runner.cleanup.reserve_output_path("fixture.txt").write_text(
+                "fixture",
+                encoding="utf-8",
+            )
+            with patch.object(
+                runner,
+                "_exercise_service",
+                side_effect=RuntimeError("synthetic acceptance failure"),
+            ):
+                with self.assertRaisesRegex(
+                    live.AcceptanceFailure,
+                    "synthetic acceptance failure",
+                ):
+                    runner.run()
+            self.assertFalse(run_root.exists())
+            self.assertTrue(workspace_base.is_dir())
+            self.assertEqual(list(workspace_base.iterdir()), [])
+
+    def test_cleanup_registry_rejects_invalid_workspace_paths_and_escape(self):
+        with self.assertRaisesRegex(live.AcceptanceFailure, "absolute path"):
+            live.CleanupRegistry.create("relative-workspace")
+        with self.assertRaisesRegex(live.AcceptanceFailure, "absolute paths"):
+            live.CleanupRegistry(Path("relative-run"), Path("relative-workspace"))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            workspace_file = parent / "workspace.txt"
+            workspace_file.write_text("not a directory", encoding="utf-8")
+            with self.assertRaisesRegex(live.AcceptanceFailure, "directory"):
+                live.CleanupRegistry.create(workspace_file)
+            with self.assertRaisesRegex(live.AcceptanceFailure, "does not exist"):
+                live.CleanupRegistry.create(parent / "missing")
+
+            workspace_base = parent / "workspace"
+            workspace_base.mkdir()
+            with self.assertRaisesRegex(live.AcceptanceFailure, "direct child"):
+                live.CleanupRegistry(workspace_base, workspace_base)
+            unowned_child = workspace_base / "unowned-child"
+            unowned_child.mkdir()
+            with self.assertRaisesRegex(live.AcceptanceFailure, "owned direct child"):
+                live.CleanupRegistry(unowned_child, workspace_base)
+
+            foreign_root = workspace_base / (
+                live.CleanupRegistry.RUN_ROOT_PREFIX + "foreign"
+            )
+            foreign_root.mkdir()
+            foreign_sentinel = foreign_root / "sentinel.txt"
+            foreign_sentinel.write_text("preserve", encoding="utf-8")
+            with self.assertRaisesRegex(
+                live.AcceptanceFailure,
+                "created through CleanupRegistry.create",
+            ):
+                live.CleanupRegistry(foreign_root, workspace_base)
+            self.assertEqual(
+                foreign_sentinel.read_text(encoding="utf-8"),
+                "preserve",
+            )
+
+            registry = live.CleanupRegistry.create(workspace_base)
+            try:
+                with self.assertRaisesRegex(live.AcceptanceFailure, "escapes"):
+                    registry.reserve_path("../outside.txt")
+            finally:
+                errors = registry.cleanup_filesystem()
+            self.assertEqual(errors, [])
+            self.assertTrue(workspace_base.is_dir())
+
+    def test_cleanup_registry_refuses_tampered_owner_marker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace_base = Path(temporary) / "workspace"
+            workspace_base.mkdir()
+            registry = live.CleanupRegistry.create(workspace_base)
+            sentinel = registry.reserve_output_path("sentinel.txt")
+            sentinel.write_text("preserve", encoding="utf-8")
+            owner_marker = registry.root / live.CleanupRegistry.OWNER_MARKER_NAME
+            owner_marker.write_text("tampered", encoding="utf-8")
+
+            errors = registry.cleanup_filesystem()
+
+            self.assertEqual(len(errors), 1)
+            self.assertIn("ownership validation failed", errors[0])
+            self.assertTrue(registry.root.is_dir())
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "preserve")
+
+    def test_cleanup_registry_compensates_for_owner_marker_creation_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace_base = Path(temporary) / "workspace"
+            workspace_base.mkdir()
+            with patch.object(
+                Path,
+                "open",
+                side_effect=OSError("synthetic marker failure"),
+            ):
+                with self.assertRaisesRegex(
+                    live.AcceptanceFailure,
+                    "ownership could not be established",
+                ):
+                    live.CleanupRegistry.create(workspace_base)
+
+            self.assertEqual(list(workspace_base.iterdir()), [])
+
+    def test_main_passes_workspace_base_to_acceptance_runner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace_base = str(Path(temporary).resolve())
+            configuration = live.ManagerAcceptanceConfig(
+                auth_token=SYNTHETIC_TOKEN,
+                security_mode="formal_restricted",
+                shell_enabled=False,
+            )
+            with patch.object(
+                live,
+                "load_manager_acceptance_config",
+                return_value=configuration,
+            ), patch.object(live, "AcceptanceRunner") as runner_class:
+                result = live.main(["--workspace-base", workspace_base])
+            self.assertEqual(result, 0)
+            runner_class.assert_called_once_with(
+                SYNTHETIC_TOKEN,
+                request_timeout_seconds=60.0,
+                job_timeout_seconds=120.0,
+                security_mode="formal_restricted",
+                shell_enabled=False,
+                workspace_base=workspace_base,
+            )
+            runner_class.return_value.run.assert_called_once_with()
 
     def test_general_processing_scenario_packages_the_registered_vector(self):
         runner = live.AcceptanceRunner(

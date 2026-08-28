@@ -905,16 +905,132 @@ class QgisBridgeTools:
         return {"zoomed": "full"}
 
     def zoom_to_selection(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsProject
+        from qgis.core import Qgis, QgsProject, QgsVectorLayer
 
+        canvas = self.iface.mapCanvas()
         layer = None
         if arguments.get("layer_id"):
             layer = QgsProject.instance().mapLayer(arguments["layer_id"])
             if not layer:
                 raise RuntimeError("Layer not found")
-        self.iface.mapCanvas().zoomToSelected(layer)
-        self.iface.mapCanvas().refresh()
-        return {"layer_id": layer.id() if layer else None}
+        elif hasattr(canvas, "currentLayer"):
+            layer = canvas.currentLayer()
+        if layer is None and hasattr(self.iface, "activeLayer"):
+            layer = self.iface.activeLayer()
+        if not isinstance(layer, QgsVectorLayer):
+            raise RuntimeError("A vector layer is required to zoom to a selection")
+
+        selected_count = int(layer.selectedFeatureCount())
+        if selected_count == 0:
+            raise RuntimeError("The vector layer has no selected features")
+
+        def extent_values(extent):
+            return [
+                float(extent.xMinimum()),
+                float(extent.yMinimum()),
+                float(extent.xMaximum()),
+                float(extent.yMaximum()),
+            ]
+
+        def values_changed(before, after):
+            return any(
+                not math.isclose(
+                    before_value,
+                    after_value,
+                    rel_tol=1e-9,
+                    abs_tol=1e-9,
+                )
+                for before_value, after_value in zip(before, after)
+            )
+
+        selection_extent = layer.boundingBoxOfSelected()
+        selection_extent_available = not selection_extent.isNull()
+        extent_before = extent_values(canvas.extent())
+        scale_before = float(canvas.scale())
+        magnification_before = float(canvas.magnificationFactor())
+        canvas.zoomToSelected(layer)
+        extent_after_native = extent_values(canvas.extent())
+        scale_after_native = float(canvas.scale())
+        magnification_after_native = float(canvas.magnificationFactor())
+
+        native_view_unchanged = (
+            not values_changed(extent_before, extent_after_native)
+            and math.isclose(
+                scale_before,
+                scale_after_native,
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            )
+            and math.isclose(
+                magnification_before,
+                magnification_after_native,
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            )
+        )
+
+        single_point_fallback = False
+        if (
+            selected_count == 1
+            and layer.geometryType() == Qgis.GeometryType.Point
+            and selection_extent_available
+            and selection_extent.isEmpty()
+            and native_view_unchanged
+        ):
+            center = canvas.mapSettings().layerToMapCoordinates(
+                layer,
+                selection_extent.center(),
+            )
+            canvas.zoomByFactor(canvas.zoomInFactor(), center)
+            single_point_fallback = True
+
+        canvas.refresh()
+        extent_after = extent_values(canvas.extent())
+        scale_after = float(canvas.scale())
+        magnification_after = float(canvas.magnificationFactor())
+        extent_changed = values_changed(extent_before, extent_after)
+        scale_changed = not math.isclose(
+            scale_before,
+            scale_after,
+            rel_tol=1e-9,
+            abs_tol=1e-9,
+        )
+        magnification_changed = not math.isclose(
+            magnification_before,
+            magnification_after,
+            rel_tol=1e-9,
+            abs_tol=1e-9,
+        )
+        if single_point_fallback:
+            zoom_mode = "single_point_zoom_in_fallback"
+        elif not selection_extent_available:
+            zoom_mode = "selection_extent_unavailable"
+        elif extent_changed and not scale_changed and not magnification_changed:
+            zoom_mode = "native_selection_recenter"
+        elif extent_changed or scale_changed or magnification_changed:
+            zoom_mode = "native_selection_extent"
+        else:
+            zoom_mode = "view_unchanged"
+        return {
+            "layer_id": layer.id(),
+            "selected_count": selected_count,
+            "selected_feature_count": selected_count,
+            "zoomed": extent_changed or scale_changed or magnification_changed,
+            "zoom_mode": zoom_mode,
+            "fallback_applied": single_point_fallback,
+            "scale_before": scale_before,
+            "scale_after": scale_after,
+            "scale_changed": scale_changed,
+            "magnification_before": magnification_before,
+            "magnification_after": magnification_after,
+            "magnification_changed": magnification_changed,
+            "scale_locked": bool(canvas.scaleLocked()),
+            "extent_before": extent_before,
+            "extent_after": extent_after,
+            "extent_changed": extent_changed,
+            "selection_extent_available": selection_extent_available,
+            "single_point_fallback": single_point_fallback,
+        }
 
     def zoom_to_last_extent(self, arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments

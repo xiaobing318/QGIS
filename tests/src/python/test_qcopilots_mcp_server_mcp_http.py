@@ -3321,6 +3321,17 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     listed_tools["update_vector_features"]["inputSchema"]["properties"]["updates"]["minItems"],
                     1,
                 )
+                update_item_schema = listed_tools["update_vector_features"][
+                    "inputSchema"
+                ]["properties"]["updates"]["items"]
+                self.assertNotIn("properties", update_item_schema)
+                self.assertEqual(
+                    [branch["required"] for branch in update_item_schema["anyOf"]],
+                    [
+                        ["feature_id", "attributes"],
+                        ["feature_id", "geometry_wkt"],
+                    ],
+                )
                 self.assertEqual(
                     listed_tools["start_vector_processing_algorithm"]["inputSchema"]["required"],
                     ["algorithm_id"],
@@ -3414,6 +3425,16 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         (
                             "update_vector_features",
                             {"layer_id": "scratch", "updates": [{"feature_id": 1, "attributes": {}}]},
+                            "$.updates[0] must match at least one anyOf alternative",
+                        ),
+                        (
+                            "update_vector_features",
+                            {
+                                "layer_id": "scratch",
+                                "updates": [
+                                    {"attributes": {"feature_id": 1, "name": "beta"}}
+                                ],
+                            },
                             "$.updates[0] must match at least one anyOf alternative",
                         ),
                         (

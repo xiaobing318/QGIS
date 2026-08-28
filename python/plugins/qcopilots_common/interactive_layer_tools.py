@@ -100,8 +100,10 @@ def build_interactive_layer_tools() -> list[McpTool]:
         _bridge_tool(
             "delete_vector_features",
             (
-                "Preview an exact vector feature deletion, then execute it once with "
-                "the returned short-lived confirmation_token."
+                "Preview an exact vector feature deletion, then stage it once with "
+                "the returned short-lived confirmation_token. A successful confirmed "
+                "deletion reports staged=true, committed=false and "
+                "requires_user_commit=true."
             ),
             _delete_vector_features_schema(),
             "interactive_layer_delete_features",

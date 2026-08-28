@@ -679,8 +679,60 @@ class JobRegistration:
 class CleanupRegistry:
     """Track acceptance-owned resources before they can acquire side effects."""
 
-    def __init__(self, root: Path):
-        self.root = root.resolve()
+    RUN_ROOT_PREFIX = "qcopilots-mcp-live-acceptance-"
+    OWNER_MARKER_NAME = ".qcopilots-mcp-live-acceptance-owner"
+
+    def __init__(
+        self,
+        root: Path,
+        workspace_base: Path,
+        *,
+        _ownership_token: str | None = None,
+    ):
+        requested_root = Path(root)
+        requested_base = Path(workspace_base)
+        if not requested_root.is_absolute() or not requested_base.is_absolute():
+            raise AcceptanceFailure(
+                "Acceptance workspace base and run root must be absolute paths"
+            )
+        self.workspace_base = requested_base.resolve(strict=True)
+        self.root = requested_root.resolve(strict=True)
+        if not self.workspace_base.is_dir():
+            raise AcceptanceFailure(
+                f"Acceptance workspace base must be a directory: {self.workspace_base}"
+            )
+        if not self.root.is_dir():
+            raise AcceptanceFailure(
+                f"Acceptance run root must be a directory: {self.root}"
+            )
+        if (
+            self.root == self.workspace_base
+            or self.root.parent != self.workspace_base
+            or not self.root.name.startswith(self.RUN_ROOT_PREFIX)
+        ):
+            raise AcceptanceFailure(
+                "Acceptance run root must be an owned direct child of the workspace base"
+            )
+        ownership_token = str(_ownership_token or "")
+        owner_marker = self.root / self.OWNER_MARKER_NAME
+        try:
+            marker_token = (
+                owner_marker.read_text(encoding="utf-8")
+                if not owner_marker.is_symlink() and owner_marker.is_file()
+                else ""
+            )
+        except OSError as err:
+            raise AcceptanceFailure(
+                "Acceptance run root ownership marker could not be read"
+            ) from err
+        if not ownership_token or marker_token != ownership_token:
+            raise AcceptanceFailure(
+                "Acceptance run root must be created through CleanupRegistry.create"
+            )
+        root_stat = self.root.stat()
+        self._root_identity = (root_stat.st_dev, root_stat.st_ino)
+        self._ownership_token = ownership_token
+        self._owner_marker = owner_marker
         self.paths: set[Path] = {self.root}
         self.layer_ids: set[str] = set()
         self.layer_names: set[str] = set()
@@ -691,9 +743,70 @@ class CleanupRegistry:
         self.requires_process_exit: dict[str, str] = {}
 
     @classmethod
-    def create(cls) -> "CleanupRegistry":
-        root = Path(tempfile.mkdtemp(prefix="qcopilots-mcp-live-acceptance-"))
-        return cls(root)
+    def create(
+        cls,
+        workspace_base: str | Path | None = None,
+    ) -> "CleanupRegistry":
+        if workspace_base is None:
+            root = Path(tempfile.mkdtemp(prefix=cls.RUN_ROOT_PREFIX))
+            base = root.resolve(strict=True).parent
+        else:
+            requested_base = Path(workspace_base)
+            if not requested_base.is_absolute():
+                raise AcceptanceFailure(
+                    "Acceptance workspace base must be an absolute path"
+                )
+            try:
+                base = requested_base.resolve(strict=True)
+            except (OSError, RuntimeError) as err:
+                raise AcceptanceFailure(
+                    f"Acceptance workspace base does not exist: {requested_base}"
+                ) from err
+            if not base.is_dir():
+                raise AcceptanceFailure(
+                    f"Acceptance workspace base must be a directory: {base}"
+                )
+            try:
+                root = Path(
+                    tempfile.mkdtemp(
+                        prefix=cls.RUN_ROOT_PREFIX,
+                        dir=str(base),
+                    )
+                )
+            except OSError as err:
+                raise AcceptanceFailure(
+                    f"Acceptance run root could not be created under: {base}"
+                ) from err
+        ownership_token = uuid.uuid4().hex
+        owner_marker = root / cls.OWNER_MARKER_NAME
+        root_stat = root.stat()
+        created_identity = (root_stat.st_dev, root_stat.st_ino)
+        try:
+            with owner_marker.open("x", encoding="utf-8") as marker_file:
+                marker_file.write(ownership_token)
+            return cls(
+                root,
+                base,
+                _ownership_token=ownership_token,
+            )
+        except Exception as err:
+            try:
+                current_stat = root.stat()
+                current_identity = (current_stat.st_dev, current_stat.st_ino)
+                if (
+                    current_identity == created_identity
+                    and not root.is_symlink()
+                    and root.parent == base
+                    and root.name.startswith(cls.RUN_ROOT_PREFIX)
+                ):
+                    shutil.rmtree(root)
+            except Exception:
+                pass
+            if isinstance(err, AcceptanceFailure):
+                raise
+            raise AcceptanceFailure(
+                "Acceptance run root ownership could not be established"
+            ) from err
 
     def reserve_path(self, relative_name: str) -> Path:
         candidate = (self.root / relative_name).resolve(strict=False)
@@ -765,6 +878,36 @@ class CleanupRegistry:
 
     def cleanup_filesystem(self) -> list[str]:
         errors = []
+        if (
+            self.root == self.workspace_base
+            or self.root.parent != self.workspace_base
+            or not self.root.name.startswith(self.RUN_ROOT_PREFIX)
+        ):
+            return [
+                "Temporary root removal refused because the run root is not an "
+                "owned direct child of the workspace base"
+            ]
+        if not self.root.exists():
+            return []
+        try:
+            root_stat = self.root.stat()
+            current_identity = (root_stat.st_dev, root_stat.st_ino)
+            marker_token = (
+                self._owner_marker.read_text(encoding="utf-8")
+                if not self.root.is_symlink()
+                and not self._owner_marker.is_symlink()
+                and self._owner_marker.is_file()
+                else ""
+            )
+        except OSError as err:
+            return [f"Temporary root ownership validation failed: {err}"]
+        if (
+            current_identity != self._root_identity
+            or marker_token != self._ownership_token
+        ):
+            return [
+                "Temporary root removal refused because ownership validation failed"
+            ]
         try:
             if self.root.exists():
                 shutil.rmtree(self.root)
@@ -789,6 +932,7 @@ class AcceptanceRunner:
         job_timeout_seconds: float = 120.0,
         security_mode: str = "compatible",
         shell_enabled: bool = True,
+        workspace_base: str | Path | None = None,
         output: Callable[[str], None] = print,
         opener: Callable[..., Any] = loopback_urlopen,
     ):
@@ -800,7 +944,7 @@ class AcceptanceRunner:
         self.output = output
         self._opener = opener
         self.ledger = CoverageLedger()
-        self.cleanup = CleanupRegistry.create()
+        self.cleanup = CleanupRegistry.create(workspace_base)
         self._service_by_port = {service.port: service for service in SERVICES}
 
     def run(self) -> None:
@@ -1425,11 +1569,26 @@ class AcceptanceRunner:
         self._success(session, "zoom_to_last_extent", {})
         self._success(session, "zoom_full", {})
         self._success(session, "zoom_to_last_extent", {})
-        self._success(
+        selection_zoom = self._success(
             session,
             "zoom_to_selection",
             {"layer_id": vector_layer_id},
         )
+        if int(selection_zoom.get("selected_feature_count", -1)) != 1:
+            raise AcceptanceFailure(
+                "zoom_to_selection did not report the selected feature"
+            )
+        if selection_zoom.get("zoomed") is not True or not any(
+            selection_zoom.get(field) is True
+            for field in (
+                "extent_changed",
+                "scale_changed",
+                "magnification_changed",
+            )
+        ):
+            raise AcceptanceFailure(
+                "zoom_to_selection did not produce an observable canvas change"
+            )
         self._success(session, "zoom_to_last_extent", {})
         self._success(
             session,
@@ -2082,6 +2241,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
         type=float,
         default=120.0,
     )
+    parser.add_argument(
+        "--workspace-base",
+        help=(
+            "Optional existing absolute directory under which a unique live "
+            "acceptance run directory is created. The base directory itself is "
+            "never removed."
+        ),
+    )
     return parser
 
 
@@ -2101,6 +2268,7 @@ def main(argv: list[str] | None = None) -> int:
             job_timeout_seconds=arguments.job_timeout_seconds,
             security_mode=configuration.security_mode,
             shell_enabled=configuration.shell_enabled,
+            workspace_base=arguments.workspace_base,
         ).run()
         return 0
     except Exception as err:

@@ -1435,6 +1435,13 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 descriptors["copy_file"]["inputSchema"]["required"],
                 ["source", "target", "expected_source_sha256"],
             )
+            command_schema = descriptors["exec_shell_command"]["inputSchema"][
+                "properties"
+            ]["command"]
+            self.assertEqual(command_schema["type"], "array")
+            self.assertEqual(command_schema["minItems"], 1)
+            self.assertEqual(command_schema["items"]["type"], "string")
+            self.assertEqual(command_schema["items"]["minLength"], 1)
             self.assertIn("include", descriptors["file_glob_search"]["inputSchema"]["properties"])
             self.assertIn("exclude", descriptors["file_glob_search"]["inputSchema"]["properties"])
             self.assertEqual(
@@ -1489,6 +1496,27 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 descriptors["get_datetime"]["inputSchema"]["properties"]["timezone"]["enum"],
                 ["local", "UTC"],
             )
+
+            for request_id, invalid_command in enumerate(
+                (
+                    "echo qcopilots",
+                    '["cmd.exe","/d","/c","echo qcopilots"]',
+                ),
+                start=10,
+            ):
+                response = server.handle_json_rpc(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "exec_shell_command",
+                            "arguments": {"command": invalid_command},
+                        },
+                    }
+                )
+                self.assertEqual(response["error"]["code"], -32602)
+                self.assertIn("$.command must be array", response["error"]["message"])
 
             self.assertEqual(
                 self._call_tool(

@@ -234,6 +234,52 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
             self.assertEqual(len(all_names), 71)
             self.assertEqual(len(all_names), len(set(all_names)))
 
+    def test_minimal_arguments_supports_any_of_array_items(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "updates": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "feature_id": {"type": "integer"},
+                                    "attributes": {
+                                        "type": "object",
+                                        "minProperties": 1,
+                                    },
+                                },
+                                "required": ["feature_id", "attributes"],
+                                "additionalProperties": False,
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "feature_id": {"type": "integer"},
+                                    "geometry_wkt": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                    },
+                                },
+                                "required": ["feature_id", "geometry_wkt"],
+                                "additionalProperties": False,
+                            },
+                        ]
+                    },
+                }
+            },
+            "required": ["updates"],
+            "additionalProperties": False,
+        }
+
+        arguments = _minimal_arguments(schema)
+
+        self.assertEqual(arguments["updates"][0]["feature_id"], 0)
+        self.assertTrue(arguments["updates"][0]["attributes"])
+
     def test_all_71_tool_contracts_complete_http_lifecycle_list_and_call(self):
         """Exercise every public wrapper over HTTP with a recording QGIS bridge.
 
@@ -542,6 +588,52 @@ def _minimal_value(schema):
         return copy.deepcopy(schema["enum"][0])
     if "default" in schema:
         return copy.deepcopy(schema["default"])
+
+    alternatives = schema.get("oneOf") or schema.get("anyOf") or []
+    for alternative in alternatives:
+        if not isinstance(alternative, dict):
+            continue
+        candidate_schema = copy.deepcopy(schema)
+        candidate_schema.pop("oneOf", None)
+        candidate_schema.pop("anyOf", None)
+        shared_properties = candidate_schema.get("properties")
+        shared_required = candidate_schema.get("required")
+        alternative_properties = alternative.get("properties")
+        alternative_required = alternative.get("required")
+        candidate_schema.update(copy.deepcopy(alternative))
+        if isinstance(shared_properties, dict) and isinstance(
+            alternative_properties, dict
+        ):
+            candidate_schema["properties"] = {
+                **shared_properties,
+                **alternative_properties,
+            }
+        if isinstance(shared_required, list) and isinstance(
+            alternative_required, list
+        ):
+            candidate_schema["required"] = list(
+                dict.fromkeys([*shared_required, *alternative_required])
+            )
+        try:
+            candidate = _minimal_value(candidate_schema)
+        except AssertionError:
+            continue
+
+        from qcopilots_common.mcp_http import ToolError, _validate_tool_arguments
+
+        wrapper_schema = {
+            "type": "object",
+            "properties": {"value": schema},
+            "required": ["value"],
+            "additionalProperties": False,
+        }
+        try:
+            _validate_tool_arguments({"value": candidate}, wrapper_schema)
+        except ToolError:
+            continue
+        return candidate
+    if alternatives:
+        raise AssertionError(f"Could not construct valid value for schema: {schema}")
 
     schema_type = schema.get("type")
     if isinstance(schema_type, list):
