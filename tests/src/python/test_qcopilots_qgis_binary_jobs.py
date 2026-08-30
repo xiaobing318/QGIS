@@ -845,9 +845,13 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
         )
         self.manager._dependencies["filesystem_policy"] = policy
         original_is_symlink = Path.is_symlink
+        package_root = self.fixture.root.resolve()
 
         def simulated_root_replacement(candidate):
-            return candidate == self.fixture.root or original_is_symlink(candidate)
+            return (
+                candidate.resolve(strict=False) == package_root
+                or original_is_symlink(candidate)
+            )
 
         with mock.patch.object(Path, "is_symlink", simulated_root_replacement):
             with self.assertRaisesRegex(
@@ -1358,9 +1362,13 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
         )
         self.manager._dependencies["filesystem_policy"] = policy
         original_is_symlink = Path.is_symlink
+        resolved_reparse_directory = reparse_directory.resolve()
 
         def simulated_reparse(candidate):
-            return candidate == reparse_directory or original_is_symlink(candidate)
+            return (
+                candidate.resolve(strict=False) == resolved_reparse_directory
+                or original_is_symlink(candidate)
+            )
 
         with mock.patch.object(Path, "is_symlink", simulated_reparse):
             with self.assertRaisesRegex(PermissionError, "symbolic links and junctions"):
@@ -1617,7 +1625,7 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
 
         self.assertEqual(queued["state"], "queued")
         self.assertIn(
-            ("compatible-runs", "write", self.fixture.root),
+            ("compatible-runs", "write", self.fixture.root.resolve()),
             resolve_calls,
         )
         self.assertEqual(

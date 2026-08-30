@@ -2328,7 +2328,7 @@ class TestProcessingJobManager(unittest.TestCase):
             real_remove = processing_jobs._remove_processing_path
 
             def locked_first(path):
-                if Path(path) == first:
+                if Path(path).resolve(strict=False) == first.resolve(strict=False):
                     raise PermissionError("first target is locked")
                 real_remove(path)
 
@@ -2340,11 +2340,20 @@ class TestProcessingJobManager(unittest.TestCase):
                 )
 
             self.assertFalse(rollback["complete"])
-            self.assertIn(str(first), rollback["residual_paths"])
+            self.assertIn(
+                first.resolve(strict=False),
+                {
+                    Path(path).resolve(strict=False)
+                    for path in rollback["residual_paths"]
+                },
+            )
             self.assertEqual(first.read_bytes(), b"first-new")
             self.assertEqual(second.read_bytes(), b"second-original")
             second_backup = next(
-                item for item in receipt["backups"] if item["target"] == second
+                item
+                for item in receipt["backups"]
+                if Path(item["target"]).resolve(strict=False)
+                == second.resolve(strict=False)
             )
             self.assertEqual(
                 processing_jobs._processing_version_signature(
@@ -2482,9 +2491,22 @@ class TestProcessingJobManager(unittest.TestCase):
                 {"job_id": started["job_id"], "category": "vector"}
             )
             self.assertEqual(succeeded["state"], "succeeded")
-            self.assertEqual(succeeded["result"]["OUTPUT"], str(target))
-            self.assertEqual(observed["results"]["OUTPUT"], str(target))
-            self.assertEqual(observed["destinations"], {str(target): details})
+            canonical_target = target.resolve(strict=False)
+            self.assertEqual(
+                Path(succeeded["result"]["OUTPUT"]).resolve(strict=False),
+                canonical_target,
+            )
+            self.assertEqual(
+                Path(observed["results"]["OUTPUT"]).resolve(strict=False),
+                canonical_target,
+            )
+            self.assertEqual(
+                {
+                    Path(path).resolve(strict=False): value
+                    for path, value in observed["destinations"].items()
+                },
+                {canonical_target: details},
+            )
             self.assertEqual(target.read_bytes(), b"staged output")
             self.assertFalse(staged.exists())
 

@@ -475,10 +475,11 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             path.write_bytes(b"original")
             expected = hashlib.sha256(b"original").hexdigest()
             real_replace = builtin_tools._replace_existing_file_with_backup
+
             def slow_atomic_replace(
                 target, replacement, backup, *, expected_sha256
             ):
-                self.assertEqual(Path(target), path)
+                self.assertEqual(Path(target).resolve(), path.resolve())
                 self.assertTrue(path.exists())
                 time.sleep(0.02)
                 result = real_replace(
@@ -1891,8 +1892,9 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                     policy.resolve_path(inside, access="read"),
                     inside.resolve(),
                 )
-            self.assertIn(read_root.resolve(), probed)
-            self.assertIn(read_root.parent.resolve(), probed)
+            resolved_probes = {candidate.resolve() for candidate in probed}
+            self.assertIn(read_root.resolve(), resolved_probes)
+            self.assertIn(read_root.parent.resolve(), resolved_probes)
 
     @unittest.skipUnless(os.name == "nt", "Windows mapped-drive policy")
     def test_filesystem_policy_rejects_mapped_network_drives_in_both_modes(self):

@@ -1115,7 +1115,10 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             self.assertEqual(canvas.calls, [(None, "JPEG")])
             self.assertEqual(target.read_bytes(), b"jpeg-image")
             self.assertEqual((root / "map.jgw").read_bytes(), b"world-file")
-            self.assertEqual(result["world_file_path"], str(root / "map.jgw"))
+            self.assertEqual(
+                Path(result["world_file_path"]).resolve(),
+                (root / "map.jgw").resolve(),
+            )
             self.assertTrue(result["cleanup"]["complete"])
             self.assertEqual(list(root.glob(".*.qcopilots-stage-*")), [])
 
