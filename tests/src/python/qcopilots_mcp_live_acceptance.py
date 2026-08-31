@@ -44,6 +44,7 @@ from urllib.request import (
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 MANAGER_CONFIG_FILENAME = "qcopilots_manager_config.json"
+MANAGER_CONFIG_VERSION = 1
 TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
 TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled"})
 
@@ -251,6 +252,15 @@ def load_manager_acceptance_config(
         raise AcceptanceFailure(
             f"Manager user configuration could not be read: {path}"
         ) from err
+    if not isinstance(document, dict):
+        raise AcceptanceFailure("Manager user configuration must be a JSON object")
+    config_version = document.get("config_version")
+    if type(config_version) is not int or config_version != MANAGER_CONFIG_VERSION:
+        raise AcceptanceFailure(
+            "Manager user configuration version is missing or unsupported. "
+            "Start the matching QGIS build once so the manager can generate "
+            "a current configuration."
+        )
     try:
         token = document["browser_access"]["auth_token"]
     except (KeyError, TypeError) as err:

@@ -17,9 +17,11 @@ import json
 import os
 import re
 import secrets
+import shutil
 import threading
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,18 @@ from qcopilots_common.service_id import is_safe_service_id
 
 
 MANAGER_CONFIG_FILENAME = "qcopilots_manager_config.json"
+MANAGER_CONFIG_VERSION = 1
+_INCOMPATIBLE_CONFIG_REASONS = frozenset(
+    {
+        "missing-version",
+        "older-version",
+        "future-version",
+        "invalid-version",
+        "invalid-json",
+        "non-object",
+        "invalid-structure",
+    }
+)
 DEFAULT_STARTUP_SERVICE_IDS = (
     "qcopilots.mcp_server_builtin_tools",
     "qcopilots.mcp_server_interactive_tools",
@@ -256,26 +270,109 @@ class ManagerConfigStore:
             )
 
         try:
-            user_config = _read_json_object(
-                self.user_path,
+            user_config, incompatibility_reason = _read_user_config(
+                self.user_path
+            )
+        except OSError as err:
+            _warning(
                 self.logger,
-                label="user manager config",
-                missing_is_error=False,
-                strict_existing=True,
+                "Could not read QCopilots manager user config %s (%s)",
+                self.user_path,
+                type(err).__name__,
             )
-        except (OSError, TypeError, ValueError) as err:
             return self._block_configuration(
-                f"User manager configuration is invalid: {err}"
+                "Could not read user manager configuration at "
+                f"{self.user_path}"
             )
-        self._user_config_usable = user_config is not None
-        if user_config is not None:
+
+        if user_config is None and incompatibility_reason is None:
+            return config
+
+        if incompatibility_reason is None:
             try:
                 config = validate_manager_config(user_config, "user config")
-            except (TypeError, ValueError) as err:
-                return self._block_configuration(
-                    f"User manager configuration is invalid: {err}"
+            except (TypeError, ValueError):
+                incompatibility_reason = "invalid-structure"
+            else:
+                self._user_config_usable = True
+                return config
+
+        return self._rebuild_incompatible_user_config(
+            config,
+            incompatibility_reason,
+        )
+
+    def _rebuild_incompatible_user_config(
+        self,
+        template: dict[str, Any],
+        reason: str,
+    ) -> dict[str, Any]:
+        """Archive an incompatible user file and rebuild it from *template*."""
+
+        backup_path = None
+        try:
+            backup_path = _archive_incompatible_user_config(
+                self.user_path,
+                reason,
+            )
+        except Exception as err:
+            _warning(
+                self.logger,
+                "Could not archive incompatible QCopilots manager user config "
+                "%s for reason %s (%s)",
+                self.user_path,
+                reason,
+                type(err).__name__,
+            )
+            return self._block_configuration(
+                "Could not archive incompatible user manager configuration at "
+                f"{self.user_path}"
+            )
+
+        try:
+            replacement = copy.deepcopy(template)
+            replacement["browser_access"]["auth_token"] = secrets.token_urlsafe(32)
+            _atomic_write_json(self.user_path, replacement)
+        except Exception as err:
+            _warning(
+                self.logger,
+                "Could not rebuild QCopilots manager user config %s from the "
+                "packaged template (%s)",
+                self.user_path,
+                type(err).__name__,
+            )
+            try:
+                _restore_archived_user_config(backup_path, self.user_path)
+            except Exception as restore_err:
+                _warning(
+                    self.logger,
+                    "Could not restore archived QCopilots manager user config "
+                    "%s to %s (%s)",
+                    backup_path,
+                    self.user_path,
+                    type(restore_err).__name__,
                 )
-        return config
+                return self._block_configuration(
+                    "Could not rebuild incompatible user manager configuration "
+                    f"at {self.user_path}, and the original file could not be "
+                    "restored"
+                )
+            return self._block_configuration(
+                "Could not rebuild incompatible user manager configuration at "
+                f"{self.user_path}. The original file was restored"
+            )
+
+        self._user_config_usable = True
+        _warning(
+            self.logger,
+            "Archived incompatible QCopilots manager user config %s for reason "
+            "%s to %s and generated version %s from the packaged template",
+            self.user_path,
+            reason,
+            backup_path,
+            MANAGER_CONFIG_VERSION,
+        )
+        return replacement
 
     def _save_locked(self, *, changed: bool) -> ConfigSaveResult:
         if self._blocked_error:
@@ -328,6 +425,7 @@ class ManagerConfigStore:
 
 def _default_config() -> dict[str, Any]:
     return {
+        "config_version": MANAGER_CONFIG_VERSION,
         "default_startup": {
             "enabled": True,
             "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),
@@ -384,6 +482,7 @@ def validate_manager_config(value: Any, label: str = "manager config") -> dict[s
     if not isinstance(value, dict):
         raise TypeError(f"{label} must be a JSON object")
     required = {
+        "config_version",
         "default_startup",
         "service_network",
         "browser_access",
@@ -409,6 +508,14 @@ def validate_manager_config(value: Any, label: str = "manager config") -> dict[s
         not isinstance(value["$schema"], str) or not value["$schema"].strip()
     ):
         raise TypeError(f"{label}.$schema must be a non-empty string")
+    config_version = value["config_version"]
+    if type(config_version) is not int:
+        raise TypeError(f"{label}.config_version must be an integer")
+    if config_version != MANAGER_CONFIG_VERSION:
+        raise ValueError(
+            f"{label}.config_version {config_version} is unsupported. "
+            f"expected {MANAGER_CONFIG_VERSION}"
+        )
 
     startup = value["default_startup"]
     _require_object(startup, f"{label}.default_startup")
@@ -471,6 +578,7 @@ def validate_manager_config(value: Any, label: str = "manager config") -> dict[s
 
     security_policy = filesystem_policy_from_config(value["security_policy"]).to_config()
     return {
+        "config_version": MANAGER_CONFIG_VERSION,
         "default_startup": {
             "enabled": startup["enabled"],
             "service_ids": normalized_ids,
@@ -489,6 +597,63 @@ def validate_manager_config(value: Any, label: str = "manager config") -> dict[s
         },
         "security_policy": security_policy,
     }
+
+
+def _read_user_config(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    """Read an optional user file and classify incompatible data safely."""
+
+    try:
+        payload = path.read_bytes()
+    except FileNotFoundError:
+        return None, None
+
+    try:
+        value = json.loads(payload.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError):
+        return None, "invalid-json"
+    if not isinstance(value, dict):
+        return None, "non-object"
+    if "config_version" not in value:
+        return value, "missing-version"
+
+    version = value["config_version"]
+    if type(version) is not int or version < 0:
+        return value, "invalid-version"
+    if version < MANAGER_CONFIG_VERSION:
+        return value, "older-version"
+    if version > MANAGER_CONFIG_VERSION:
+        return value, "future-version"
+    return value, None
+
+
+def _archive_incompatible_user_config(path: Path, reason: str) -> Path:
+    """Move *path* to a uniquely named, byte-preserving backup."""
+
+    if reason not in _INCOMPATIBLE_CONFIG_REASONS:
+        raise ValueError("Unsupported incompatible configuration reason")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_path = path.with_name(
+        f"{path.name}.incompatible-{reason}-{timestamp}-{uuid.uuid4().hex}.bak"
+    )
+    os.replace(path, backup_path)
+    return backup_path
+
+
+def _restore_archived_user_config(backup_path: Path, user_path: Path) -> None:
+    """Atomically restore *user_path* while retaining the permanent backup."""
+
+    temp_path = user_path.with_name(
+        f".{user_path.name}.{os.getpid()}.{threading.get_ident()}."
+        f"{uuid.uuid4().hex}.restore.tmp"
+    )
+    try:
+        with backup_path.open("rb") as source, temp_path.open("xb") as target:
+            shutil.copyfileobj(source, target)
+            target.flush()
+            os.fsync(target.fileno())
+        os.replace(temp_path, user_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def _require_object(value: Any, label: str) -> None:

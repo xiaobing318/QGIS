@@ -5,11 +5,17 @@
   "description": "配置 QCopilots MCP Servers Manager 的管理器级启动和本机网络行为。每个字段提示都说明字段作用、候选值或取值范围，以及不同取值对服务排序、QGIS 初始化自动启动、端点展示和本机暴露面的影响。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["default_startup", "service_network", "browser_access", "security_policy"],
+  "required": ["config_version", "default_startup", "service_network", "browser_access", "security_policy"],
   "properties": {
     "$schema": {
       "type": "string",
       "description": "字段作用是告诉 JSON 编辑器使用哪个校验文件提供自动提示。候选值通常是 './qcopilots_manager_config.schema.json'，也可以是可访问的绝对 URI。使用相对路径便于插件整体迁移，使用错误路径不会改变管理器运行逻辑，但会让编辑器失去字段校验和提示。"
+    },
+    "config_version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1,
+      "description": "字段作用是标识管理器配置格式版本。当前唯一支持的候选值为整数 1。管理器只会把版本 1 按当前字段语义读取。无版本、较旧版本、未来版本或非法版本的用户配置都会先备份，再根据当前模板重新生成，避免程序误读或覆盖唯一留存的不兼容配置。"
     },
     "default_startup": {
       "type": "object",

@@ -72,6 +72,7 @@ def _manager_config(
     """Return one complete current-version manager configuration."""
 
     return {
+        "config_version": 1,
         "default_startup": {
             "enabled": startup_enabled,
             "service_ids": list(
@@ -555,6 +556,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             )
 
     def test_manager_config_schema_documents_default_start_behavior(self):
+        from qcopilots_mcp_servers_manager import config_store
+        import qcopilots_mcp_live_acceptance as live_acceptance
+
         manager_dir = _plugins_root() / "qcopilots_mcp_servers_manager"
         existing_candidates = [
             (manager_dir / config_name, manager_dir / schema_name)
@@ -577,6 +581,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         _assert_json_matches_schema(self, config, schema, "manager config")
         _assert_schema_descriptions_cover_prompting_contract(self, schema, "manager config")
         self.assertIn("default_startup", schema["properties"])
+        self.assertIn("config_version", schema["properties"])
         self.assertIn("service_network", schema["properties"])
         self.assertIn("browser_access", schema["properties"])
         self.assertIn("security_policy", schema["properties"])
@@ -584,12 +589,34 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertEqual(
             set(schema["required"]),
             {
+                "config_version",
                 "default_startup",
                 "service_network",
                 "browser_access",
                 "security_policy",
             },
         )
+
+        runtime_version = config_store.MANAGER_CONFIG_VERSION
+        config_version = schema["properties"]["config_version"]
+        self.assertEqual(runtime_version, 1)
+        self.assertEqual(config_store._default_config()["config_version"], runtime_version)
+        self.assertEqual(live_acceptance.MANAGER_CONFIG_VERSION, runtime_version)
+        self.assertEqual(config["config_version"], runtime_version)
+        self.assertEqual(config_version["type"], "integer")
+        self.assertEqual(config_version["const"], runtime_version)
+        self.assertEqual(config_version["default"], runtime_version)
+        for invalid_version in (True, "1", 0, 2):
+            with self.subTest(config_version=invalid_version):
+                candidate = json.loads(json.dumps(config))
+                candidate["config_version"] = invalid_version
+                self.assertTrue(
+                    _json_schema_errors(
+                        candidate,
+                        schema,
+                        f"manager config version {invalid_version!r}",
+                    )
+                )
 
         default_start = schema["properties"]["default_startup"]
         self.assertEqual(set(default_start["required"]), {"enabled", "service_ids"})
@@ -762,7 +789,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 ],
             )
             template_path.write_text(json.dumps(template_config), encoding="utf-8")
-            user_path.write_text(json.dumps(user_config), encoding="utf-8")
+            original_bytes = json.dumps(user_config, indent=1).encode("utf-8")
+            user_path.write_bytes(original_bytes)
             logger = _FakeLogger()
 
             store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
@@ -770,11 +798,354 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(store.snapshot(), user_config)
             self.assertFalse(store.blocked)
             self.assertEqual(logger.messages, [])
+            self.assertEqual(user_path.read_bytes(), original_bytes)
+            self.assertEqual(
+                list(user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")),
+                [],
+            )
 
-    def test_manager_config_store_corrupt_user_blocks_without_overwriting(self):
+    def test_manager_config_store_recovers_all_incompatible_user_configs(self):
         from qcopilots_mcp_servers_manager.config_store import (
-            DEFAULT_STARTUP_SERVICE_IDS,
+            MANAGER_CONFIG_VERSION,
             ManagerConfigStore,
+            is_valid_browser_auth_token,
+        )
+
+        user_token = "U" * 43
+        template_token = "T" * 43
+        missing_version = _manager_config(
+            startup_enabled=False,
+            service_ids=["qcopilots.user_selection"],
+            auth_token=user_token,
+        )
+        missing_version.pop("config_version")
+        older_version = _manager_config(
+            startup_enabled=False,
+            service_ids=["qcopilots.user_selection"],
+            auth_token=user_token,
+        )
+        older_version["config_version"] = 0
+        future_version = _manager_config(auth_token=user_token)
+        future_version["config_version"] = MANAGER_CONFIG_VERSION + 1
+        invalid_structure = _manager_config(auth_token=user_token)
+        invalid_structure["default_startup"]["enabled"] = "yes"
+        old_shape = {
+            "default_startup": {
+                "enabled": False,
+                "service_ids": ["qcopilots.old_selection"],
+            },
+            "service_network": {
+                "enabled": False,
+                "host": "127.0.0.1",
+                "advertised_host": "127.0.0.1",
+                "cors_origins": [],
+            },
+        }
+        invalid_json = (
+            b'{"config_version":1,"do_not_log":"'
+            + user_token.encode("ascii")
+            + b'"'
+        )
+        cases = [
+            (
+                "missing-version",
+                json.dumps(missing_version).encode("utf-8"),
+                "missing-version",
+            ),
+            (
+                "older-version",
+                json.dumps(older_version).encode("utf-8"),
+                "older-version",
+            ),
+            (
+                "old-shape",
+                json.dumps(old_shape).encode("utf-8"),
+                "missing-version",
+            ),
+            (
+                "future-version",
+                json.dumps(future_version).encode("utf-8"),
+                "future-version",
+            ),
+            (
+                "boolean-version",
+                json.dumps(
+                    {**_manager_config(auth_token=user_token), "config_version": True}
+                ).encode("utf-8"),
+                "invalid-version",
+            ),
+            (
+                "string-version",
+                json.dumps(
+                    {**_manager_config(auth_token=user_token), "config_version": "1"}
+                ).encode("utf-8"),
+                "invalid-version",
+            ),
+            (
+                "float-version",
+                json.dumps(
+                    {**_manager_config(auth_token=user_token), "config_version": 1.0}
+                ).encode("utf-8"),
+                "invalid-version",
+            ),
+            (
+                "negative-version",
+                json.dumps(
+                    {**_manager_config(auth_token=user_token), "config_version": -1}
+                ).encode("utf-8"),
+                "invalid-version",
+            ),
+            ("invalid-json", invalid_json, "invalid-json"),
+            (
+                "non-object",
+                json.dumps(["do-not-log", user_token]).encode("utf-8"),
+                "non-object",
+            ),
+            (
+                "invalid-structure",
+                json.dumps(invalid_structure).encode("utf-8"),
+                "invalid-structure",
+            ),
+        ]
+
+        for case_name, original_bytes, reason in cases:
+            with self.subTest(case=case_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                template_path = root / "plugin" / "qcopilots_manager_config.json"
+                user_path = root / "user" / "qcopilots_manager_config.json"
+                template_path.parent.mkdir(parents=True)
+                user_path.parent.mkdir(parents=True)
+                template_config = _manager_config(
+                    service_ids=["qcopilots.current_template"],
+                    service_network_enabled=True,
+                    browser_enabled=False,
+                    auth_token=template_token,
+                )
+                template_path.write_text(json.dumps(template_config), encoding="utf-8")
+                user_path.write_bytes(original_bytes)
+                logger = _FakeLogger()
+
+                store = ManagerConfigStore(
+                    template_path,
+                    logger=logger,
+                    user_path=user_path,
+                )
+
+                self.assertFalse(store.blocked)
+                snapshot = store.snapshot()
+                self.assertEqual(
+                    snapshot["config_version"],
+                    MANAGER_CONFIG_VERSION,
+                )
+                self.assertEqual(
+                    snapshot["default_startup"]["service_ids"],
+                    ["qcopilots.current_template"],
+                )
+                self.assertTrue(snapshot["service_network"]["enabled"])
+                self.assertFalse(snapshot["browser_access"]["enabled"])
+                self.assertTrue(
+                    is_valid_browser_auth_token(
+                        snapshot["browser_access"]["auth_token"]
+                    )
+                )
+                self.assertNotEqual(
+                    snapshot["browser_access"]["auth_token"],
+                    user_token,
+                )
+                self.assertNotEqual(
+                    snapshot["browser_access"]["auth_token"],
+                    template_token,
+                )
+                self.assertEqual(
+                    json.loads(user_path.read_text(encoding="utf-8")),
+                    snapshot,
+                )
+                backups = list(
+                    user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")
+                )
+                self.assertEqual(len(backups), 1)
+                self.assertRegex(
+                    backups[0].name,
+                    rf"^{re.escape(user_path.name)}\.incompatible-{reason}-"
+                    r"\d{8}T\d{6}Z-[0-9a-f]{32}\.bak$",
+                )
+                self.assertEqual(backups[0].read_bytes(), original_bytes)
+                logged = repr(logger.messages)
+                self.assertNotIn(user_token, logged)
+                self.assertNotIn(template_token, logged)
+
+    def test_manager_config_store_rejects_invalid_packaged_templates(self):
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        missing_version = _manager_config()
+        missing_version.pop("config_version")
+        future_version = _manager_config()
+        future_version["config_version"] = 2
+        invalid_structure = _manager_config()
+        invalid_structure["browser_access"] = "enabled"
+        cases = (
+            ("missing-version", json.dumps(missing_version).encode("utf-8")),
+            ("future-version", json.dumps(future_version).encode("utf-8")),
+            ("invalid-version", json.dumps({**_manager_config(), "config_version": True}).encode("utf-8")),
+            ("invalid-json", b"{"),
+            ("non-object", b"[]"),
+            ("invalid-structure", json.dumps(invalid_structure).encode("utf-8")),
+        )
+
+        for case_name, template_bytes in cases:
+            with self.subTest(case=case_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                template_path = root / "template.json"
+                user_path = root / "user.json"
+                template_path.write_bytes(template_bytes)
+                original_user = json.dumps(_manager_config(auth_token="P" * 43)).encode(
+                    "utf-8"
+                )
+                user_path.write_bytes(original_user)
+
+                store = ManagerConfigStore(template_path, user_path=user_path)
+
+                self.assertTrue(store.blocked)
+                self.assertIn("Packaged", store.blocked_error)
+                self.assertEqual(user_path.read_bytes(), original_user)
+                self.assertEqual(
+                    list(user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")),
+                    [],
+                )
+
+    def test_manager_config_store_archive_failure_preserves_original_and_blocks(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "user.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            incompatible = _manager_config()
+            incompatible.pop("config_version")
+            original_bytes = json.dumps(incompatible).encode("utf-8")
+            user_path.write_bytes(original_bytes)
+
+            with mock.patch.object(
+                config_store,
+                "_archive_incompatible_user_config",
+                side_effect=PermissionError("read only"),
+            ):
+                store = config_store.ManagerConfigStore(
+                    template_path,
+                    user_path=user_path,
+                )
+
+            self.assertTrue(store.blocked)
+            self.assertEqual(user_path.read_bytes(), original_bytes)
+            self.assertEqual(
+                list(user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")),
+                [],
+            )
+
+    def test_manager_config_store_rebuild_failure_restores_original_and_blocks(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "user.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            incompatible = _manager_config()
+            incompatible.pop("config_version")
+            original_bytes = json.dumps(incompatible).encode("utf-8")
+            user_path.write_bytes(original_bytes)
+
+            with mock.patch.object(
+                config_store,
+                "_atomic_write_json",
+                side_effect=OSError("disk full"),
+            ):
+                store = config_store.ManagerConfigStore(
+                    template_path,
+                    user_path=user_path,
+                )
+
+            self.assertTrue(store.blocked)
+            self.assertEqual(user_path.read_bytes(), original_bytes)
+            backups = list(
+                user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original_bytes)
+
+    def test_manager_config_store_token_generation_failure_restores_original(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "user.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            incompatible = _manager_config()
+            incompatible.pop("config_version")
+            original_bytes = json.dumps(incompatible).encode("utf-8")
+            user_path.write_bytes(original_bytes)
+
+            with mock.patch.object(
+                config_store.secrets,
+                "token_urlsafe",
+                side_effect=RuntimeError("secure random unavailable"),
+            ):
+                store = config_store.ManagerConfigStore(
+                    template_path,
+                    user_path=user_path,
+                )
+
+            self.assertTrue(store.blocked)
+            self.assertEqual(user_path.read_bytes(), original_bytes)
+            backups = list(
+                user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original_bytes)
+
+    def test_manager_config_store_restore_failure_keeps_backup_and_blocks(self):
+        import qcopilots_mcp_servers_manager.config_store as config_store
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "template.json"
+            user_path = root / "user.json"
+            template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
+            incompatible = _manager_config()
+            incompatible.pop("config_version")
+            original_bytes = json.dumps(incompatible).encode("utf-8")
+            user_path.write_bytes(original_bytes)
+
+            with (
+                mock.patch.object(
+                    config_store,
+                    "_atomic_write_json",
+                    side_effect=OSError("disk full"),
+                ),
+                mock.patch.object(
+                    config_store,
+                    "_restore_archived_user_config",
+                    side_effect=OSError("restore denied"),
+                ),
+            ):
+                store = config_store.ManagerConfigStore(
+                    template_path,
+                    user_path=user_path,
+                )
+
+            self.assertTrue(store.blocked)
+            backups = list(
+                user_path.parent.glob(f"{user_path.name}.incompatible-*.bak")
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original_bytes)
+
+    def test_manager_config_store_corrupt_user_recovers_and_reload_is_stable(self):
+        from qcopilots_mcp_servers_manager.config_store import (
+            ManagerConfigStore,
+            is_valid_browser_auth_token,
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -784,6 +1155,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             template_path.parent.mkdir(parents=True)
             user_path.parent.mkdir(parents=True)
             template_config = {
+                "config_version": 1,
                 "default_startup": {
                     "enabled": False,
                     "service_ids": ["qcopilots.template_only"],
@@ -809,22 +1181,41 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
             store = ManagerConfigStore(template_path, logger=logger, user_path=user_path)
 
-            self.assertTrue(store.blocked)
+            self.assertFalse(store.blocked)
             self.assertFalse(store.snapshot()["default_startup"]["enabled"])
-            self.assertEqual(store.snapshot()["default_startup"]["service_ids"], [])
-            self.assertFalse(store.snapshot()["browser_access"]["enabled"])
-            _assert_logger_warning_contains(self, logger, "Could not read")
+            self.assertEqual(
+                store.snapshot()["default_startup"]["service_ids"],
+                ["qcopilots.template_only"],
+            )
+            self.assertTrue(store.snapshot()["browser_access"]["enabled"])
+            first_token = store.snapshot()["browser_access"]["auth_token"]
+            self.assertTrue(is_valid_browser_auth_token(first_token))
+            self.assertIn("invalid-json", repr(logger.messages))
             result = store.add_startup_service("qcopilots.template_only")
-            self.assertFalse(result.saved)
+            self.assertTrue(result.saved)
             self.assertFalse(result.changed)
             self.assertFalse(result.dirty)
-            self.assertIn("invalid", result.error.lower())
-            self.assertEqual(user_path.read_bytes(), corrupt_bytes)
+            backups = list(
+                user_path.parent.glob(
+                    f"{user_path.name}.incompatible-invalid-json-*.bak"
+                )
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), corrupt_bytes)
 
-            user_path.write_text(json.dumps(template_config), encoding="utf-8")
-            self.assertEqual(store.reload(), template_config)
+            reloaded = store.reload()
             self.assertFalse(store.blocked)
-            self.assertTrue(store.save().saved)
+            self.assertEqual(reloaded["browser_access"]["auth_token"], first_token)
+            self.assertEqual(
+                len(
+                    list(
+                        user_path.parent.glob(
+                            f"{user_path.name}.incompatible-*.bak"
+                        )
+                    )
+                ),
+                1,
+            )
 
             missing_template_store = ManagerConfigStore(
                 root / "missing-template.json",
@@ -836,10 +1227,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(missing_snapshot["default_startup"]["service_ids"], [])
             self.assertIs(missing_snapshot["service_network"]["enabled"], False)
 
-    def test_manager_config_store_invalid_present_security_policy_fails_closed(self):
+    def test_manager_config_store_recovers_invalid_current_version_structures(self):
         from qcopilots_mcp_servers_manager.config_store import (
             DEFAULT_SECURITY_POLICY,
             ManagerConfigStore,
+            is_valid_browser_auth_token,
         )
 
         invalid_policies = (
@@ -872,55 +1264,68 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 },
             },
         )
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            template_path = root / "template.json"
-            user_path = root / "user.json"
-            template_path.write_text(
-                json.dumps(_manager_config()),
-                encoding="utf-8",
+        invalid_payloads = [
+            (f"security-policy-{index}", _manager_config(security_policy=policy))
+            for index, policy in enumerate(invalid_policies)
+        ]
+        invalid_payloads.append(
+            (
+                "partial",
+                {
+                    "config_version": 1,
+                    "default_startup": _manager_config()["default_startup"],
+                },
             )
-            for invalid_policy in invalid_policies:
-                with self.subTest(invalid_policy=invalid_policy):
-                    payload = _manager_config(security_policy=invalid_policy)
-                    user_path.write_text(json.dumps(payload), encoding="utf-8")
-                    original = user_path.read_bytes()
-                    store = ManagerConfigStore(
-                        template_path,
-                        user_path=user_path,
+        )
+        for obsolete_field in ("read_roots", "write_roots", "workspace_roots"):
+            obsolete_config = _manager_config()
+            obsolete_config[obsolete_field] = []
+            invalid_payloads.append((f"obsolete-{obsolete_field}", obsolete_config))
+        unknown_config = _manager_config()
+        unknown_config["future_unknown"] = True
+        invalid_payloads.append(("unknown-field", unknown_config))
+
+        for case_name, payload in invalid_payloads:
+            with self.subTest(case=case_name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                template_path = root / "template.json"
+                user_path = root / "user.json"
+                template_config = _manager_config(
+                    startup_enabled=False,
+                    service_ids=["qcopilots.template_reset"],
+                )
+                template_path.write_text(
+                    json.dumps(template_config),
+                    encoding="utf-8",
+                )
+                original = json.dumps(payload).encode("utf-8")
+                user_path.write_bytes(original)
+
+                store = ManagerConfigStore(template_path, user_path=user_path)
+
+                self.assertFalse(store.blocked)
+                snapshot = store.snapshot()
+                self.assertFalse(snapshot["default_startup"]["enabled"])
+                self.assertEqual(
+                    snapshot["default_startup"]["service_ids"],
+                    ["qcopilots.template_reset"],
+                )
+                self.assertTrue(
+                    is_valid_browser_auth_token(
+                        snapshot["browser_access"]["auth_token"]
                     )
-                    self.assertTrue(store.blocked)
-                    if isinstance(invalid_policy, dict) and set(invalid_policy).intersection(
-                        {"read_roots", "write_roots"}
-                    ):
-                        self.assertIn("obsolete", store.blocked_error)
-                    self.assertFalse(store.save().saved)
-                    self.assertEqual(user_path.read_bytes(), original)
-
-            partial = {"default_startup": _manager_config()["default_startup"]}
-            user_path.write_text(json.dumps(partial), encoding="utf-8")
-            store = ManagerConfigStore(template_path, user_path=user_path)
-            self.assertTrue(store.blocked)
-            self.assertIn("missing required fields", store.blocked_error)
-
-            for obsolete_field in ("read_roots", "write_roots", "workspace_roots"):
-                with self.subTest(top_level_obsolete_field=obsolete_field):
-                    obsolete_config = _manager_config()
-                    obsolete_config[obsolete_field] = []
-                    user_path.write_text(
-                        json.dumps(obsolete_config),
-                        encoding="utf-8",
+                )
+                backups = list(
+                    user_path.parent.glob(
+                        f"{user_path.name}.incompatible-invalid-structure-*.bak"
                     )
-                    store = ManagerConfigStore(template_path, user_path=user_path)
-                    self.assertTrue(store.blocked)
-                    self.assertIn("obsolete", store.blocked_error)
-
-            unknown_config = _manager_config()
-            unknown_config["future_unknown"] = True
-            user_path.write_text(json.dumps(unknown_config), encoding="utf-8")
-            store = ManagerConfigStore(template_path, user_path=user_path)
-            self.assertTrue(store.blocked)
-            self.assertIn("unsupported fields", store.blocked_error)
+                )
+                self.assertEqual(len(backups), 1)
+                self.assertEqual(backups[0].read_bytes(), original)
+                self.assertEqual(
+                    json.loads(user_path.read_text(encoding="utf-8")),
+                    snapshot,
+                )
 
     def test_manager_config_store_existing_corrupt_template_fails_closed(self):
         from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
@@ -941,26 +1346,124 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(template_path.read_bytes(), original)
             self.assertFalse(user_path.exists())
 
-    def test_manager_plugin_does_not_start_bridge_when_config_is_blocked(self):
+    def test_manager_plugin_reports_blocked_config_once_without_starting(self):
         _install_manager_import_stubs()
 
         from qcopilots_mcp_servers_manager.plugin import (
             QCopilotsMCPServersManagerPlugin,
         )
 
+        secret = "do-not-show-this-token"
+        user_path = Path(r"C:\Users\tester\QCopilots\qcopilots_manager_config.json")
+
+        class MessageBar:
+            def __init__(self):
+                self.critical_messages = []
+
+            def pushCritical(self, title, message):
+                self.critical_messages.append((title, message))
+
+        class BlockedIface:
+            def __init__(self):
+                self.message_bar = MessageBar()
+                self.toolbar_actions = []
+
+            def messageBar(self):
+                return self.message_bar
+
+            def addToolBarIcon(self, action):
+                self.toolbar_actions.append(action)
+
         plugin = object.__new__(QCopilotsMCPServersManagerPlugin)
         plugin._initialized = False
+        plugin._config_blocked_notice_shown = False
         plugin._config_store = types.SimpleNamespace(
             blocked=True,
-            blocked_error="invalid user configuration",
+            blocked_error=f"invalid user configuration {secret}",
+            user_path=user_path,
         )
         plugin.logger = _FakeLogger()
         plugin.bridge = mock.Mock()
+        plugin.iface = BlockedIface()
+        plugin.action = None
 
+        plugin.initGui()
         plugin.initGui()
 
         plugin.bridge.start.assert_not_called()
         self.assertFalse(plugin._initialized)
+        self.assertIsNone(plugin.action)
+        self.assertEqual(plugin.iface.toolbar_actions, [])
+        self.assertEqual(len(plugin.iface.message_bar.critical_messages), 1)
+        title, message = plugin.iface.message_bar.critical_messages[0]
+        self.assertIn("QCopilots", title)
+        self.assertIn("could not be loaded safely", message)
+        self.assertIn(str(user_path), message)
+        self.assertNotIn(secret, title)
+        self.assertNotIn(secret, message)
+
+    def test_manager_plugin_registers_action_after_config_recovery(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            template_path = root / "plugin" / "qcopilots_manager_config.json"
+            user_path = root / "user" / "qcopilots_manager_config.json"
+            template_path.parent.mkdir(parents=True)
+            user_path.parent.mkdir(parents=True)
+            template_path.write_text(
+                json.dumps(_manager_config(startup_enabled=False)),
+                encoding="utf-8",
+            )
+            incompatible = _manager_config(startup_enabled=True)
+            incompatible.pop("config_version")
+            original_bytes = json.dumps(incompatible).encode("utf-8")
+            user_path.write_bytes(original_bytes)
+            store = ManagerConfigStore(template_path, user_path=user_path)
+            self.assertFalse(store.blocked)
+
+            plugin = object.__new__(
+                manager_plugin.QCopilotsMCPServersManagerPlugin
+            )
+            _prime_manager_runtime(plugin)
+            plugin._config_blocked_notice_shown = False
+            plugin._config_store = store
+            plugin.iface = _FakeIface()
+            plugin.action = None
+            plugin.icon_path = root / "icon.svg"
+            plugin.bridge = _FakeBridge()
+            plugin._bridge_auth_token = "bridge-session-token"
+            plugin._connect_about_to_quit = lambda: None
+            startup_calls = []
+            plugin._discover_and_start_default_services = lambda: startup_calls.append(
+                True
+            )
+
+            with (
+                mock.patch.object(manager_plugin, "QAction", _FakeAction),
+                mock.patch.object(
+                    manager_plugin,
+                    "add_qcopilots_menu_action",
+                ) as add_menu_action,
+            ):
+                plugin.initGui()
+
+            self.assertTrue(plugin._initialized)
+            self.assertTrue(plugin.bridge.started)
+            self.assertIsInstance(plugin.action, _FakeAction)
+            add_menu_action.assert_called_once_with(plugin.iface, plugin.action)
+            self.assertEqual(plugin.iface.toolbar_actions, [plugin.action])
+            self.assertEqual(startup_calls, [True])
+            backups = list(
+                user_path.parent.glob(
+                    f"{user_path.name}.incompatible-missing-version-*.bak"
+                )
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original_bytes)
 
     def test_manager_config_store_does_not_rewrite_service_selection(self):
         from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
@@ -1139,8 +1642,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 any(token in str(args) for _message, args in logger.messages)
             )
 
-    def test_manager_config_store_rejects_invalid_browser_token_without_logging_it(self):
-        from qcopilots_mcp_servers_manager.config_store import ManagerConfigStore
+    def test_manager_config_store_recovers_invalid_browser_token_without_logging_it(self):
+        from qcopilots_mcp_servers_manager.config_store import (
+            ManagerConfigStore,
+            is_valid_browser_auth_token,
+        )
 
         invalid_token = "do-not-log-this-invalid-token!"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1149,10 +1655,10 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             user_path = root / "user" / "qcopilots_manager_config.json"
             template_path.write_text(json.dumps(_manager_config()), encoding="utf-8")
             user_path.parent.mkdir(parents=True)
-            user_path.write_text(
-                json.dumps(_manager_config(auth_token=invalid_token)),
-                encoding="utf-8",
+            original = json.dumps(_manager_config(auth_token=invalid_token)).encode(
+                "utf-8"
             )
+            user_path.write_bytes(original)
             logger = _FakeLogger()
 
             store = ManagerConfigStore(
@@ -1162,10 +1668,19 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             )
             result = store.ensure_browser_auth_token()
 
-            self.assertTrue(store.blocked)
-            self.assertFalse(result.saved)
+            self.assertFalse(store.blocked)
+            self.assertTrue(result.saved)
             self.assertFalse(result.changed)
-            self.assertIn("auth_token is invalid", result.error)
+            regenerated = store.snapshot()["browser_access"]["auth_token"]
+            self.assertTrue(is_valid_browser_auth_token(regenerated))
+            self.assertNotEqual(regenerated, invalid_token)
+            backups = list(
+                user_path.parent.glob(
+                    f"{user_path.name}.incompatible-invalid-structure-*.bak"
+                )
+            )
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original)
             self.assertFalse(
                 any(invalid_token in message for message, _args in logger.messages)
             )
@@ -4521,6 +5036,8 @@ def _json_schema_errors(value, schema, context):
 
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{context}: {value!r} not in enum")
+    if "const" in schema and value != schema["const"]:
+        errors.append(f"{context}: {value!r} does not equal const {schema['const']!r}")
 
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:

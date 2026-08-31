@@ -1,5 +1,6 @@
 {
   "$schema": "./qcopilots_manager_config.schema.json",
+  "config_version": 1,
   "default_startup": {
     "enabled": true,
     "service_ids": [

@@ -61,6 +61,7 @@ from qcopilots_common.security_policy import (
 )
 from .config_store import (
     ConfigSaveResult,
+    MANAGER_CONFIG_VERSION,
     ManagerConfigStore,
     is_valid_browser_auth_token,
     validate_manager_config,
@@ -298,6 +299,7 @@ class QCopilotsMCPServersManagerPlugin:
             "qcopilots.manager",
             service_log_file("qcopilots.manager"),
         )
+        self._config_blocked_notice_shown = False
         self._config_store = ManagerConfigStore(
             Path(__file__).with_name("qcopilots_manager_config.json"),
             self.logger,
@@ -335,6 +337,7 @@ class QCopilotsMCPServersManagerPlugin:
                 "is blocked: %s",
                 getattr(config_store, "blocked_error", "invalid configuration"),
             )
+            self._show_config_blocked_message(config_store)
             return
         self._shutdown_started = False
         self._shutdown_completed = False
@@ -373,6 +376,37 @@ class QCopilotsMCPServersManagerPlugin:
             add_qcopilots_menu_action(self.iface, self.action)
             self.iface.addToolBarIcon(self.action)
         self._discover_and_start_default_services()
+
+    def _show_config_blocked_message(self, config_store) -> None:
+        """Report a blocked configuration once without weakening fail-closed startup."""
+
+        if getattr(self, "_config_blocked_notice_shown", False):
+            return
+        self._config_blocked_notice_shown = True
+
+        user_path = getattr(config_store, "user_path", "unknown")
+        message = self.tr(
+            "The manager configuration could not be loaded safely. "
+            "QCopilots MCP services remain disabled. Configuration file: {path}"
+        ).format(path=user_path)
+        try:
+            message_bar_getter = getattr(self.iface, "messageBar", None)
+            if not callable(message_bar_getter):
+                raise RuntimeError("QGIS message bar is unavailable")
+            message_bar = message_bar_getter()
+            push_critical = getattr(message_bar, "pushCritical", None)
+            if not callable(push_critical):
+                raise RuntimeError("QGIS critical message API is unavailable")
+            push_critical(self.tr("QCopilots configuration error"), message)
+        except Exception as err:
+            logger = getattr(self, "logger", None)
+            warning = getattr(logger, "warning", None)
+            if callable(warning):
+                warning(
+                    "Could not display the blocked QCopilots manager configuration "
+                    "message: %s",
+                    err,
+                )
 
     def unload(self):
         if not self._shutdown_services():
@@ -1460,6 +1494,7 @@ def _default_browser_access_config() -> dict[str, Any]:
 
 def _default_manager_config() -> dict[str, Any]:
     return {
+        "config_version": MANAGER_CONFIG_VERSION,
         "default_startup": {
             "enabled": True,
             "service_ids": list(DEFAULT_STARTUP_SERVICE_IDS),

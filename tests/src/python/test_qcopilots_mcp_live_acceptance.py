@@ -277,6 +277,7 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             config.write_text(
                 json.dumps(
                     {
+                        "config_version": live.MANAGER_CONFIG_VERSION,
                         "browser_access": {"auth_token": SYNTHETIC_TOKEN},
                         "security_policy": {
                             "mode": "formal_restricted",
@@ -318,6 +319,31 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             self.assertNotIn(SYNTHETIC_TOKEN, formatted)
             self.assertIsNone(caught.exception.__cause__)
             self.assertIsNone(caught.exception.__context__)
+
+    def test_manager_config_loading_rejects_missing_or_unsupported_version(self):
+        missing = object()
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / live.MANAGER_CONFIG_FILENAME
+            for config_version in (missing, True, "1", 1.0, -1, 0, 2):
+                with self.subTest(config_version=config_version):
+                    document = {
+                        "browser_access": {"auth_token": SYNTHETIC_TOKEN},
+                        "security_policy": {
+                            "mode": "formal_restricted",
+                            "shell": {"enabled": False},
+                        },
+                    }
+                    if config_version is not missing:
+                        document["config_version"] = config_version
+                    config.write_text(json.dumps(document), encoding="utf-8")
+
+                    with self.assertRaisesRegex(
+                        live.AcceptanceFailure,
+                        "version",
+                    ) as caught:
+                        live.load_manager_acceptance_config(config)
+
+                    self.assertNotIn(SYNTHETIC_TOKEN, str(caught.exception))
 
     def test_mcp_session_runs_complete_lifecycle_and_business_rejection(self):
         opener = _ProtocolOpener()
