@@ -8,6 +8,7 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_PLUGIN_SUBDI
 
 add_subdirectory(topology)
 add_subdirectory(geometry_checker)
+add_subdirectory(mtpl)
 
 if (WITH_QTWEBENGINE)
   add_subdirectory(qcopilots)

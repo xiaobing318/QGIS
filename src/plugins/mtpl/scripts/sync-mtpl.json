@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "sourceRoots": [
+    "include/mtpl",
+    "src"
+  ],
+  "generatedFiles": [
+    {
+      "path": "include/mtpl/export.h",
+      "generator": "qgis-static-export-header"
+    }
+  ]
+}
