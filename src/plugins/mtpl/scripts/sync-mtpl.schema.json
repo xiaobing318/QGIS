@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./sync-mtpl.schema.json",
+  "title": "MTPL 源码同步配置",
+  "description": "作用：定义从 MTPL Git 提交复制源码以及生成 QGIS 专用文件的同步策略。候选：按照 properties 和 $defs 声明的四个字段及约束填写。影响：修改 sourceRoots 或 generatedFiles 会改变 vendor/mtpl 的最终文件集合，非法配置会在同步前被拒绝。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "sourceRoots",
+    "generatedFiles"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "./sync-mtpl.schema.json",
+      "description": "作用：将 sync-mtpl.json 与对应的 JSON Schema 关联。候选：当前唯一值是 ./sync-mtpl.schema.json。影响：修改或删除后脚本会拒绝配置，编辑器也可能失去字段补全和即时提示。"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "作用：声明同步配置的格式版本。候选：当前唯一值是整数 2。影响：其他值表示脚本不支持的配置格式并会在同步前被拒绝。"
+    },
+    "sourceRoots": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/safeRelativePath"
+      },
+      "examples": [
+        [
+          "include/mtpl",
+          "src"
+        ]
+      ],
+      "description": "作用：指定从 MTPL Git 提交同步的源码根目录。候选：填写一个或多个互不重复且互不重叠的安全 POSIX 相对目录路径，当前使用 include/mtpl 和 src。影响：增删路径会改变进入插件的上游文件集合，重复、重叠、不存在或不安全的路径会使同步失败。"
+    },
+    "generatedFiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/generatedFile"
+      },
+      "description": "作用：声明由同步工具生成而不是从 MTPL 提交复制的文件。候选：填写空数组或若干包含 path 和 generator 的对象。影响：每个对象会在目标位置生成文件，目标碰撞或未知生成器会使同步失败，空数组不会生成额外文件。"
+    }
+  },
+  "$defs": {
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:[^/]*[^/ .])(?:/(?:[^/]*[^/ .]))*$",
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "[\\\\:\\u0000-\\u001F]"
+          },
+          {
+            "pattern": "(?:^|/)(?:[cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(?:\\.|/|$)"
+          }
+        ]
+      },
+      "description": "作用：表示同步边界内的文件或目录路径。候选：使用正斜杠的规范非空 POSIX 相对路径，不含绝对路径、反斜杠、冒号、控制字符、空分段、点分段、段尾空格或点以及 Windows 保留名称。影响：路径决定读取或生成的位置，不安全值会被 Schema 或脚本拒绝。"
+    },
+    "generatedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "generator"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/safeRelativePath",
+          "examples": [
+            "include/mtpl/export.h"
+          ],
+          "description": "作用：指定生成文件在 vendor/mtpl 内的目标路径。候选：填写一个安全 POSIX 相对文件路径，当前使用 include/mtpl/export.h。影响：不同路径会改变生成文件位置，与上游文件或其他生成目标碰撞时同步失败。"
+        },
+        "generator": {
+          "type": "string",
+          "enum": [
+            "qgis-static-export-header"
+          ],
+          "description": "作用：选择创建目标文件的内置生成器。候选：当前仅支持 qgis-static-export-header。影响：该值会生成 QGIS 私有静态 MTPL 导出头，其他值不受支持并会使同步失败。"
+        }
+      },
+      "description": "作用：定义一个由 QGIS 同步工具本地生成的文件。候选：填写同时包含安全 path 和受支持 generator 的对象。影响：该对象会新增一个生成目标，字段缺失、多余或目标冲突都会使配置被拒绝。"
+    }
+  }
+}

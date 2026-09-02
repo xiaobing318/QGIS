@@ -1,4 +1,5 @@
 {
+  "$schema": "./sync-mtpl.schema.json",
   "schemaVersion": 2,
   "sourceRoots": [
     "include/mtpl",

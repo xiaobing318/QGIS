@@ -42,6 +42,7 @@ from typing import NoReturn
 
 SCRIPT_PATH = Path(__file__).resolve()
 CONFIG_PATH = SCRIPT_PATH.with_suffix(".json")
+CONFIG_SCHEMA_REFERENCE = "./sync-mtpl.schema.json"
 PLUGIN_ROOT = SCRIPT_PATH.parent.parent
 VENDOR_ROOT = PLUGIN_ROOT / "vendor" / "mtpl"
 
@@ -95,7 +96,8 @@ def checked_relative_path(value: object, *, field: str) -> str:
 
     posix_path = PurePosixPath(value)
     if (
-        posix_path.is_absolute()
+        not posix_path.parts
+        or posix_path.is_absolute()
         or "\\" in value
         or posix_path.as_posix() != value
         or any(part in ("", ".", "..") for part in posix_path.parts)
@@ -141,7 +143,7 @@ def read_config() -> SyncConfig:
 
     if not isinstance(raw, dict):
         fail(f"{CONFIG_PATH.name} must contain a JSON object")
-    expected_fields = {"schemaVersion", "sourceRoots", "generatedFiles"}
+    expected_fields = {"$schema", "schemaVersion", "sourceRoots", "generatedFiles"}
     if set(raw) != expected_fields:
         missing = sorted(expected_fields - set(raw))
         unexpected = sorted(set(raw) - expected_fields)
@@ -151,6 +153,11 @@ def read_config() -> SyncConfig:
         if unexpected:
             details.append("unexpected " + ", ".join(unexpected))
         fail(f"invalid {CONFIG_PATH.name} fields: {', '.join(details)}")
+    if raw["$schema"] != CONFIG_SCHEMA_REFERENCE:
+        fail(
+            f"{CONFIG_PATH.name} $schema must be "
+            f"{CONFIG_SCHEMA_REFERENCE!r}"
+        )
     if type(raw["schemaVersion"]) is not int or raw["schemaVersion"] != 2:
         fail(f"unsupported {CONFIG_PATH.name} schema")
 
