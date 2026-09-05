@@ -17,6 +17,7 @@
 #include "qgsmtplpackageoperation.h"
 #include "qgsmtplpackageservice.h"
 #include "qgsmtplstatus.h"
+#include "qgsmtpltileset.h"
 
 #include <mtpl/mtpl.h>
 #include "sfp_internal.h"
@@ -28,6 +29,8 @@
 #include <QEvent>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QPointer>
@@ -1148,7 +1151,8 @@ namespace
                                 expectedStorage, cancelCheck, noProgress, 0.0, 100.0, error );
   }
 
-  bool scanTileTree( const QString &rootPath, QList<TileSource> &tiles, QString &error )
+  bool scanTileTree( const QString &rootPath, QList<TileSource> &tiles, QString &error,
+                     const QgsMtpl::PackageOperations::CancelCheck &cancelCheck )
   {
     const QFileInfo rootInfo( rootPath );
     if ( !rootInfo.isDir() || isReparseOrLink( rootInfo ) )
@@ -1170,6 +1174,11 @@ namespace
                            QDirIterator::Subdirectories );
     while ( iterator.hasNext() )
     {
+      if ( canceled( cancelCheck ) )
+      {
+        error = QStringLiteral( "数据包操作已取消。" );
+        return false;
+      }
       iterator.next();
       const QFileInfo info = iterator.fileInfo();
       if ( isReparseOrLink( info ) )
@@ -1247,6 +1256,55 @@ namespace
     return true;
   }
 
+  bool validatePtpTileMatrix( const QList<TileSource> &tiles,
+                              int tileSize,
+                              const QByteArray &metadata,
+                              const QgsMtpl::PackageOperations::CancelCheck &cancelCheck,
+                              QString &error )
+  {
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson( metadata, &parseError );
+    if ( parseError.error != QJsonParseError::NoError || !document.isObject() )
+    {
+      error = QStringLiteral( "创建 PTP 时，切片元数据必须是有效的 JSON 对象。" );
+      return false;
+    }
+    // scanTileTree sorts by zoom. Check before narrowing the stored uint32 coordinate.
+    if ( tiles.constLast().coordinate.zoom > static_cast<uint32_t>( std::numeric_limits<int>::max() ) )
+    {
+      error = QStringLiteral( "PTP 瓦片“%1”的缩放级别超出支持范围。" ).arg( tiles.constLast().path );
+      return false;
+    }
+    QgsMtpl::TileMatrixDefinition matrix;
+    if ( !QgsMtpl::TileMatrixDefinition::fromMetadata(
+           document.object().toVariantMap(), tileSize,
+           static_cast<int>( tiles.constFirst().coordinate.zoom ),
+           static_cast<int>( tiles.constLast().coordinate.zoom ), matrix, &error ) )
+    {
+      error = QStringLiteral( "无法创建 PTP，瓦片矩阵无效：%1" ).arg( error );
+      return false;
+    }
+    for ( const TileSource &tile : tiles )
+    {
+      if ( canceled( cancelCheck ) )
+      {
+        error = QStringLiteral( "数据包操作已取消。" );
+        return false;
+      }
+      bool widthOk = false;
+      bool heightOk = false;
+      const quint64 width = matrix.matrixWidth( static_cast<int>( tile.coordinate.zoom ), &widthOk );
+      const quint64 height = matrix.matrixHeight( static_cast<int>( tile.coordinate.zoom ), &heightOk );
+      if ( !widthOk || !heightOk || tile.coordinate.x >= width || tile.coordinate.y >= height )
+      {
+        error = QStringLiteral( "PTP 瓦片“%1”的坐标超出第 %2 级瓦片矩阵。" )
+                  .arg( tile.path ).arg( tile.coordinate.zoom );
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool verifyCreatedTilePackage( const QString &packagePath,
                                  QgsMtpl::PackageFormat format,
                                  int expectedTileSize,
@@ -1314,6 +1372,19 @@ namespace
            ( packageData.size != 0 && memcmp( packageData.data, sourceData.constData(), packageData.size ) != 0 ) )
         ok = false;
       mtpl_buffer_release( &packageData );
+      if ( ok && format == QgsMtpl::PackageFormat::Ptp )
+      {
+        if ( canceled( cancelCheck ) )
+        {
+          error = QStringLiteral( "数据包操作已取消。" );
+          ok = false;
+        }
+        else if ( !QgsMtplPackageService::validatePtpImagePayload( sourceData, expectedTileSize, error ) )
+        {
+          error = QStringLiteral( "PTP 瓦片“%1”无法用于影像数据集：%2" ).arg( tile.path, error );
+          ok = false;
+        }
+      }
     }
 
     mtpl_buffer_release( &metadata );
@@ -1356,7 +1427,11 @@ namespace
     }
 
     QList<TileSource> tiles;
-    if ( !scanTileTree( sourcePath, tiles, error ) )
+    const QgsMtpl::PackageOperations::CancelCheck scanCancelCheck = format == QgsMtpl::PackageFormat::Ptp
+      ? cancelCheck : QgsMtpl::PackageOperations::CancelCheck();
+    if ( !scanTileTree( sourcePath, tiles, error, scanCancelCheck ) )
+      return false;
+    if ( format == QgsMtpl::PackageFormat::Ptp && !validatePtpTileMatrix( tiles, tileSize, metadata, cancelCheck, error ) )
       return false;
 
     const CryptoContext crypto( keys );
@@ -1407,6 +1482,43 @@ namespace
       return false;
     }
     return verifyCreatedTilePackage( destinationPath, format, tileSize, metadata, tiles, keys, mode, cancelCheck, error );
+  }
+
+  bool verifyCreatedPtpDataset( const QString &stagingPath,
+                                const QString &finalPath,
+                                const QgsMtpl::CryptoKeys &keys,
+                                const QgsMtpl::PackageOperations::CancelCheck &cancelCheck,
+                                QString &error )
+  {
+    QgsMtpl::PackageDescriptor descriptor;
+    if ( !QgsMtplPackageService::probePackage(
+           stagingPath, descriptor, error, keys, true,
+           keys.isValid() ? QgsMtpl::CredentialSource::Explicit : QgsMtpl::CredentialSource::None,
+           cancelCheck, {}, false, true ) )
+      return false;
+    if ( canceled( cancelCheck ) )
+    {
+      error = QStringLiteral( "数据包操作已取消。" );
+      return false;
+    }
+    // Validate the name the user will load, not the staging file's temporary name.
+    descriptor.path = finalPath;
+    descriptor.displayName = QFileInfo( finalPath ).completeBaseName();
+    QgsMtpl::TileDatasetBuildOptions options;
+    QgsMtpl::TilePackageAddress address;
+    if ( QgsMtpl::TileResolver::parsePackageFileName( QFileInfo( finalPath ).fileName(), address ) )
+    {
+      options.availableRules = QgsMtpl::PartitionRuleStore::loadAllRules( &error );
+      if ( !error.isEmpty() )
+        return false;
+    }
+    const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset( finalPath, false, { descriptor }, options );
+    if ( !dataset.ok() )
+    {
+      error = QStringLiteral( "创建的 PTP 无法作为影像数据集加载：%1" ).arg( dataset.errorString() );
+      return false;
+    }
+    return true;
   }
 
   bool scanSfpDirectory( const QString &rootPath, QList<SfpSource> &files, QString &error )
@@ -2271,6 +2383,8 @@ QgsMtpl::PackageOperationResult QgsMtpl::PackageOperations::execute( const Packa
     else
       created = createTilePackage( request.sourcePath, stagingPath, format, request.tileSize,
                                    request.metadata, outputKeys, outputMode, effectiveCancelCheck, result.error );
+    if ( created && format == PackageFormat::Ptp )
+      created = verifyCreatedPtpDataset( stagingPath, finalPath, outputKeys, effectiveCancelCheck, result.error );
     if ( !created )
     {
       removeStagingFile( stagingPath, result.error );

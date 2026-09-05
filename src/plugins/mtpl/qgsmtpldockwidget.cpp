@@ -16,6 +16,7 @@
 #include "qgsmtpldockwidget.h"
 
 #include "qgsmtplpathwidget.h"
+#include "qgsmtplpartitionrulewidget.h"
 #include "dialogs/qgsmtplpackagetoolswidget.h"
 #include "qgsmtplpluginlayer.h"
 #include "services/qgsmtplcredentialstore.h"
@@ -26,6 +27,7 @@
 
 #include "qgslayertree.h"
 #include "qgsapplication.h"
+#include "qgscollapsiblegroupbox.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsmaplayer.h"
 #include "qgspasswordlineedit.h"
@@ -33,6 +35,7 @@
 #include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
 #include "qgsprovidersublayerdetails.h"
+#include "qgssettings.h"
 #include "qgsvectorlayer.h"
 
 #include <mtpl/mtpl.h>
@@ -44,6 +47,7 @@ extern "C"
 #include <QAbstractItemView>
 #include <QAction>
 #include <QBuffer>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -205,6 +209,19 @@ bool isWithinRoot( const QString &rootPath, const QString &candidatePath )
 #else
   return candidate.startsWith( root, Qt::CaseSensitive );
 #endif
+}
+
+QString localPathKey( const QString &path )
+{
+  const QFileInfo info( path );
+  QString key = info.canonicalFilePath();
+  if ( key.isEmpty() )
+    key = info.absoluteFilePath();
+  key = QDir::cleanPath( QDir::fromNativeSeparators( key ) );
+#ifdef Q_OS_WIN
+  key = key.toCaseFolded();
+#endif
+  return key;
 }
 
 bool isReservedWindowsName( const QString &component )
@@ -468,19 +485,29 @@ QString readyStateText( const QgsMtpl::PackageDescriptor &descriptor )
   {
     case QgsMtpl::ReadinessState::PlainReady:
     case QgsMtpl::ReadinessState::KeyVerified:
-      return QObject::tr( "就绪" );
+      return QObject::tr( "可读取" );
     case QgsMtpl::ReadinessState::KeyRequired:
       return QObject::tr( "需要密钥" );
     case QgsMtpl::ReadinessState::KeyRejectedOrCorrupt:
-      return QObject::tr( "密钥不匹配，或数据包已损坏" );
+      return QObject::tr( "不可读取" );
     case QgsMtpl::ReadinessState::UnverifiableEmpty:
-      return QObject::tr( "空包，无法验证密钥" );
+      return descriptor.isCredentialedEmptyPtp() ? QObject::tr( "可读取" )
+                                                 : QObject::tr( "需要密钥" );
     case QgsMtpl::ReadinessState::Unsupported:
-      return QObject::tr( "不支持" );
     case QgsMtpl::ReadinessState::Unreadable:
-      return QObject::tr( "无法读取" );
+      return QObject::tr( "不可读取" );
   }
-  return QObject::tr( "无法读取" );
+  return QObject::tr( "不可读取" );
+}
+
+Qt::CheckState ptpDatasetCheckState( const QgsMtpl::PackageDescriptor &descriptor )
+{
+  if ( descriptor.isReady() || descriptor.isCredentialedEmptyPtp() )
+    return Qt::Checked;
+  if ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired ||
+       descriptor.readiness == QgsMtpl::ReadinessState::UnverifiableEmpty )
+    return Qt::PartiallyChecked;
+  return Qt::Unchecked;
 }
 
 QString payloadTypeText( QgsMtpl::PayloadType payload )
@@ -625,6 +652,7 @@ struct MtplTileLoadInput
   QgsMtpl::PackageDescriptor descriptor;
   QgsMtpl::CryptoKeys suppliedKeys;
   QgsMtpl::CredentialSource suppliedSource = QgsMtpl::CredentialSource::None;
+  bool aggregatePtp = false;
 };
 
 struct MtplSfpLoadInput
@@ -638,6 +666,8 @@ struct MtplLoadPreparationRequest
 {
   QList<MtplTileLoadInput> tilePackages;
   QList<MtplSfpLoadInput> sfpEntries;
+  QgsMtpl::TileDatasetDescriptor tileDataset;
+  bool hasTileDataset = false;
   QString cacheRoot;
 };
 
@@ -647,6 +677,7 @@ struct MtplPreparedTile
   QgsMtpl::CryptoKeys keys;
   QString error;
   bool ok = false;
+  bool aggregatePtp = false;
 };
 
 struct MtplPreparedSfpEntry
@@ -663,6 +694,8 @@ struct MtplLoadPreparationResult
 {
   QList<MtplPreparedTile> tilePackages;
   QList<MtplPreparedSfpEntry> sfpEntries;
+  QgsMtpl::TileDatasetDescriptor tileDataset;
+  bool hasTileDataset = false;
   bool canceled = false;
 };
 
@@ -1383,6 +1416,8 @@ class MtplLoadPreparationTask final : public QgsTask
   protected:
     bool run() override
     {
+      mResult.tileDataset = mRequest.tileDataset;
+      mResult.hasTileDataset = mRequest.hasTileDataset;
       const qsizetype totalItems = mRequest.tilePackages.size() + mRequest.sfpEntries.size();
       if ( totalItems == 0 )
         return true;
@@ -1401,6 +1436,7 @@ class MtplLoadPreparationTask final : public QgsTask
 
         MtplPreparedTile prepared;
         prepared.descriptor = input.descriptor;
+        prepared.aggregatePtp = input.aggregatePtp;
         if ( !packageStampMatches( input.descriptor ) )
         {
           prepared.error = QStringLiteral( "%1 在选择后发生变化，请重新检查。" )
@@ -1416,8 +1452,10 @@ class MtplLoadPreparationTask final : public QgsTask
           [this]() { return isCanceled(); }, itemProgress );
         if ( isCanceled() || freshProbe.canceled )
           return finishCanceled();
-        if ( !freshProbe.ok || freshProbe.packages.size() != 1 ||
-             !freshProbe.packages.constFirst().isReady() ||
+        const bool freshPackageAccepted = freshProbe.ok && freshProbe.packages.size() == 1 &&
+          ( freshProbe.packages.constFirst().isReady() ||
+            ( input.aggregatePtp && freshProbe.packages.constFirst().isCredentialedEmptyPtp() ) );
+        if ( !freshPackageAccepted ||
              freshProbe.packages.constFirst().format != input.descriptor.format )
         {
           prepared.error = QStringLiteral( "%1 在检查后发生变化，或已不可用。" )
@@ -1574,37 +1612,78 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
 
   mPackagesTab = new QWidget( mTabs );
   mPackagesTab->setObjectName( QStringLiteral( "mtplPackagesTab" ) );
-  auto *layout = new QVBoxLayout( mPackagesTab );
+  auto *packagesTabLayout = new QVBoxLayout( mPackagesTab );
+  packagesTabLayout->setContentsMargins( 0, 0, 0, 0 );
+  auto *packagesScrollArea = new QScrollArea( mPackagesTab );
+  packagesScrollArea->setObjectName( QStringLiteral( "mtplPackagesScrollArea" ) );
+  packagesScrollArea->setWidgetResizable( true );
+  packagesScrollArea->setFrameShape( QFrame::NoFrame );
+  packagesScrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+  auto *packagesContent = new QWidget( packagesScrollArea );
+  packagesContent->setObjectName( QStringLiteral( "mtplPackagesContent" ) );
+  auto *layout = new QVBoxLayout( packagesContent );
   layout->setContentsMargins( 8, 8, 8, 8 );
   layout->setSpacing( 8 );
+  packagesScrollArea->setWidget( packagesContent );
+  packagesTabLayout->addWidget( packagesScrollArea );
 
-  auto *pathLabel = new QLabel( tr( "数据包或文件夹" ), content );
+  auto *pathLabel = new QLabel( tr( "数据包或文件夹" ), packagesContent );
   pathLabel->setObjectName( QStringLiteral( "mtplPathLabel" ) );
   layout->addWidget( pathLabel );
 
-  mPathWidget = new QgsMtplPathWidget( content );
+  mPathWidget = new QgsMtplPathWidget( packagesContent );
   pathLabel->setBuddy( mPathWidget );
   layout->addWidget( mPathWidget );
 
-  mSummaryLabel = new QLabel( tr( "请选择数据包或文件夹。" ), content );
+  auto *ruleGroup = new QgsCollapsibleGroupBoxBasic( tr( "PTP 分包规则（自动匹配，展开编辑）" ), packagesContent );
+  ruleGroup->setObjectName( QStringLiteral( "mtplPartitionRuleGroup" ) );
+  auto *ruleLayout = new QVBoxLayout( ruleGroup );
+  ruleLayout->setContentsMargins( 6, 6, 6, 6 );
+  mPartitionRuleWidget = new QgsMtplPartitionRuleWidget( ruleGroup );
+  mPartitionRuleWidget->setObjectName( QStringLiteral( "mtplPartitionRuleWidget" ) );
+  QList<QgsMtpl::PartitionRule> partitionRules = QgsMtpl::PartitionRuleStore::loadAllRules();
+  if ( partitionRules.isEmpty() )
+    partitionRules = QgsMtpl::PartitionRuleStore::builtInRules();
+  QgsSettings partitionSettings;
+  mPartitionRuleWidget->setRules(
+    partitionRules,
+    partitionSettings.value( QStringLiteral( "mtpl/partitionRules/lastSelectedId" ),
+                             QString(), QgsSettings::Section::Plugins ).toString() );
+  ruleLayout->addWidget( mPartitionRuleWidget );
+  ruleGroup->setCollapsed( true );
+  layout->addWidget( ruleGroup );
+
+  mSummaryLabel = new QLabel( tr( "请选择数据包或文件夹。" ), packagesContent );
   mSummaryLabel->setObjectName( QStringLiteral( "mtplSummaryLabel" ) );
   mSummaryLabel->setWordWrap( true );
   mSummaryLabel->setTextInteractionFlags( Qt::TextSelectableByMouse );
   auto *summaryLayout = new QHBoxLayout();
   summaryLayout->setContentsMargins( 0, 0, 0, 0 );
   summaryLayout->addWidget( mSummaryLabel, 1 );
-  mCancelProbeButton = new QPushButton( tr( "取消检查" ), content );
+  mCancelProbeButton = new QPushButton( tr( "取消检查" ), packagesContent );
   mCancelProbeButton->setObjectName( QStringLiteral( "mtplCancelProbeButton" ) );
   mCancelProbeButton->setAccessibleName( tr( "取消 MTPL 数据包检查" ) );
   mCancelProbeButton->hide();
   summaryLayout->addWidget( mCancelProbeButton );
   layout->addLayout( summaryLayout );
 
+  mTileDatasetSummaryGroup = new QGroupBox( tr( "数据集摘要" ), packagesContent );
+  mTileDatasetSummaryGroup->setObjectName( QStringLiteral( "mtplTileDatasetSummaryGroup" ) );
+  auto *tileDatasetSummaryLayout = new QVBoxLayout( mTileDatasetSummaryGroup );
+  tileDatasetSummaryLayout->setContentsMargins( 8, 6, 8, 6 );
+  mTileDatasetSummaryLabel = new QLabel( tr( "尚未识别 PTP 瓦片数据集。" ), mTileDatasetSummaryGroup );
+  mTileDatasetSummaryLabel->setObjectName( QStringLiteral( "mtplTileDatasetSummaryLabel" ) );
+  mTileDatasetSummaryLabel->setWordWrap( true );
+  mTileDatasetSummaryLabel->setTextFormat( Qt::PlainText );
+  mTileDatasetSummaryLabel->setTextInteractionFlags( Qt::TextSelectableByMouse );
+  tileDatasetSummaryLayout->addWidget( mTileDatasetSummaryLabel );
+  layout->addWidget( mTileDatasetSummaryGroup );
+
   auto *packagesHeading = new QHBoxLayout();
   packagesHeading->setContentsMargins( 0, 0, 0, 0 );
-  mPackagesLabel = new QLabel( tr( "数据包（0）" ), content );
+  mPackagesLabel = new QLabel( tr( "数据包（0）" ), packagesContent );
   mPackagesLabel->setObjectName( QStringLiteral( "mtplPackagesLabel" ) );
-  mBatchSummaryLabel = new QLabel( tr( "0 个可用" ), content );
+  mBatchSummaryLabel = new QLabel( tr( "0 个可读取" ), packagesContent );
   mBatchSummaryLabel->setObjectName( QStringLiteral( "mtplBatchSummaryLabel" ) );
   mBatchSummaryLabel->setAlignment( Qt::AlignRight | Qt::AlignVCenter );
   mBatchSummaryLabel->setTextInteractionFlags( Qt::TextSelectableByMouse );
@@ -1613,10 +1692,10 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   packagesHeading->addWidget( mBatchSummaryLabel );
   layout->addLayout( packagesHeading );
 
-  mPackageTree = new QTreeWidget( content );
+  mPackageTree = new QTreeWidget( packagesContent );
   mPackageTree->setObjectName( QStringLiteral( "mtplPackageTree" ) );
   mPackageTree->setColumnCount( 5 );
-  mPackageTree->setHeaderLabels( { tr( "名称" ), tr( "格式" ), tr( "加密状态" ), tr( "密钥状态" ), tr( "可用状态" ) } );
+  mPackageTree->setHeaderLabels( { tr( "名称" ), tr( "格式" ), tr( "加密状态" ), tr( "密钥状态" ), tr( "单包状态" ) } );
   mPackageTree->setTextElideMode( Qt::ElideMiddle );
   mPackageTree->header()->setStretchLastSection( true );
   mPackageTree->header()->setSectionResizeMode( 0, QHeaderView::Interactive );
@@ -1632,7 +1711,7 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   mPackageTree->setMinimumHeight( 180 );
   layout->addWidget( mPackageTree, 1 );
 
-  mKeyPanel = new QWidget( content );
+  mKeyPanel = new QWidget( packagesContent );
   mKeyPanel->setObjectName( QStringLiteral( "mtplKeyPanel" ) );
   auto *keyLayout = new QVBoxLayout( mKeyPanel );
   keyLayout->setContentsMargins( 0, 0, 0, 0 );
@@ -1645,7 +1724,7 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   keyLayout->addWidget( keyHeading );
   mKeyHelpLabel = new QLabel(
     tr( "未加密的数据无需填写，加密数据需要同时提供 Base64 私钥和小写十六进制设备密钥。"
-        "点击“保存并应用密钥”后，密钥将以未加密形式保存在 QGIS 设置中，请仅在可信设备上使用。" ),
+        "密钥默认仅用于当前会话。需要长期使用时，可明确选择由 QGIS 认证管理器加密保存。" ),
     mKeyPanel );
   mKeyHelpLabel->setObjectName( QStringLiteral( "mtplKeyHelpLabel" ) );
   mKeyHelpLabel->setWordWrap( true );
@@ -1678,28 +1757,57 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   localizePasswordVisibilityAction( mDeviceKeyEdit, tr( "显示设备密钥" ), tr( "隐藏设备密钥" ) );
   keyForm->addRow( tr( "私钥" ), mPrivateKeyEdit );
   keyForm->addRow( tr( "设备密钥" ), mDeviceKeyEdit );
+  mRememberKeysCheckBox = new QCheckBox( tr( "使用 QGIS 认证管理器安全记住这组密钥" ), mKeyPanel );
+  mRememberKeysCheckBox->setObjectName( QStringLiteral( "mtplRememberKeysCheckBox" ) );
+  mRememberKeysCheckBox->setChecked( false );
+  mRememberKeysCheckBox->setAccessibleDescription(
+    tr( "未选择时密钥只用于当前 QGIS 会话。选择后，仅在密钥通过数据包验证时加密保存。" ) );
+  keyForm->addRow( mRememberKeysCheckBox );
   keyLayout->addLayout( keyForm );
   auto *keyActions = new QHBoxLayout();
   keyActions->setContentsMargins( 0, 0, 0, 0 );
-  mApplyKeyButton = new QPushButton( tr( "保存并应用密钥" ), mKeyPanel );
+  mApplyKeyButton = new QPushButton( tr( "应用密钥" ), mKeyPanel );
   mApplyKeyButton->setObjectName( QStringLiteral( "mtplApplyRememberedKeyButton" ) );
-  mApplyKeyButton->setAccessibleName( tr( "保存并应用密钥" ) );
-  mApplyKeyButton->setAccessibleDescription( tr( "将输入值以未加密形式保存到 QGIS 设置，并应用于当前批次。" ) );
-  mClearKeyButton = new QPushButton( tr( "清除已记住的密钥" ), mKeyPanel );
+  mApplyKeyButton->setAccessibleName( tr( "应用 MTPL 密钥" ) );
+  mApplyKeyButton->setAccessibleDescription( tr( "验证输入并用于当前批次。只有明确选择安全记住时才会长期保存。" ) );
+  mClearKeyButton = new QPushButton( tr( "删除安全保存的密钥" ), mKeyPanel );
   mClearKeyButton->setObjectName( QStringLiteral( "mtplClearRememberedKeyButton" ) );
-  mClearKeyButton->setAccessibleName( tr( "清除已记住的密钥" ) );
-  mClearKeyButton->setAccessibleDescription( tr( "从 QGIS 设置和当前输入区域中删除已保存的密钥。" ) );
+  mClearKeyButton->setAccessibleName( tr( "删除安全保存的 MTPL 密钥" ) );
+  mClearKeyButton->setAccessibleDescription( tr( "从 QGIS 认证管理器删除密钥，并清空当前会话中的密钥。" ) );
   keyActions->addWidget( mApplyKeyButton );
   keyActions->addWidget( mClearKeyButton );
   keyActions->addStretch();
   keyLayout->addLayout( keyActions );
+  mKeyStatusLabel = new QLabel( tr( "尚未验证" ), mKeyPanel );
+  mKeyStatusLabel->setObjectName( QStringLiteral( "mtplKeyStatusLabel" ) );
+  mKeyStatusLabel->setTextInteractionFlags( Qt::TextSelectableByMouse );
+  mKeyStatusLabel->setAccessibleName( tr( "MTPL 密钥验证状态" ) );
+  keyLayout->addWidget( mKeyStatusLabel );
   layout->addWidget( mKeyPanel );
 
-  mLoadButton = new QPushButton( tr( "加载可用数据包和已选 SFP 条目" ), content );
+  auto *layerNameForm = new QFormLayout();
+  layerNameForm->setRowWrapPolicy( QFormLayout::WrapLongRows );
+  layerNameForm->setFieldGrowthPolicy( QFormLayout::AllNonFixedFieldsGrow );
+  mLayerNameEdit = new QLineEdit( packagesContent );
+  mLayerNameEdit->setObjectName( QStringLiteral( "mtplLayerNameEdit" ) );
+  mLayerNameEdit->setPlaceholderText( tr( "默认使用文件夹名或文件名" ) );
+  mLayerNameEdit->setAccessibleName( tr( "MTPL 图层名称" ) );
+  layerNameForm->addRow( tr( "图层名称" ), mLayerNameEdit );
+  layout->addLayout( layerNameForm );
+
+  mLoadButton = new QPushButton( tr( "加载为单一瓦片图层" ), packagesContent );
   mLoadButton->setObjectName( QStringLiteral( "mtplLoadButton" ) );
   mLoadButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddLayer.svg" ) ) );
   mLoadButton->setEnabled( false );
-  layout->addWidget( mLoadButton );
+  mRefreshDatasetButton = new QPushButton( tr( "重新检查并刷新" ), packagesContent );
+  mRefreshDatasetButton->setObjectName( QStringLiteral( "mtplRefreshDatasetButton" ) );
+  mRefreshDatasetButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionRefresh.svg" ) ) );
+  mRefreshDatasetButton->setEnabled( false );
+  auto *loadActions = new QHBoxLayout();
+  loadActions->setContentsMargins( 0, 0, 0, 0 );
+  loadActions->addWidget( mLoadButton, 1 );
+  loadActions->addWidget( mRefreshDatasetButton );
+  layout->addLayout( loadActions );
 
   mTabs->addTab( mPackagesTab, tr( "数据包" ) );
 
@@ -1860,20 +1968,20 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
 
   setWidget( content );
 
-  QgsMtplCredentialStore::setRememberEnabled( true );
-  QString rememberedKeyError;
-  mRememberedKeys = QgsMtplCredentialStore::rememberedKeys( &rememberedKeyError );
-  if ( mRememberedKeys.isValid() )
-  {
-    mPrivateKeyEdit->setText( QString::fromUtf8( mRememberedKeys.privateKey ) );
-    mDeviceKeyEdit->setText( QString::fromUtf8( mRememberedKeys.deviceKey ) );
-    mKeys = mRememberedKeys;
-    mKeySource = QgsMtpl::CredentialSource::Remembered;
-  }
-  mClearKeyButton->setEnabled( mRememberedKeys.isValid() );
+  // This metadata-only check deliberately does not unlock the authentication
+  // database. Stored keys are requested only after an encrypted package asks
+  // for them.
+  mClearKeyButton->setEnabled( QgsMtplCredentialStore::hasRememberedKeys() );
+  updateKeyStatus();
   const QString rememberedPath = QgsMtplCredentialStore::lastPath();
   if ( !rememberedPath.isEmpty() )
+  {
     mPathWidget->setPath( rememberedPath );
+    const QFileInfo rememberedInfo( rememberedPath );
+    mLayerNameEdit->setText( rememberedInfo.isDir()
+                               ? QDir( rememberedInfo.absoluteFilePath() ).dirName()
+                               : rememberedInfo.completeBaseName() );
+  }
 
   mProbeTimer = new QTimer( this );
   mProbeTimer->setSingleShot( true );
@@ -1885,8 +1993,68 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   mToolOutputRefreshTimer->setSingleShot( true );
   mToolOutputRefreshTimer->setInterval( 250 );
 
-  connect( mPathWidget, &QgsMtplPathWidget::pathChanged, this, &QgsMtplDockWidget::scheduleProbe );
-  connect( mPathWidget, &QgsMtplPathWidget::pathSelected, this, &QgsMtplDockWidget::probeSelectedPath );
+  const auto hasCompletedPtpSelection = [this]
+  {
+    if ( mProbeTask || mProbeTimer->isActive() || mSfpPopulation || !mProbe.ok ||
+         !mTileDatasetBuildResult.ok() || mProbe.packages.isEmpty() ||
+         localPathKey( selectedPath() ) != localPathKey( mTileDatasetBuildResult.dataset.sourcePath ) )
+      return false;
+
+    QTreeWidgetItemIterator iterator( mPackageTree );
+    while ( *iterator )
+    {
+      const QTreeWidgetItem *item = *iterator;
+      ++iterator;
+      if ( item->checkState( 0 ) != Qt::Checked || !item->data( 0, ITEM_READY_ROLE ).toBool() )
+        continue;
+      const auto kind = static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() );
+      if ( kind == PackageTreeItemKind::SfpEntry )
+        return false;
+      if ( kind != PackageTreeItemKind::Package )
+        continue;
+      bool indexOk = false;
+      const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &indexOk );
+      if ( !indexOk || packageIndex < 0 || packageIndex >= mProbe.packages.size() )
+        return false;
+      const QgsMtpl::PackageDescriptor &package = mProbe.packages.at( packageIndex );
+      if ( package.format != QgsMtpl::PackageFormat::Ptp && package.format != QgsMtpl::PackageFormat::Sfp )
+        return false;
+    }
+    return true;
+  };
+  connect( mPathWidget, &QgsMtplPathWidget::pathChanged, this, [this, hasCompletedPtpSelection]
+  {
+    // Committing a pasted path may only normalize quotes or separators.
+    if ( hasCompletedPtpSelection() )
+      return;
+    const QFileInfo info( selectedPath() );
+    const QString defaultName = info.isDir() ? QDir( info.absoluteFilePath() ).dirName() : info.completeBaseName();
+    mLayerNameEdit->setText( defaultName );
+    scheduleProbe();
+  } );
+  connect( mPathWidget, &QgsMtplPathWidget::pathSelected, this, [this, hasCompletedPtpSelection]
+  {
+    // Focus leaves the path editor before a load button click is delivered.
+    if ( !hasCompletedPtpSelection() )
+      probeSelectedPath();
+  } );
+  connect( mPartitionRuleWidget, &QgsMtplPartitionRuleWidget::currentRuleChanged, this, [this]( const QString &ruleId )
+  {
+    if ( mUpdatingRuleSelection )
+      return;
+    QgsSettings settings;
+    settings.setValue( QStringLiteral( "mtpl/partitionRules/lastSelectedId" ), ruleId,
+                       QgsSettings::Section::Plugins );
+    rebuildTileDataset();
+  } );
+  connect( mPartitionRuleWidget, &QgsMtplPartitionRuleWidget::ruleDraftChanged, this, [this]
+  {
+    rebuildTileDataset();
+  } );
+  connect( mPartitionRuleWidget, &QgsMtplPartitionRuleWidget::ruleSaveRequested,
+           this, &QgsMtplDockWidget::savePartitionRule );
+  connect( mPartitionRuleWidget, &QgsMtplPartitionRuleWidget::ruleDeleteRequested,
+           this, &QgsMtplDockWidget::deletePartitionRule );
   connect( mProbeTimer, &QTimer::timeout, this, &QgsMtplDockWidget::probeSelectedPath );
   connect( mSfpPopulationTimer, &QTimer::timeout, this, &QgsMtplDockWidget::populateSfpEntriesBatch );
   connect( mToolOutputRefreshTimer, &QTimer::timeout, this, [this]
@@ -1901,6 +2069,9 @@ QgsMtplDockWidget::QgsMtplDockWidget( QWidget *parent )
   } );
   connect( mCancelProbeButton, &QPushButton::clicked, this, &QgsMtplDockWidget::cancelCurrentProbe );
   connect( mLoadButton, &QPushButton::clicked, this, &QgsMtplDockWidget::loadToProject );
+  connect( mRefreshDatasetButton, &QPushButton::clicked, this, &QgsMtplDockWidget::refreshExistingDataset );
+  connect( QgsProject::instance(), &QgsProject::layersAdded, this, &QgsMtplDockWidget::updateLoadButtonState );
+  connect( QgsProject::instance(), &QgsProject::layersRemoved, this, &QgsMtplDockWidget::updateLoadButtonState );
   connect( mApplyKeyButton, &QPushButton::clicked, this, &QgsMtplDockWidget::applyRememberedKeys );
   connect( mClearKeyButton, &QPushButton::clicked, this, &QgsMtplDockWidget::clearRememberedKeys );
   connect( mPackageTree, &QTreeWidget::itemSelectionChanged, this, &QgsMtplDockWidget::showSelectedPackageMetadata );
@@ -2013,10 +2184,14 @@ void QgsMtplDockWidget::cancelPendingOperations()
   mKeys.clear();
   mKeySource = QgsMtpl::CredentialSource::None;
   mRememberedKeys.clear();
+  mPendingShouldRemember = false;
+  mStoredKeyUnlockAttempted = false;
   if ( mPrivateKeyEdit )
     mPrivateKeyEdit->clear();
   if ( mDeviceKeyEdit )
     mDeviceKeyEdit->clear();
+  if ( mKeyStatusLabel )
+    mKeyStatusLabel->setText( tr( "尚未验证" ) );
 }
 
 void QgsMtplDockWidget::cancelProbeWork( bool waitForTasks, const QString &summary )
@@ -2030,7 +2205,7 @@ void QgsMtplDockWidget::cancelProbeWork( bool waitForTasks, const QString &summa
   mProbeTask = nullptr;
   mSfpPopulation.reset();
   mPendingKeys.clear();
-  mPendingMatchesRememberedKey = false;
+  mPendingShouldRemember = false;
   ++mProbeGeneration;
   if ( mCancelProbeButton )
   {
@@ -2060,6 +2235,10 @@ void QgsMtplDockWidget::cancelIoWork( bool waitForTasks )
     loadTask->cancel();
   if ( mPackageTree )
     mPackageTree->setEnabled( true );
+  if ( mPartitionRuleWidget )
+    mPartitionRuleWidget->setEnabled( true );
+  if ( mOverridesGroup )
+    mOverridesGroup->setEnabled( true );
   if ( mOpenInQgisButton )
     mOpenInQgisButton->setEnabled( true );
   if ( loadTask && mLoadButton )
@@ -2120,6 +2299,7 @@ void QgsMtplDockWidget::scheduleProbe()
 {
   cancelIoWork( false );
   cancelProbeWork( false );
+  mStoredKeyUnlockAttempted = false;
   const bool keepManualKeys = mKeySource == QgsMtpl::CredentialSource::Explicit && mKeys.isValid();
   if ( !keepManualKeys )
   {
@@ -2165,21 +2345,26 @@ void QgsMtplDockWidget::probeSelectedPath()
 void QgsMtplDockWidget::startProbe( const QString &path,
                                     const QgsMtpl::CryptoKeys &keys,
                                     QgsMtpl::CredentialSource source,
-                                    ProbePurpose purpose )
+                                    ProbePurpose purpose,
+                                    bool rememberAfterValidation )
 {
   cancelIoWork( false );
   cancelProbeWork( false );
   const quint64 generation = mProbeGeneration;
-  if ( purpose == ProbePurpose::ValidateAndRememberKeys )
+  if ( purpose == ProbePurpose::ValidateKeys )
+  {
     mPendingKeys = keys;
+    mPendingShouldRemember = rememberAfterValidation;
+  }
 
-  auto *task = new QgsMtplProbeTask( path, keys, true, source );
+  auto *task = new QgsMtplProbeTask( path, keys, true, source, purpose != ProbePurpose::ValidateKeys );
   mProbeTask = task;
   mCancelProbeButton->setEnabled( true );
   mCancelProbeButton->setText( tr( "取消检查" ) );
   mCancelProbeButton->show();
   mApplyKeyButton->setEnabled( false );
   mLoadButton->setEnabled( false );
+  mRefreshDatasetButton->setEnabled( false );
   mSummaryLabel->setText( tr( "正在检查所选内容… 0%" ) );
   connect( task, &QgsTask::progressChanged, this, [this, generation]( double value )
   {
@@ -2212,7 +2397,39 @@ void QgsMtplDockWidget::probeFinished( QgsMtplProbeTask *task, quint64 generatio
     return;
   }
 
-  if ( purpose == ProbePurpose::ValidateAndRememberKeys )
+  if ( purpose == ProbePurpose::Selection &&
+       mKeySource == QgsMtpl::CredentialSource::None &&
+       !mStoredKeyUnlockAttempted &&
+       QgsMtplCredentialStore::hasRememberedKeys() )
+  {
+    const bool needsKeys = std::any_of(
+      result.packages.cbegin(), result.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+      {
+        return descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired;
+      } );
+    if ( needsKeys )
+    {
+      mStoredKeyUnlockAttempted = true;
+      QString loadError;
+      QgsMtpl::CryptoKeys storedKeys = QgsMtplCredentialStore::rememberedKeys( &loadError );
+      if ( storedKeys.isValid() )
+      {
+        mRememberedKeys = storedKeys;
+        mKeys = storedKeys;
+        mKeySource = QgsMtpl::CredentialSource::Remembered;
+        storedKeys.clear();
+        startProbe( selectedPath(), mKeys, mKeySource, ProbePurpose::Selection );
+        return;
+      }
+      storedKeys.clear();
+      if ( !loadError.isEmpty() )
+      {
+        emit messageRequested( tr( "MTPL 密钥" ), loadError, Qgis::MessageLevel::Warning );
+      }
+    }
+  }
+
+  if ( purpose == ProbePurpose::ValidateKeys )
   {
     const bool rejected = !result.ok || std::any_of(
       result.packages.cbegin(), result.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
@@ -2223,96 +2440,215 @@ void QgsMtplDockWidget::probeFinished( QgsMtplProbeTask *task, quint64 generatio
     if ( rejected )
     {
       mPendingKeys.clear();
+      mPendingShouldRemember = false;
       applyProbe( result );
       return;
     }
 
-    QString saveError;
-    QgsMtplCredentialStore::setRememberEnabled( true );
-    if ( !QgsMtplCredentialStore::saveManualKeys( mPendingKeys, selectedPath(), saveError ) )
-    {
-      mPendingKeys.clear();
-      emit loadFailed( saveError );
-      return;
-    }
-    mRememberedKeys.clear();
-    mRememberedKeys = mPendingKeys;
-    mKeys.clear();
     mKeys = mPendingKeys;
-    mKeySource = mPendingMatchesRememberedKey ? QgsMtpl::CredentialSource::Remembered
-                                              : QgsMtpl::CredentialSource::Explicit;
+    mKeySource = QgsMtpl::CredentialSource::Explicit;
+    if ( mPendingShouldRemember )
+    {
+      QString saveError;
+      if ( QgsMtplCredentialStore::saveManualKeys( mPendingKeys, selectedPath(), saveError ) )
+      {
+        mRememberedKeys = mPendingKeys;
+        mClearKeyButton->setEnabled( true );
+        if ( mPackageToolsWidget )
+          mPackageToolsWidget->reloadRememberedKeys();
+      }
+      else
+      {
+        emit messageRequested(
+          tr( "MTPL 密钥" ),
+          tr( "密钥已通过验证并仅用于当前会话，但无法安全保存：%1" ).arg( saveError ),
+          Qgis::MessageLevel::Warning );
+      }
+    }
     mPendingKeys.clear();
-    mPendingMatchesRememberedKey = false;
-    mClearKeyButton->setEnabled( true );
+    mPendingShouldRemember = false;
+    mRememberKeysCheckBox->setChecked( false );
+    mPrivateKeyEdit->clear();
+    mDeviceKeyEdit->clear();
     hidePassword( mPrivateKeyEdit );
     hidePassword( mDeviceKeyEdit );
-    if ( mPackageToolsWidget )
-      mPackageToolsWidget->reloadRememberedKeys();
   }
   applyProbe( result );
+  updateKeyStatus();
+  if ( purpose == ProbePurpose::RefreshDataset )
+  {
+    if ( !mTileDatasetBuildResult.ok() || mTileDatasetBuildResult.dataset.packages.isEmpty() )
+    {
+      const QString reason = !mTileDatasetBuildResult.errorString().isEmpty()
+                               ? mTileDatasetBuildResult.errorString()
+                               : ( result.error.isEmpty() ? tr( "当前 PTP 数据集未通过检查。" ) : result.error );
+      emit loadFailed( tr( "刷新失败，现有图层保持不变。\n%1" ).arg( reason ) );
+      return;
+    }
+    if ( !existingTileDatasetLayer( mTileDatasetBuildResult.dataset.sourcePath ) )
+    {
+      emit loadFailed( tr( "刷新失败，工程中的原 PTP 图层已不存在。" ) );
+      updateLoadButtonState();
+      return;
+    }
+    startProjectLoad( LoadMode::Refresh );
+  }
 }
 
 void QgsMtplDockWidget::loadToProject()
+{
+  startProjectLoad( LoadMode::Add );
+}
+
+void QgsMtplDockWidget::refreshExistingDataset()
+{
+  const QString sourcePath = !mTileDatasetBuildResult.dataset.sourcePath.isEmpty()
+                               ? mTileDatasetBuildResult.dataset.sourcePath
+                               : selectedPath();
+  if ( !existingTileDatasetLayer( sourcePath ) )
+  {
+    emit loadFailed( tr( "当前路径尚未加载为 PTP 数据集图层。" ) );
+    updateLoadButtonState();
+    return;
+  }
+
+  const QString path = selectedPath();
+  if ( path.isEmpty() )
+  {
+    emit loadFailed( tr( "无法刷新，因为当前数据集路径为空。" ) );
+    return;
+  }
+  cancelPreviewWork();
+  startProbe( path, mKeys, mKeySource, ProbePurpose::RefreshDataset );
+}
+
+QgsMtplPluginLayer *QgsMtplDockWidget::existingTileDatasetLayer( const QString &sourcePath ) const
+{
+  const QString sourceKey = localPathKey( sourcePath );
+  if ( sourceKey.isEmpty() )
+    return nullptr;
+
+  const auto layers = QgsProject::instance()->mapLayers();
+  for ( QgsMapLayer *mapLayer : layers )
+  {
+    auto *mtplLayer = qobject_cast<QgsMtplPluginLayer *>( mapLayer );
+    const QgsMtpl::TileDatasetDescriptor *dataset = mtplLayer ? mtplLayer->tileDataset() : nullptr;
+    if ( dataset && localPathKey( dataset->sourcePath ) == sourceKey )
+      return mtplLayer;
+  }
+  return nullptr;
+}
+
+void QgsMtplDockWidget::startProjectLoad( LoadMode mode )
 {
   if ( !mProbe.ok || mProbe.packages.isEmpty() )
     return;
 
   cancelPreviewWork();
   MtplLoadPreparationRequest request;
-  for ( int row = 0; row < mPackageTree->topLevelItemCount(); ++row )
+  QSet<QString> aggregatePtpPaths;
+  QString reusedLayerId;
+  if ( mTileDatasetBuildResult.ok() && !mTileDatasetBuildResult.dataset.packages.isEmpty() )
   {
-    QTreeWidgetItem *item = mPackageTree->topLevelItem( row );
-    if ( static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() ) != PackageTreeItemKind::Package ||
-         item->checkState( 0 ) != Qt::Checked )
-      continue;
-
-    bool indexOk = false;
-    const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &indexOk );
-    if ( !indexOk || packageIndex < 0 || packageIndex >= mProbe.packages.size() )
-      continue;
-
-    QgsMtpl::PackageDescriptor descriptor = mProbe.packages.at( packageIndex );
-    if ( descriptor.format == QgsMtpl::PackageFormat::Sfp || !descriptor.isReady() )
-      continue;
-
-    MtplTileLoadInput input;
-    input.descriptor = descriptor;
-    input.suppliedKeys = suppliedKeysForDescriptor( descriptor );
-    if ( descriptor.credentialSource == QgsMtpl::CredentialSource::Explicit )
-      input.suppliedSource = QgsMtpl::CredentialSource::Explicit;
-    else if ( descriptor.credentialSource == QgsMtpl::CredentialSource::Remembered )
-      input.suppliedSource = QgsMtpl::CredentialSource::Remembered;
-    request.tilePackages.append( std::move( input ) );
+    const QgsMtpl::TileDatasetDescriptor &dataset = mTileDatasetBuildResult.dataset;
+    QgsMtplPluginLayer *existingLayer = existingTileDatasetLayer( dataset.sourcePath );
+    if ( mode == LoadMode::Add && existingLayer )
+    {
+      reusedLayerId = existingLayer->id();
+      emit existingLayerActivated( reusedLayerId );
+      emit messageRequested(
+        tr( "MTPL 数据集" ),
+        tr( "该路径已经加载，已选择并缩放到现有图层。需要应用磁盘变化时请使用“重新检查并刷新”。" ),
+        Qgis::MessageLevel::Info );
+    }
+    else
+    {
+      request.hasTileDataset = true;
+      request.tileDataset = dataset;
+    }
+    for ( const QgsMtpl::TileDatasetPackage &package : dataset.packages )
+    {
+      aggregatePtpPaths.insert( localPathKey( package.descriptor.path ) );
+      if ( request.hasTileDataset )
+      {
+        MtplTileLoadInput input;
+        input.descriptor = package.descriptor;
+        input.suppliedKeys = suppliedKeysForDescriptor( package.descriptor );
+        input.suppliedSource = package.descriptor.credentialSource;
+        input.aggregatePtp = true;
+        request.tilePackages.append( std::move( input ) );
+      }
+    }
   }
-
-  QTreeWidgetItemIterator iterator( mPackageTree );
-  while ( *iterator )
+  if ( mode == LoadMode::Add )
   {
-    QTreeWidgetItem *item = *iterator;
-    ++iterator;
-    if ( static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() ) != PackageTreeItemKind::SfpEntry ||
-         item->checkState( 0 ) != Qt::Checked )
-      continue;
+    for ( int row = 0; row < mPackageTree->topLevelItemCount(); ++row )
+    {
+      QTreeWidgetItem *item = mPackageTree->topLevelItem( row );
+      if ( static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() ) != PackageTreeItemKind::Package ||
+           item->checkState( 0 ) != Qt::Checked )
+        continue;
 
-    bool indexOk = false;
-    const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &indexOk );
-    const QString entryPath = item->data( 0, SFP_ENTRY_PATH_ROLE ).toString();
-    if ( !indexOk || packageIndex < 0 || packageIndex >= mProbe.packages.size() || entryPath.isEmpty() )
-      continue;
+      bool indexOk = false;
+      const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &indexOk );
+      if ( !indexOk || packageIndex < 0 || packageIndex >= mProbe.packages.size() )
+        continue;
 
-    const QgsMtpl::PackageDescriptor &descriptor = mProbe.packages.at( packageIndex );
-    if ( descriptor.format != QgsMtpl::PackageFormat::Sfp || !item->data( 0, ITEM_READY_ROLE ).toBool() )
-      continue;
+      QgsMtpl::PackageDescriptor descriptor = mProbe.packages.at( packageIndex );
+      if ( descriptor.format == QgsMtpl::PackageFormat::Sfp || !descriptor.isReady() )
+        continue;
+      if ( aggregatePtpPaths.contains( localPathKey( descriptor.path ) ) )
+        continue;
+      // Every PTP package is governed by the strict aggregate image contract.
+      // PBF/elevation/unknown PTP must never escape through the legacy
+      // one-package renderer.
+      if ( descriptor.format == QgsMtpl::PackageFormat::Ptp )
+        continue;
 
-    MtplSfpLoadInput input;
-    input.descriptor = descriptor;
-    input.entryPath = entryPath;
-    input.suppliedKeys = suppliedKeysForDescriptor( descriptor );
-    request.sfpEntries.append( std::move( input ) );
+      MtplTileLoadInput input;
+      input.descriptor = descriptor;
+      input.suppliedKeys = suppliedKeysForDescriptor( descriptor );
+      if ( descriptor.credentialSource == QgsMtpl::CredentialSource::Explicit )
+        input.suppliedSource = QgsMtpl::CredentialSource::Explicit;
+      else if ( descriptor.credentialSource == QgsMtpl::CredentialSource::Remembered )
+        input.suppliedSource = QgsMtpl::CredentialSource::Remembered;
+      request.tilePackages.append( std::move( input ) );
+    }
+
+    QTreeWidgetItemIterator iterator( mPackageTree );
+    while ( *iterator )
+    {
+      QTreeWidgetItem *item = *iterator;
+      ++iterator;
+      if ( static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() ) != PackageTreeItemKind::SfpEntry ||
+           item->checkState( 0 ) != Qt::Checked )
+        continue;
+
+      bool indexOk = false;
+      const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &indexOk );
+      const QString entryPath = item->data( 0, SFP_ENTRY_PATH_ROLE ).toString();
+      if ( !indexOk || packageIndex < 0 || packageIndex >= mProbe.packages.size() || entryPath.isEmpty() )
+        continue;
+
+      const QgsMtpl::PackageDescriptor &descriptor = mProbe.packages.at( packageIndex );
+      if ( descriptor.format != QgsMtpl::PackageFormat::Sfp || !item->data( 0, ITEM_READY_ROLE ).toBool() )
+        continue;
+
+      MtplSfpLoadInput input;
+      input.descriptor = descriptor;
+      input.entryPath = entryPath;
+      input.suppliedKeys = suppliedKeysForDescriptor( descriptor );
+      request.sfpEntries.append( std::move( input ) );
+    }
   }
 
   if ( request.tilePackages.isEmpty() && request.sfpEntries.isEmpty() )
   {
+    if ( !reusedLayerId.isEmpty() )
+    {
+      mSummaryLabel->setText( mFinalProbeSummary );
+      return;
+    }
     emit loadFailed( tr( "请至少选择一个可用数据包或 SFP 条目。" ) );
     return;
   }
@@ -2331,14 +2667,14 @@ void QgsMtplDockWidget::loadToProject()
     }
   }
 
-  startLoadPreparationTask( new MtplLoadPreparationTask( request ), false );
+  startLoadPreparationTask( new MtplLoadPreparationTask( request ), false, mode );
   for ( MtplTileLoadInput &input : request.tilePackages )
     input.suppliedKeys.clear();
   for ( MtplSfpLoadInput &input : request.sfpEntries )
     input.suppliedKeys.clear();
 }
 
-void QgsMtplDockWidget::startLoadPreparationTask( QgsTask *task, bool singleSfpEntry )
+void QgsMtplDockWidget::startLoadPreparationTask( QgsTask *task, bool singleSfpEntry, LoadMode mode )
 {
   if ( !task )
     return;
@@ -2350,7 +2686,10 @@ void QgsMtplDockWidget::startLoadPreparationTask( QgsTask *task, bool singleSfpE
   const quint64 generation = mLoadGeneration;
   mLoadTask = task;
   mPackageTree->setEnabled( false );
+  mPartitionRuleWidget->setEnabled( false );
+  mOverridesGroup->setEnabled( false );
   mLoadButton->setEnabled( false );
+  mRefreshDatasetButton->setEnabled( false );
   mOpenInQgisButton->setEnabled( false );
   mCancelProbeButton->setEnabled( true );
   mCancelProbeButton->setText( tr( "取消加载" ) );
@@ -2363,16 +2702,16 @@ void QgsMtplDockWidget::startLoadPreparationTask( QgsTask *task, bool singleSfpE
       return;
     mSummaryLabel->setText( tr( "正在后台准备所选 MTPL 数据… %1%" ).arg( qRound( value ) ) );
   } );
-  const auto finished = [this, task, generation, singleSfpEntry]
+  const auto finished = [this, task, generation, singleSfpEntry, mode]
   {
-    loadPreparationFinished( task, generation, singleSfpEntry );
+    loadPreparationFinished( task, generation, singleSfpEntry, mode );
   };
   connect( task, &QgsTask::taskCompleted, this, finished );
   connect( task, &QgsTask::taskTerminated, this, finished );
   QgsApplication::taskManager()->addTask( task );
 }
 
-void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generation, bool singleSfpEntry )
+void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generation, bool singleSfpEntry, LoadMode mode )
 {
   Q_ASSERT( QThread::currentThread() == QgsApplication::instance()->thread() );
   if ( generation != mLoadGeneration || mLoadTask != task || !task )
@@ -2382,6 +2721,8 @@ void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generati
   const bool canceledByTaskManager = preparationTask->cancellationRequested();
   mLoadTask = nullptr;
   mPackageTree->setEnabled( true );
+  mPartitionRuleWidget->setEnabled( true );
+  mOverridesGroup->setEnabled( true );
   mOpenInQgisButton->setEnabled( true );
   mCancelProbeButton->setEnabled( true );
   mCancelProbeButton->setText( tr( "取消检查" ) );
@@ -2407,8 +2748,125 @@ void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generati
   QList<QgsMapLayer *> packageLayers;
   QStringList failures;
   int failedItemCount = 0;
+  bool aggregateLayerCreated = false;
+  bool aggregateLayerRefreshed = false;
+  QString refreshedLayerId;
+
+  if ( result.hasTileDataset )
+  {
+    QList<QgsMtpl::PackageDescriptor> freshDescriptors;
+    bool aggregateFailed = false;
+    for ( const QgsMtpl::TileDatasetPackage &expected : std::as_const( result.tileDataset.packages ) )
+    {
+      MtplPreparedTile *preparedMatch = nullptr;
+      for ( MtplPreparedTile &prepared : result.tilePackages )
+      {
+        if ( prepared.aggregatePtp && localPathKey( prepared.descriptor.path ) == localPathKey( expected.descriptor.path ) )
+        {
+          preparedMatch = &prepared;
+          break;
+        }
+      }
+      if ( !preparedMatch || !preparedMatch->ok || !packageStampMatches( preparedMatch->descriptor ) )
+      {
+        aggregateFailed = true;
+        ++failedItemCount;
+        failures.append( preparedMatch && !preparedMatch->error.isEmpty()
+                           ? preparedMatch->error
+                           : tr( "%1 无法加入 PTP 聚合图层。" ).arg( QFileInfo( expected.descriptor.path ).fileName() ) );
+        continue;
+      }
+      freshDescriptors.append( preparedMatch->descriptor );
+    }
+
+    QgsMtpl::TileDatasetBuildResult freshDatasetBuild;
+    if ( !aggregateFailed )
+    {
+      QgsMtpl::TileDatasetBuildOptions buildOptions;
+      buildOptions.ruleSnapshot = result.tileDataset.partitionRule;
+      buildOptions.selectedRuleId = result.tileDataset.partitionRule.id;
+      if ( !result.tileDataset.partitionRule.id.isEmpty() )
+        buildOptions.availableRules.append( result.tileDataset.partitionRule );
+      freshDatasetBuild = QgsMtpl::buildTileDataset(
+        result.tileDataset.sourcePath,
+        result.tileDataset.directorySource,
+        freshDescriptors,
+        buildOptions );
+      if ( !freshDatasetBuild.ok() )
+      {
+        aggregateFailed = true;
+        ++failedItemCount;
+        failures.append( freshDatasetBuild.errorString() );
+      }
+    }
+
+    if ( !aggregateFailed )
+    {
+      QList<QgsMtpl::CryptoKeys> datasetKeys;
+      datasetKeys.reserve( freshDatasetBuild.dataset.packages.size() );
+      for ( const QgsMtpl::TileDatasetPackage &package : std::as_const( freshDatasetBuild.dataset.packages ) )
+      {
+        QgsMtpl::CryptoKeys packageKeys;
+        for ( MtplPreparedTile &prepared : result.tilePackages )
+        {
+          if ( prepared.aggregatePtp && localPathKey( prepared.descriptor.path ) == localPathKey( package.descriptor.path ) )
+          {
+            packageKeys = prepared.keys;
+            break;
+          }
+        }
+        datasetKeys.append( std::move( packageKeys ) );
+      }
+
+      if ( mode == LoadMode::Refresh )
+      {
+        QgsMtplPluginLayer *existingLayer = existingTileDatasetLayer( freshDatasetBuild.dataset.sourcePath );
+        QString replaceError;
+        if ( existingLayer && existingLayer->replaceTileDataset( freshDatasetBuild.dataset, datasetKeys, &replaceError ) )
+        {
+          aggregateLayerRefreshed = true;
+          refreshedLayerId = existingLayer->id();
+        }
+        else
+        {
+          ++failedItemCount;
+          failures.append( !replaceError.isEmpty()
+                             ? replaceError
+                             : tr( "工程中的原 PTP 图层已不存在。" ) );
+        }
+      }
+      else
+      {
+        auto *layer = new QgsMtplPluginLayer( freshDatasetBuild.dataset, datasetKeys );
+        const QString layerName = mLayerNameEdit->text().trimmed();
+        if ( !layerName.isEmpty() )
+          layer->setName( layerName );
+        if ( layer->isValid() )
+        {
+          packageLayers.append( layer );
+          aggregateLayerCreated = true;
+        }
+        else
+        {
+          delete layer;
+          ++failedItemCount;
+          failures.append( tr( "PTP 聚合图层已不可用。" ) );
+        }
+      }
+      for ( QgsMtpl::CryptoKeys &keys : datasetKeys )
+        keys.clear();
+    }
+    for ( MtplPreparedTile &prepared : result.tilePackages )
+    {
+      if ( prepared.aggregatePtp )
+        prepared.keys.clear();
+    }
+  }
+
   for ( MtplPreparedTile &prepared : result.tilePackages )
   {
+    if ( prepared.aggregatePtp )
+      continue;
     if ( !prepared.ok )
     {
       ++failedItemCount;
@@ -2441,7 +2899,8 @@ void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generati
 
   QgsProject *project = QgsProject::instance();
   QList<QgsMapLayer *> addedPackageLayers;
-  if ( !packageLayers.isEmpty() && mProbe.isDirectorySelection )
+  if ( !packageLayers.isEmpty() && mProbe.isDirectorySelection &&
+       !( aggregateLayerCreated && packageLayers.size() == 1 ) )
   {
     addedPackageLayers = project->addMapLayers( packageLayers, false );
     if ( !addedPackageLayers.isEmpty() )
@@ -2497,12 +2956,30 @@ void QgsMtplDockWidget::loadPreparationFinished( QgsTask *task, quint64 generati
   }
 
   mSummaryLabel->setText( mFinalProbeSummary );
+  if ( mode == LoadMode::Refresh )
+  {
+    if ( !aggregateLayerRefreshed )
+    {
+      updateLoadButtonState();
+      emit loadFailed( tr( "刷新失败，现有图层保持不变。\n%1" )
+                         .arg( failures.isEmpty() ? tr( "当前 PTP 数据集未通过完整检查。" )
+                                                  : failures.join( QLatin1Char( '\n' ) ) ) );
+      return;
+    }
+    updateLoadButtonState();
+    emit existingLayerActivated( refreshedLayerId );
+    emit messageRequested( tr( "MTPL 数据集" ), tr( "重新检查完成，现有 PTP 图层已原子刷新。" ),
+                           Qgis::MessageLevel::Success );
+    return;
+  }
   if ( loadedLayerCount == 0 )
   {
+    updateLoadButtonState();
     emit loadFailed( failures.isEmpty() ? tr( "无法加载任何所选内容。" ) : failures.join( QLatin1Char( '\n' ) ) );
     return;
   }
 
+  updateLoadButtonState();
   Q_UNUSED( singleSfpEntry )
   if ( failedItemCount > 0 )
     emit loadPartiallySucceeded( loadedLayerCount, failedItemCount, failures );
@@ -2515,9 +2992,6 @@ void QgsMtplDockWidget::applyRememberedKeys()
   QgsMtpl::CryptoKeys candidate;
   candidate.privateKey = mPrivateKeyEdit->text().trimmed().toUtf8();
   candidate.deviceKey = mDeviceKeyEdit->text().trimmed().toUtf8();
-  const bool matchesRememberedKey = mRememberedKeys.isValid() &&
-                                    candidate.privateKey == mRememberedKeys.privateKey &&
-                                    candidate.deviceKey == mRememberedKeys.deviceKey;
   QString validationError;
   if ( !validateEnteredKeys( candidate, validationError ) )
   {
@@ -2527,8 +3001,7 @@ void QgsMtplDockWidget::applyRememberedKeys()
   }
 
   startProbe( selectedPath(), candidate, QgsMtpl::CredentialSource::Explicit,
-              ProbePurpose::ValidateAndRememberKeys );
-  mPendingMatchesRememberedKey = matchesRememberedKey;
+              ProbePurpose::ValidateKeys, mRememberKeysCheckBox->isChecked() );
   candidate.clear();
   hidePassword( mPrivateKeyEdit );
   hidePassword( mDeviceKeyEdit );
@@ -2536,13 +3009,20 @@ void QgsMtplDockWidget::applyRememberedKeys()
 
 void QgsMtplDockWidget::clearRememberedKeys()
 {
-  QgsMtplCredentialStore::clearRememberedKeys();
+  QString error;
+  if ( !QgsMtplCredentialStore::clearRememberedKeys( &error ) )
+  {
+    emit loadFailed( error );
+    return;
+  }
   mRememberedKeys.clear();
   mKeys.clear();
   mKeySource = QgsMtpl::CredentialSource::None;
   mPrivateKeyEdit->clear();
   mDeviceKeyEdit->clear();
+  mRememberKeysCheckBox->setChecked( false );
   mClearKeyButton->setEnabled( false );
+  updateKeyStatus();
   if ( mPackageToolsWidget )
     mPackageToolsWidget->reloadRememberedKeys();
   probeSelectedPath();
@@ -2631,7 +3111,7 @@ void QgsMtplDockWidget::showSelectedPackageMetadata()
   values.append( { tr( "载荷类型" ), payloadTypeText( descriptor.payload ) } );
   values.append( { tr( "加密状态" ), encryptionStateText( descriptor.encryption ) } );
   values.append( { tr( "密钥状态" ), keyStatusText( descriptor ) } );
-  values.append( { tr( "可用状态" ), readyStateText( descriptor ) } );
+  values.append( { tr( "单包状态" ), readyStateText( descriptor ) } );
   if ( !descriptor.readinessMessage.isEmpty() )
     values.append( { tr( "状态说明" ), descriptor.readinessMessage } );
   if ( descriptor.isSpatial() )
@@ -2684,7 +3164,7 @@ void QgsMtplDockWidget::updateImportStyleState()
   if ( !item )
   {
     mImportStyleButton->setEnabled( false );
-    mImportStyleButton->setToolTip( tr( "请选择可用的 PTP 矢量数据包或 VTP 数据包。" ) );
+    mImportStyleButton->setToolTip( tr( "请选择可读取的 VTP 数据包。" ) );
     return;
   }
 
@@ -2698,16 +3178,14 @@ void QgsMtplDockWidget::updateImportStyleState()
   }
 
   const QgsMtpl::PackageDescriptor &descriptor = mProbe.packages.at( packageIndex );
-  const bool supported = descriptor.isReady() &&
-                         ( descriptor.format == QgsMtpl::PackageFormat::Vtp ||
-                           ( descriptor.format == QgsMtpl::PackageFormat::Ptp && descriptor.payload == QgsMtpl::PayloadType::VectorTile ) );
+  const bool supported = descriptor.isReady() && descriptor.format == QgsMtpl::PackageFormat::Vtp;
   mImportStyleButton->setEnabled( supported );
   if ( supported )
     mImportStyleButton->setToolTip( tr( "为所选数据包导入 Mapbox 样式。" ) );
   else if ( !descriptor.isReady() )
     mImportStyleButton->setToolTip( tr( "所选数据包可用后才能导入样式。" ) );
   else
-    mImportStyleButton->setToolTip( tr( "Mapbox 样式仅适用于 PTP 矢量数据和 VTP 数据包。" ) );
+    mImportStyleButton->setToolTip( tr( "图片型 PTP 不使用 Mapbox 样式，请选择 VTP 数据包。" ) );
 }
 
 void QgsMtplDockWidget::applyOverrides()
@@ -2742,10 +3220,7 @@ void QgsMtplDockWidget::applyOverrides()
     return;
   }
 
-  const QgsMtpl::PayloadType payload = static_cast<QgsMtpl::PayloadType>( mPayloadOverride->currentData().toInt() );
   const QString scheme = mSchemeOverride->currentData().toString();
-  if ( descriptor.format == QgsMtpl::PackageFormat::Ptp )
-    descriptor.payload = payload;
   descriptor.crsAuthId = crs.authid().isEmpty() ? crsText : crs.authid();
   descriptor.scheme = scheme;
   if ( descriptor.format == QgsMtpl::PackageFormat::Dtp )
@@ -2759,7 +3234,29 @@ void QgsMtplDockWidget::applyOverrides()
   }
   descriptor.displayOverridesApplied = true;
 
+  if ( QTreeWidgetItem *item = mPackageTree->currentItem() )
+  {
+    const QSignalBlocker blocker( mPackageTree );
+    item->setFlags( item->flags() & ~Qt::ItemIsUserCheckable );
+    item->setToolTip( 0, QDir::toNativeSeparators( descriptor.path ) );
+    const bool aggregatePtp = descriptor.format == QgsMtpl::PackageFormat::Ptp;
+    if ( aggregatePtp )
+    {
+      item->setCheckState( 0, ptpDatasetCheckState( descriptor ) );
+      item->setToolTip( 0, tr( "%1\nPTP 由数据集统一检查，仅通过图片载荷契约后才会作为单一瓦片图层加载。" )
+                           .arg( QDir::toNativeSeparators( descriptor.path ) ) );
+    }
+    else if ( descriptor.isReady() && descriptor.isSpatial() )
+    {
+      item->setFlags( item->flags() | Qt::ItemIsUserCheckable );
+      item->setCheckState( 0, Qt::Checked );
+    }
+  }
+
   showSelectedPackageMetadata();
+  rebuildTileDataset();
+  updateBatchSummary();
+  updateImportStyleState();
 }
 
 void QgsMtplDockWidget::clearProbe( const QString &summary )
@@ -2769,12 +3266,16 @@ void QgsMtplDockWidget::clearProbe( const QString &summary )
   mSfpPopulation.reset();
   mFinalProbeSummary.clear();
   mProbe = QgsMtpl::ProbeResult();
+  mTileDatasetBuildResult = QgsMtpl::TileDatasetBuildResult();
   mLastFailureNeedsKeys = false;
   mLoadButton->setEnabled( false );
+  mRefreshDatasetButton->setEnabled( false );
   mImportStyleButton->setEnabled( false );
   mOverridesGroup->hide();
   mPackageTree->clear();
   updateBatchSummary();
+  updateKeyStatus();
+  updateTileDatasetSummary();
   mDetailsSelectionLabel->clear();
   mMetadataTable->setRowCount( 0 );
   mPreviewText->clear();
@@ -2791,7 +3292,7 @@ void QgsMtplDockWidget::applyProbe( const QgsMtpl::ProbeResult &probe )
 {
   mProbe = probe;
   mImportStyleButton->setEnabled( false );
-  mImportStyleButton->setToolTip( tr( "请选择可用的 PTP 矢量数据包或 VTP 数据包。" ) );
+  mImportStyleButton->setToolTip( tr( "请选择可读取的 VTP 数据包。" ) );
   mLastFailureNeedsKeys = std::any_of( probe.packages.cbegin(), probe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
   {
     return descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired ||
@@ -2811,6 +3312,8 @@ void QgsMtplDockWidget::applyProbe( const QgsMtpl::ProbeResult &probe )
     mOpenInQgisButton->hide();
     updateDetailsPageState();
     updateBatchSummary();
+    updateKeyStatus();
+    rebuildTileDataset( true );
     updateLoadButtonState();
     return;
   }
@@ -2857,7 +3360,327 @@ void QgsMtplDockWidget::applyProbe( const QgsMtpl::ProbeResult &probe )
   mSummaryLabel->setText( mFinalProbeSummary );
   rebuildDetails();
   updateBatchSummary();
+  updateKeyStatus();
+  rebuildTileDataset( true );
   updateLoadButtonState();
+}
+
+void QgsMtplDockWidget::updateKeyStatus()
+{
+  if ( !mKeyStatusLabel )
+    return;
+
+  bool verified = false;
+  bool rejected = false;
+  bool required = false;
+  bool sidecar = false;
+  bool anyEncrypted = false;
+  for ( const QgsMtpl::PackageDescriptor &descriptor : std::as_const( mProbe.packages ) )
+  {
+    anyEncrypted = anyEncrypted || descriptor.encryption != QgsMtpl::EncryptionState::Plain;
+    verified = verified || descriptor.readiness == QgsMtpl::ReadinessState::KeyVerified;
+    rejected = rejected || descriptor.readiness == QgsMtpl::ReadinessState::KeyRejectedOrCorrupt;
+    required = required || descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired;
+    sidecar = sidecar || descriptor.credentialSource == QgsMtpl::CredentialSource::Sidecar;
+  }
+
+  if ( rejected )
+    mKeyStatusLabel->setText( tr( "验证失败" ) );
+  else if ( required )
+    mKeyStatusLabel->setText( tr( "需要密钥" ) );
+  else if ( verified && sidecar )
+    mKeyStatusLabel->setText( tr( "已验证 · 配套密钥文件" ) );
+  else if ( verified && mRememberedKeys.isValid() )
+    mKeyStatusLabel->setText( tr( "已验证 · 已安全保存" ) );
+  else if ( verified )
+    mKeyStatusLabel->setText( tr( "已验证 · 当前会话" ) );
+  else if ( mProbe.ok && !anyEncrypted )
+    mKeyStatusLabel->setText( tr( "无需密钥" ) );
+  else if ( mRememberedKeys.isValid() )
+    mKeyStatusLabel->setText( tr( "已安全保存 · 等待验证" ) );
+  else if ( QgsMtplCredentialStore::hasRememberedKeys() )
+    mKeyStatusLabel->setText( tr( "已安全保存 · 将在需要时解锁" ) );
+  else
+    mKeyStatusLabel->setText( tr( "尚未验证" ) );
+}
+
+void QgsMtplDockWidget::rebuildTileDataset( bool autoMatchRule )
+{
+  QList<QgsMtpl::PackageDescriptor> candidates;
+  for ( const QgsMtpl::PackageDescriptor &descriptor : std::as_const( mProbe.packages ) )
+  {
+    if ( descriptor.format == QgsMtpl::PackageFormat::Ptp )
+      candidates.append( descriptor );
+  }
+
+  mTileDatasetBuildResult = QgsMtpl::TileDatasetBuildResult();
+  if ( candidates.isEmpty() )
+  {
+    updateTileDatasetSummary();
+    updateLoadButtonState();
+    return;
+  }
+
+  if ( mPartitionRuleWidget->currentRuleIsDirty() )
+  {
+    updateTileDatasetSummary();
+    updateLoadButtonState();
+    return;
+  }
+
+  QString ruleLoadError;
+  const QList<QgsMtpl::PartitionRule> availableRules = QgsMtpl::PartitionRuleStore::loadAllRules( &ruleLoadError );
+  QgsMtpl::TileDatasetBuildOptions options;
+  options.availableRules = availableRules;
+  if ( autoMatchRule )
+  {
+    mTileDatasetBuildResult = QgsMtpl::buildTileDataset(
+      selectedPath(), mProbe.isDirectorySelection, candidates, options );
+    if ( mTileDatasetBuildResult.ok() && !mTileDatasetBuildResult.dataset.partitionRule.id.isEmpty() )
+    {
+      const QString matchedId = mTileDatasetBuildResult.dataset.partitionRule.id;
+      mUpdatingRuleSelection = true;
+      mPartitionRuleWidget->setCurrentRuleId( matchedId );
+      mUpdatingRuleSelection = false;
+      QgsSettings settings;
+      settings.setValue( QStringLiteral( "mtpl/partitionRules/lastSelectedId" ), matchedId,
+                         QgsSettings::Section::Plugins );
+    }
+  }
+
+  if ( !autoMatchRule )
+  {
+    QgsMtpl::PartitionRule selectedRule;
+    const QString selectedRuleId = mPartitionRuleWidget->currentRuleId();
+    if ( QgsMtpl::PartitionRuleStore::findRule( availableRules, selectedRuleId, selectedRule ) )
+    {
+      options.selectedRuleId = selectedRule.id;
+      options.ruleSnapshot = selectedRule;
+    }
+    mTileDatasetBuildResult = QgsMtpl::buildTileDataset(
+      selectedPath(), mProbe.isDirectorySelection, candidates, options );
+  }
+
+  if ( !ruleLoadError.isEmpty() )
+  {
+    QgsMtpl::TileDatasetIssue issue;
+    issue.severity = QgsMtpl::TileDatasetIssueSeverity::Warning;
+    issue.code = QStringLiteral( "rule-settings" );
+    issue.message = ruleLoadError;
+    mTileDatasetBuildResult.issues.append( issue );
+  }
+  updateTileDatasetSummary();
+  updateLoadButtonState();
+}
+
+void QgsMtplDockWidget::updateTileDatasetSummary()
+{
+  if ( !mTileDatasetSummaryLabel )
+    return;
+
+  const bool hasPtp = std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp;
+  } );
+  const bool needsUnlock = hasPtp && std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp &&
+           ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired ||
+             ( descriptor.readiness == QgsMtpl::ReadinessState::UnverifiableEmpty &&
+               !descriptor.isCredentialedEmptyPtp() ) );
+  } ) && !std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp &&
+           ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRejectedOrCorrupt ||
+             descriptor.readiness == QgsMtpl::ReadinessState::Unsupported ||
+             descriptor.readiness == QgsMtpl::ReadinessState::Unreadable );
+  } );
+
+  QString firstIssue;
+  QString firstIssuePath;
+  for ( const QgsMtpl::TileDatasetIssue &issue : mTileDatasetBuildResult.issues )
+  {
+    if ( issue.severity != QgsMtpl::TileDatasetIssueSeverity::Error )
+      continue;
+    firstIssue = issue.message;
+    firstIssuePath = issue.packagePath;
+    break;
+  }
+  if ( firstIssue.isEmpty() )
+  {
+    const auto problematic = std::find_if( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+    {
+      return descriptor.format == QgsMtpl::PackageFormat::Ptp &&
+             !descriptor.isReady() && !descriptor.isCredentialedEmptyPtp();
+    } );
+    if ( problematic != mProbe.packages.cend() )
+    {
+      firstIssue = problematic->readinessMessage;
+      firstIssuePath = problematic->path;
+    }
+  }
+  if ( firstIssue.isEmpty() )
+    firstIssue = mTileDatasetBuildResult.errorString();
+
+  const QString firstIssueName = firstIssuePath.isEmpty() ? QString() : QFileInfo( firstIssuePath ).fileName();
+  const QString diagnostic = firstIssueName.isEmpty()
+                               ? firstIssue
+                               : tr( "首个问题包：%1\n%2" ).arg( firstIssueName, firstIssue );
+
+  if ( !hasPtp )
+  {
+    if ( selectedPath().isEmpty() )
+      mTileDatasetSummaryLabel->setText( tr( "尚未识别 PTP 瓦片数据集。" ) );
+    else if ( mProbe.isDirectorySelection && mProbe.packages.isEmpty() )
+      mTileDatasetSummaryLabel->setText( tr( "当前文件夹中没有 PTP 数据包。不会自动合并子文件夹，请打开直接存放 PTP 文件的子文件夹，或选择其中一个 PTP 文件。" ) );
+    else if ( !mProbe.ok && !mProbe.error.isEmpty() )
+      mTileDatasetSummaryLabel->setText( mProbe.error );
+    else
+      mTileDatasetSummaryLabel->setText( tr( "当前选择不含 PTP 数据包。DTP、VTP 和 SFP 将维持原有加载方式。" ) );
+    mTileDatasetSummaryLabel->setToolTip( QString() );
+    return;
+  }
+
+  const QgsMtpl::TileDatasetDescriptor &dataset = mTileDatasetBuildResult.dataset;
+  if ( dataset.packages.isEmpty() )
+  {
+    if ( hasPtp && mPartitionRuleWidget->currentRuleIsDirty() )
+      mTileDatasetSummaryLabel->setText( tr( "数据集状态：不可加载\n当前规则有未保存修改，请展开“PTP 分包规则”并保存后再加载。" ) );
+    else if ( needsUnlock )
+      mTileDatasetSummaryLabel->setText( diagnostic.isEmpty()
+                                           ? tr( "数据集状态：需要解锁\n请在 MTPL 面板按需解锁后重新检查。" )
+                                           : tr( "数据集状态：需要解锁\n%1" ).arg( diagnostic ) );
+    else
+      mTileDatasetSummaryLabel->setText(
+        hasPtp && !mTileDatasetBuildResult.errorString().isEmpty()
+          ? tr( "数据集状态：不可加载\n%1" ).arg( diagnostic )
+          : tr( "数据集状态：不可加载\n当前 PTP 数据集没有可加载的数据包。" ) );
+    mTileDatasetSummaryLabel->setToolTip( diagnostic );
+    return;
+  }
+
+  const QString scheme = dataset.matrix.scheme == QgsMtpl::TileScheme::Tms
+                           ? QStringLiteral( "TMS" )
+                           : QStringLiteral( "XYZ" );
+  const QString ruleName = dataset.compatibilityMode
+                             ? tr( "单包兼容模式" )
+                             : dataset.partitionRule.name;
+  QStringList lines;
+  lines << tr( "包数量：%1    格式：PTP    瓦片大小：%2 px" )
+             .arg( dataset.packages.size() )
+             .arg( dataset.matrix.tileSize )
+        << tr( "Scheme：%1    CRS：%2" ).arg( scheme, dataset.matrix.crsAuthId )
+        << tr( "数据集允许层级：Z%1–Z%2    匹配规则：%3" )
+             .arg( dataset.minimumZoom )
+             .arg( dataset.maximumZoom )
+             .arg( ruleName )
+        << ( mTileDatasetBuildResult.ok() ? tr( "数据集状态：可加载" ) : tr( "数据集状态：不可加载" ) );
+  QSet<int> presentZooms;
+  for ( const QgsMtpl::TileDatasetPackage &package : dataset.packages )
+  {
+    for ( const QgsMtpl::TileRangeRecord &range : package.ranges )
+    {
+      if ( range.presentCount > 0 && range.zoom >= dataset.minimumZoom && range.zoom <= dataset.maximumZoom )
+        presentZooms.insert( range.zoom );
+    }
+  }
+  QList<int> zooms = presentZooms.values();
+  std::sort( zooms.begin(), zooms.end() );
+  QStringList zoomLabels;
+  for ( qsizetype index = 0; index < zooms.size(); ++index )
+  {
+    const int first = zooms.at( index );
+    int last = first;
+    while ( index + 1 < zooms.size() && zooms.at( index + 1 ) == last + 1 )
+      last = zooms.at( ++index );
+    zoomLabels << ( first == last ? tr( "Z%1" ).arg( first ) : tr( "Z%1–Z%2" ).arg( first ).arg( last ) );
+  }
+  lines << tr( "有数据层级：%1" ).arg( zoomLabels.isEmpty() ? tr( "无" ) : zoomLabels.join( QStringLiteral( "、" ) ) )
+        << tr( "允许层级内没有瓦片的层级、局部空洞及覆盖范围外均透明显示，不使用其他层级补图。" );
+  if ( !mTileDatasetBuildResult.ok() )
+    lines << diagnostic;
+  const QStringList warnings = mTileDatasetBuildResult.warningMessages();
+  if ( !warnings.isEmpty() )
+    lines << tr( "诊断：%1" ).arg( warnings.mid( 0, 3 ).join( QStringLiteral( " | " ) ) );
+  mTileDatasetSummaryLabel->setText( lines.join( QLatin1Char( '\n' ) ) );
+  mTileDatasetSummaryLabel->setToolTip( mTileDatasetBuildResult.ok() ? QString() : diagnostic );
+}
+
+void QgsMtplDockWidget::savePartitionRule( const QgsMtpl::PartitionRule &rule )
+{
+  QgsMtpl::PartitionRule candidate = rule;
+  candidate.builtIn = false;
+  QString error;
+  if ( !candidate.isValid( &error ) )
+  {
+    emit loadFailed( error );
+    mPartitionRuleWidget->ruleSaveFailed( candidate.id );
+    return;
+  }
+
+  QList<QgsMtpl::PartitionRule> customRules = QgsMtpl::PartitionRuleStore::loadCustomRules( &error );
+  if ( !error.isEmpty() )
+  {
+    emit loadFailed( error );
+    mPartitionRuleWidget->ruleSaveFailed( candidate.id );
+    return;
+  }
+  bool replaced = false;
+  for ( QgsMtpl::PartitionRule &storedRule : customRules )
+  {
+    if ( storedRule.id == candidate.id )
+    {
+      storedRule = candidate;
+      replaced = true;
+      break;
+    }
+  }
+  if ( !replaced )
+    customRules.append( candidate );
+  if ( !QgsMtpl::PartitionRuleStore::saveCustomRules( customRules, &error ) )
+  {
+    emit loadFailed( error );
+    mPartitionRuleWidget->ruleSaveFailed( candidate.id );
+    return;
+  }
+  QgsSettings settings;
+  settings.setValue( QStringLiteral( "mtpl/partitionRules/lastSelectedId" ), candidate.id,
+                     QgsSettings::Section::Plugins );
+  rebuildTileDataset();
+  emit messageRequested( tr( "分包规则" ), tr( "规则“%1”已保存。" ).arg( candidate.name ), Qgis::MessageLevel::Success );
+}
+
+void QgsMtplDockWidget::deletePartitionRule( const QString &ruleId )
+{
+  QString error;
+  QList<QgsMtpl::PartitionRule> customRules = QgsMtpl::PartitionRuleStore::loadCustomRules( &error );
+  if ( !error.isEmpty() )
+  {
+    emit loadFailed( error );
+    mPartitionRuleWidget->ruleDeleteFailed( ruleId );
+    return;
+  }
+  const qsizetype before = customRules.size();
+  customRules.erase( std::remove_if( customRules.begin(), customRules.end(), [&ruleId]( const QgsMtpl::PartitionRule &rule )
+  {
+    return rule.id == ruleId;
+  } ), customRules.end() );
+  if ( customRules.size() == before )
+  {
+    mPartitionRuleWidget->ruleDeleteSucceeded( ruleId );
+    return;
+  }
+  if ( !QgsMtpl::PartitionRuleStore::saveCustomRules( customRules, &error ) )
+  {
+    emit loadFailed( error );
+    mPartitionRuleWidget->ruleDeleteFailed( ruleId );
+    return;
+  }
+  mPartitionRuleWidget->ruleDeleteSucceeded( ruleId );
+  QgsSettings settings;
+  settings.setValue( QStringLiteral( "mtpl/partitionRules/lastSelectedId" ), mPartitionRuleWidget->currentRuleId(),
+                     QgsSettings::Section::Plugins );
+  rebuildTileDataset();
 }
 
 void QgsMtplDockWidget::updateBatchSummary()
@@ -2869,7 +3692,7 @@ void QgsMtplDockWidget::updateBatchSummary()
   int unavailableCount = 0;
   for ( const QgsMtpl::PackageDescriptor &descriptor : std::as_const( mProbe.packages ) )
   {
-    if ( descriptor.isReady() )
+    if ( descriptor.isReady() || descriptor.isCredentialedEmptyPtp() )
       ++readyCount;
     else if ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired )
       ++keyRequiredCount;
@@ -2881,7 +3704,7 @@ void QgsMtplDockWidget::updateBatchSummary()
 
   mPackagesLabel->setText( tr( "数据包（%1）" ).arg( packageCount ) );
   QStringList summaryParts;
-  summaryParts << tr( "%1 个可用" ).arg( readyCount );
+  summaryParts << tr( "%1 个可读取" ).arg( readyCount );
   if ( keyRequiredCount > 0 )
     summaryParts << tr( "%1 个需要密钥" ).arg( keyRequiredCount );
   if ( keyRejectedCount > 0 )
@@ -2906,7 +3729,9 @@ void QgsMtplDockWidget::populateOverrides()
   if ( !spatialFormat )
     return;
 
-  const bool payloadCanBeChanged = descriptor.format == QgsMtpl::PackageFormat::Ptp;
+  // PTP payload is a structural contract established by package probing.
+  // Display overrides must not turn image PTP into DTP/VTP semantics.
+  const bool payloadCanBeChanged = false;
   mPayloadOverrideLabel->setVisible( payloadCanBeChanged );
   mPayloadOverride->setVisible( payloadCanBeChanged );
   const int payloadIndex = mPayloadOverride->findData( static_cast<int>( descriptor.payload ) );
@@ -3022,11 +3847,19 @@ void QgsMtplDockWidget::rebuildDetails()
     } );
     item->setData( 0, PACKAGE_INDEX_ROLE, index );
     item->setData( 0, ITEM_KIND_ROLE, static_cast<int>( PackageTreeItemKind::Package ) );
-    item->setData( 0, ITEM_READY_ROLE, descriptor.isReady() );
+    item->setData( 0, ITEM_READY_ROLE,
+                   descriptor.isReady() || descriptor.isCredentialedEmptyPtp() );
     item->setToolTip( 0, QDir::toNativeSeparators( descriptor.path ) );
     item->setToolTip( 4, descriptor.readinessMessage );
     item->setFlags( item->flags() & ~Qt::ItemIsUserCheckable );
-    if ( descriptor.isReady() && descriptor.isSpatial() )
+    const bool aggregatePtp = descriptor.format == QgsMtpl::PackageFormat::Ptp;
+    if ( aggregatePtp )
+    {
+      item->setCheckState( 0, ptpDatasetCheckState( descriptor ) );
+      item->setToolTip( 0, tr( "%1\nPTP 由数据集统一检查，仅通过图片载荷契约后才会作为单一瓦片图层加载。" )
+                           .arg( QDir::toNativeSeparators( descriptor.path ) ) );
+    }
+    else if ( descriptor.isReady() && descriptor.isSpatial() )
     {
       item->setFlags( item->flags() | Qt::ItemIsUserCheckable );
       item->setCheckState( 0, Qt::Checked );
@@ -3085,7 +3918,27 @@ void QgsMtplDockWidget::rebuildDetails()
 
 void QgsMtplDockWidget::updateLoadButtonState()
 {
-  bool hasSelection = false;
+  const bool hasTileDataset = mTileDatasetBuildResult.ok() && !mTileDatasetBuildResult.dataset.packages.isEmpty();
+  const bool hasPtp = std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp;
+  } );
+  const bool needsUnlock = hasPtp && std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp &&
+           ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRequired ||
+             ( descriptor.readiness == QgsMtpl::ReadinessState::UnverifiableEmpty &&
+               !descriptor.isCredentialedEmptyPtp() ) );
+  } ) && !std::any_of( mProbe.packages.cbegin(), mProbe.packages.cend(), []( const QgsMtpl::PackageDescriptor &descriptor )
+  {
+    return descriptor.format == QgsMtpl::PackageFormat::Ptp &&
+           ( descriptor.readiness == QgsMtpl::ReadinessState::KeyRejectedOrCorrupt ||
+             descriptor.readiness == QgsMtpl::ReadinessState::Unsupported ||
+             descriptor.readiness == QgsMtpl::ReadinessState::Unreadable );
+  } );
+  const bool invalidPtpDataset = hasPtp && !hasTileDataset;
+  bool hasSelection = hasTileDataset;
+  bool hasOtherSelection = false;
   int selectedSfpDatasetCount = 0;
   QTreeWidgetItemIterator iterator( mPackageTree );
   while ( *iterator )
@@ -3093,10 +3946,20 @@ void QgsMtplDockWidget::updateLoadButtonState()
     QTreeWidgetItem *item = *iterator;
     ++iterator;
     const PackageTreeItemKind kind = static_cast<PackageTreeItemKind>( item->data( 0, ITEM_KIND_ROLE ).toInt() );
-    if ( ( kind == PackageTreeItemKind::Package || kind == PackageTreeItemKind::SfpEntry ) &&
+    bool aggregatePtpPackage = false;
+    if ( kind == PackageTreeItemKind::Package )
+    {
+      bool packageIndexOk = false;
+      const int packageIndex = item->data( 0, PACKAGE_INDEX_ROLE ).toInt( &packageIndexOk );
+      aggregatePtpPackage = packageIndexOk && packageIndex >= 0 && packageIndex < mProbe.packages.size() &&
+                            mProbe.packages.at( packageIndex ).format == QgsMtpl::PackageFormat::Ptp;
+    }
+    if ( !aggregatePtpPackage &&
+         ( kind == PackageTreeItemKind::Package || kind == PackageTreeItemKind::SfpEntry ) &&
          item->data( 0, ITEM_READY_ROLE ).toBool() && item->checkState( 0 ) == Qt::Checked )
     {
       hasSelection = true;
+      hasOtherSelection = true;
       if ( kind == PackageTreeItemKind::SfpEntry )
         ++selectedSfpDatasetCount;
     }
@@ -3106,13 +3969,56 @@ void QgsMtplDockWidget::updateLoadButtonState()
   {
     return descriptor.format == QgsMtpl::PackageFormat::Sfp;
   } );
-  if ( sfpSelection )
+  if ( invalidPtpDataset && hasOtherSelection )
+  {
+    mLoadButton->setText( tr( "加载已选非 PTP 内容（PTP 已跳过）" ) );
+    const QString ptpDiagnostic = mTileDatasetSummaryLabel ? mTileDatasetSummaryLabel->toolTip() : QString();
+    mLoadButton->setToolTip( ptpDiagnostic.isEmpty()
+                               ? tr( "无效或未解锁的 PTP 数据集不会参与本次加载。" )
+                               : tr( "无效或未解锁的 PTP 数据集不会参与本次加载。%1" ).arg( ptpDiagnostic ) );
+  }
+  else if ( invalidPtpDataset )
+  {
+    mLoadButton->setText( needsUnlock ? tr( "请先解锁 PTP 数据集" ) : tr( "当前 PTP 数据集不可加载" ) );
+    mLoadButton->setToolTip( mTileDatasetSummaryLabel ? mTileDatasetSummaryLabel->toolTip() : QString() );
+  }
+  else if ( hasTileDataset && hasOtherSelection )
+  {
+    mLoadButton->setText( tr( "加载单一 PTP 图层及已选内容" ) );
+    mLoadButton->setToolTip( QString() );
+  }
+  else if ( hasTileDataset )
+  {
+    mLoadButton->setText( tr( "加载为单一瓦片图层" ) );
+    mLoadButton->setToolTip( QString() );
+  }
+  else if ( sfpSelection )
+  {
     mLoadButton->setText( tr( "加载已选数据集（%1）" ).arg( selectedSfpDatasetCount ) );
+    mLoadButton->setToolTip( QString() );
+  }
   else if ( mProbe.isDirectorySelection )
+  {
     mLoadButton->setText( tr( "加载可用数据包" ) );
+    mLoadButton->setToolTip( QString() );
+  }
   else
+  {
     mLoadButton->setText( tr( "加载到地图" ) );
-  mLoadButton->setEnabled( mProbe.ok && hasSelection && !mSfpPopulation );
+    mLoadButton->setToolTip( QString() );
+  }
+  mLoadButton->setEnabled( ( !invalidPtpDataset || hasOtherSelection ) &&
+                           mProbe.ok && hasSelection && !mSfpPopulation && !mLoadTask );
+
+  const QString refreshPath = !mTileDatasetBuildResult.dataset.sourcePath.isEmpty()
+                                ? mTileDatasetBuildResult.dataset.sourcePath
+                                : selectedPath();
+  const bool existingDataset = hasPtp && existingTileDatasetLayer( refreshPath );
+  mRefreshDatasetButton->setEnabled( existingDataset && !mSfpPopulation && !mLoadTask && !mProbeTask );
+  if ( existingDataset )
+    mRefreshDatasetButton->setToolTip( tr( "重新检查磁盘上的全部 PTP 包。只有检查和加载都成功后才会替换现有图层快照。" ) );
+  else
+    mRefreshDatasetButton->setToolTip( tr( "当前路径尚未加载为 PTP 数据集图层。" ) );
 }
 
 void QgsMtplDockWidget::populateSfpEntriesBatch()

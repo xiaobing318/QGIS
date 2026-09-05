@@ -24,25 +24,33 @@ set(mtpl_support_SRCS
   qgsmtpldockwidget.cpp
   qgsmtplpackage.cpp
   qgsmtplpathwidget.cpp
+  qgsmtplpartitionrulewidget.cpp
   qgsmtplpluginlayer.cpp
   dialogs/qgsmtplpackagetoolswidget.cpp
+  rendering/qgsmtplrasterinterface.cpp
   services/qgsmtplcredentialstore.cpp
   services/qgsmtplkeysidecar.cpp
   services/qgsmtplpackageoperation.cpp
   services/qgsmtplpackageservice.cpp
+  services/qgsmtplpartitionrule.cpp
+  services/qgsmtpltileset.cpp
 )
 
 set(mtpl_support_HDRS
   qgsmtpldockwidget.h
   qgsmtplpackage.h
   qgsmtplpathwidget.h
+  qgsmtplpartitionrulewidget.h
   qgsmtplpluginlayer.h
   dialogs/qgsmtplpackagetoolswidget.h
+  rendering/qgsmtplrasterinterface.h
   services/qgsmtplcredentialstore.h
   services/qgsmtplkeysidecar.h
   services/qgsmtplpackageoperation.h
   services/qgsmtplpackageservice.h
+  services/qgsmtplpartitionrule.h
   services/qgsmtplstatus.h
+  services/qgsmtpltileset.h
 )
 
 add_library(qgis_mtpl_plugin_support STATIC ${mtpl_support_SRCS} ${mtpl_support_HDRS})
@@ -52,6 +60,7 @@ target_include_directories(qgis_mtpl_plugin_support PUBLIC
   ${CMAKE_SOURCE_DIR}/src/plugins
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/dialogs
+  ${CMAKE_CURRENT_SOURCE_DIR}/rendering
   ${CMAKE_CURRENT_SOURCE_DIR}/services
   ${CMAKE_CURRENT_SOURCE_DIR}/vendor/mtpl/include
   ${CMAKE_CURRENT_SOURCE_DIR}/vendor/mtpl/src/sfp
@@ -73,8 +82,16 @@ if(WIN32)
   target_link_libraries(qgis_mtpl_plugin_support PUBLIC Advapi32)
 endif()
 
+if(WITH_AUTH)
+  add_subdirectory(auth)
+endif()
+
 add_library(plugin_mtpl MODULE qgsmtplplugin.cpp qgsmtplplugin.h)
 target_link_libraries(plugin_mtpl PRIVATE qgis_mtpl_plugin_support)
+
+if(WITH_AUTH)
+  add_dependencies(plugin_mtpl authmethod_mtpl)
+endif()
 
 if(MSVC)
   target_compile_options(plugin_mtpl PRIVATE /utf-8)

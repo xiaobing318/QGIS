@@ -35,3 +35,23 @@ endfunction()
 add_mtpl_test(test_mtpl_package test_mtpl_package.cpp)
 add_mtpl_test(test_mtpl_operation test_mtpl_operation.cpp)
 add_mtpl_test(test_mtpl_widget test_mtpl_widget.cpp)
+add_mtpl_test(test_mtpl_tileset test_mtpl_tileset.cpp)
+add_mtpl_test(test_mtpl_layer test_mtpl_layer.cpp)
+if(WITH_AUTH)
+  add_mtpl_test(test_mtpl_credentials test_mtpl_credentials.cpp)
+  if(TARGET authmethod_mtpl)
+    add_dependencies(test_mtpl_credentials authmethod_mtpl)
+  endif()
+endif()
+
+# Explicit manual corpus generation only. Never register this writer with CTest.
+add_executable(mtpl_testdata_generator
+  mtpl_testdata_generator.cpp
+  mtpltestfixtures.cpp
+  mtpltestfixtures.h
+)
+target_include_directories(mtpl_testdata_generator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(mtpl_testdata_generator PRIVATE qgis_mtpl_plugin_support)
+if(MSVC)
+  target_compile_options(mtpl_testdata_generator PRIVATE /utf-8)
+endif()

@@ -24,6 +24,7 @@
 #include "qgsmapcanvas.h"
 #include "qgsmessagebar.h"
 #include "qgspluginlayerregistry.h"
+#include "qgsproject.h"
 
 #include <QAction>
 #include <QCoreApplication>
@@ -154,7 +155,7 @@ void QgsMtplPlugin::ensureDock()
 
   connect( mDock, &QgsMtplDockWidget::layersLoaded, this, [this]( int count ) {
     if ( mIface )
-      mIface->messageBar()->pushSuccess( tr( "MTPL 数据包" ), tr( "已加载 %1 个数据包图层。" ).arg( count ) );
+      mIface->messageBar()->pushSuccess( tr( "MTPL 数据包" ), tr( "已加载 %1 个图层。" ).arg( count ) );
   } );
   connect( mDock, &QgsMtplDockWidget::loadPartiallySucceeded, this, [this]( int loadedCount, int failedItemCount, const QStringList &messages ) {
     if ( !mIface )
@@ -169,6 +170,16 @@ void QgsMtplPlugin::ensureDock()
   connect( mDock, &QgsMtplDockWidget::loadFailed, this, [this]( const QString &message ) {
     if ( mIface )
       mIface->messageBar()->pushWarning( tr( "MTPL 数据包" ), message );
+  } );
+  connect( mDock, &QgsMtplDockWidget::existingLayerActivated, this, [this]( const QString &layerId )
+  {
+    if ( !mIface )
+      return;
+    QgsMapLayer *layer = QgsProject::instance()->mapLayer( layerId );
+    if ( !layer )
+      return;
+    mIface->setActiveLayer( layer );
+    mIface->zoomToActiveLayer();
   } );
   connect( mDock, &QgsMtplDockWidget::messageRequested, this,
            [this]( const QString &title, const QString &message, Qgis::MessageLevel level )

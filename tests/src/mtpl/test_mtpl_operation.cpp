@@ -18,14 +18,17 @@
 
 #include "qgsmtplpackageoperation.h"
 #include "qgsmtplpackageservice.h"
+#include "qgsmtpltileset.h"
 #include "qgstest.h"
 
 #include <mtpl/sfp.h>
 
+#include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QVector>
@@ -42,6 +45,15 @@ namespace
     while ( !file.atEnd() )
       hash.addData( file.read( 1024 * 1024 ) );
     return hash.result();
+  }
+
+  bool writeSourceTile( const QString &root, const QString &relativePath, const QByteArray &bytes )
+  {
+    const QString path = QDir( root ).filePath( relativePath );
+    if ( !QDir().mkpath( QFileInfo( path ).absolutePath() ) )
+      return false;
+    QFile file( path );
+    return file.open( QIODevice::WriteOnly | QIODevice::NewOnly ) && file.write( bytes ) == bytes.size();
   }
 }
 
@@ -67,6 +79,12 @@ class TestMtplOperation : public QObject
     void writesVerifiedSidecar_data();
     void writesVerifiedSidecar();
     void createsAllFormats();
+    void createsLoadablePtp_data();
+    void createsLoadablePtp();
+    void rejectsInvalidPtp_data();
+    void rejectsInvalidPtp();
+    void cancelsPtpCreation_data();
+    void cancelsPtpCreation();
     void rejectsEncryptedEmptySfp();
     void rekeysMixedSfp();
     void packageTaskLifecycle_data();
@@ -307,6 +325,7 @@ void TestMtplOperation::protectsExistingOutput_data()
   QTest::addColumn<bool>( "sfp" );
   QTest::addColumn<QString>( "suffix" );
   QTest::newRow( "vtp" ) << false << QStringLiteral( "vtp" );
+  QTest::newRow( "ptp" ) << false << QStringLiteral( "ptp" );
   QTest::newRow( "sfp" ) << true << QStringLiteral( "sfp" );
 }
 
@@ -327,7 +346,7 @@ void TestMtplOperation::protectsExistingOutput()
                      : QgsMtpl::PackageOperationType::CreateTilePackage;
   request.sourcePath = QStringLiteral( "source-must-not-be-read" );
   request.outputPath = sentinelPath;
-  request.outputFormat = sfp ? QgsMtpl::PackageFormat::Sfp : QgsMtpl::PackageFormat::Vtp;
+  request.outputFormat = QgsMtpl::packageFormatFromPath( sentinelPath );
 
   const QgsMtpl::PackageOperationResult result = QgsMtpl::PackageOperations::execute( request );
   QVERIFY( !result.ok );
@@ -400,6 +419,7 @@ void TestMtplOperation::writesVerifiedSidecar_data()
   QTest::addColumn<bool>( "sfp" );
   QTest::addColumn<QString>( "suffix" );
   QTest::newRow( "vtp" ) << false << QStringLiteral( "vtp" );
+  QTest::newRow( "ptp" ) << false << QStringLiteral( "ptp" );
   QTest::newRow( "sfp" ) << true << QStringLiteral( "sfp" );
 }
 
@@ -423,7 +443,7 @@ void TestMtplOperation::writesVerifiedSidecar()
   else
   {
     QVERIFY2( QgsMtplTest::writeTileFixture(
-                sourcePath, QgsMtpl::PackageFormat::Vtp, MTPL_STORAGE_PLAIN, {}, fixtureError ),
+                sourcePath, QgsMtpl::packageFormatFromPath( sourcePath ), MTPL_STORAGE_PLAIN, {}, fixtureError ),
               qPrintable( fixtureError ) );
   }
 
@@ -462,6 +482,11 @@ void TestMtplOperation::writesVerifiedSidecar()
   QCOMPARE( probe.packages.constFirst().credentialSource, QgsMtpl::CredentialSource::Sidecar );
   QCOMPARE( QFileInfo( probe.packages.constFirst().sidecarPath ).absoluteFilePath(),
             QFileInfo( result.sidecarPath ).absoluteFilePath() );
+  if ( suffix == QLatin1String( "ptp" ) )
+  {
+    const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset( request.outputPath, false, probe.packages );
+    QVERIFY2( dataset.ok(), qPrintable( dataset.errorString() ) );
+  }
   discoveredSidecar.keys.clear();
   result.outputKeys.clear();
 }
@@ -473,7 +498,13 @@ void TestMtplOperation::createsAllFormats()
   QVERIFY( QDir().mkpath( tileLeaf ) );
   QFile tileFile( QDir( tileLeaf ).filePath( QStringLiteral( "0.bin" ) ) );
   QVERIFY( tileFile.open( QIODevice::WriteOnly | QIODevice::NewOnly ) );
-  QCOMPARE( tileFile.write( QByteArrayLiteral( "synthetic-tile" ) ), 14 );
+  QImage tileImage( 256, 256, QImage::Format_ARGB32 );
+  tileImage.fill( qRgb( 36, 112, 214 ) );
+  QByteArray tileBytes;
+  QBuffer tileBuffer( &tileBytes );
+  QVERIFY( tileBuffer.open( QIODevice::WriteOnly ) );
+  QVERIFY( tileImage.save( &tileBuffer, "PNG" ) );
+  QCOMPARE( tileFile.write( tileBytes ), static_cast<qint64>( tileBytes.size() ) );
   tileFile.close();
 
   const QList<QPair<QgsMtpl::PackageFormat, QString>> tileFormats = {
@@ -507,6 +538,11 @@ void TestMtplOperation::createsAllFormats()
       QVERIFY2( probe.ok, qPrintable( probe.error ) );
       QCOMPARE( probe.packages.constFirst().format, format.first );
       QVERIFY( probe.packages.constFirst().isReady() );
+      if ( format.first == QgsMtpl::PackageFormat::Ptp )
+      {
+        const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset( request.outputPath, false, probe.packages );
+        QVERIFY2( dataset.ok(), qPrintable( dataset.errorString() ) );
+      }
       probeKeys.clear();
       result.outputKeys.clear();
     }
@@ -546,6 +582,271 @@ void TestMtplOperation::createsAllFormats()
     probeKeys.clear();
     sfpResult.outputKeys.clear();
   }
+}
+
+void TestMtplOperation::createsLoadablePtp_data()
+{
+  QTest::addColumn<QByteArray>( "encoding" );
+  QTest::addColumn<QString>( "suffix" );
+  QTest::addColumn<int>( "tileSize" );
+  QTest::addColumn<QByteArray>( "metadata" );
+  QTest::addColumn<QString>( "coordinate" );
+  QTest::addColumn<QString>( "outputName" );
+  QTest::addColumn<bool>( "encrypted" );
+
+  const QByteArray geographic = QByteArrayLiteral(
+    "{\"mtpl_tile_matrix\":{\"version\":1,\"crs\":\"EPSG:4326\",\"scheme\":\"xyz\","
+    "\"top_left\":[-180,90],\"z0_tile_span\":180,\"z0_matrix_width\":2,\"z0_matrix_height\":1}}" );
+  for ( const bool encrypted : { false, true } )
+  {
+    const QByteArray mode = encrypted ? QByteArrayLiteral( "-encrypted" ) : QByteArrayLiteral( "-plain" );
+    for ( const QByteArray &encoding : { QByteArrayLiteral( "png" ), QByteArrayLiteral( "jpeg" ), QByteArrayLiteral( "webp" ) } )
+    {
+      QTest::newRow( QByteArray( encoding + mode ).constData() )
+        << encoding << QString::fromLatin1( encoding ) << 256 << QByteArrayLiteral( "{}" )
+        << QStringLiteral( "0/0/0" ) << QStringLiteral( "created.ptp" ) << encrypted;
+    }
+    QTest::newRow( QByteArray( QByteArrayLiteral( "png-bin" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "bin" ) << 256 << QByteArrayLiteral( "{}" )
+      << QStringLiteral( "0/0/0" ) << QStringLiteral( "created.ptp" ) << encrypted;
+    QTest::newRow( QByteArray( QByteArrayLiteral( "multilevel" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "png" ) << 256 << QByteArrayLiteral( "{}" )
+      << QStringLiteral( "0/0/0" ) << QStringLiteral( "multilevel.ptp" ) << encrypted;
+    QTest::newRow( QByteArray( QByteArrayLiteral( "small-png" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "png" ) << 33 << QByteArrayLiteral( "{\"tile_size\":33}" )
+      << QStringLiteral( "0/0/0" ) << QStringLiteral( "created.ptp" ) << encrypted;
+    QTest::newRow( QByteArray( QByteArrayLiteral( "geographic-root" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "png" ) << 256 << geographic
+      << QStringLiteral( "0/1/0" ) << QStringLiteral( "created.ptp" ) << encrypted;
+    QTest::newRow( QByteArray( QByteArrayLiteral( "tms" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "png" ) << 256 << QByteArrayLiteral( "{\"scheme\":\"tms\"}" )
+      << QStringLiteral( "1/0/1" ) << QStringLiteral( "created.ptp" ) << encrypted;
+    QTest::newRow( QByteArray( QByteArrayLiteral( "partition-name" ) + mode ).constData() )
+      << QByteArrayLiteral( "png" ) << QStringLiteral( "png" ) << 256 << QByteArrayLiteral( "{}" )
+      << QStringLiteral( "8/32/32" ) << QStringLiteral( "8-11-3-1-1.ptp" ) << encrypted;
+  }
+}
+
+void TestMtplOperation::createsLoadablePtp()
+{
+  QFETCH( QByteArray, encoding );
+  QFETCH( QString, suffix );
+  QFETCH( int, tileSize );
+  QFETCH( QByteArray, metadata );
+  QFETCH( QString, coordinate );
+  QFETCH( QString, outputName );
+  QFETCH( bool, encrypted );
+  QTemporaryDir workspace;
+  QVERIFY( workspace.isValid() );
+  QString fixtureError;
+  const QByteArray bytes = QgsMtplTest::rasterTileImage( encoding, tileSize, tileSize, 1, fixtureError );
+  QVERIFY2( !bytes.isEmpty(), qPrintable( fixtureError ) );
+  const QString source = QDir( workspace.path() ).filePath( QStringLiteral( "source" ) );
+  QVERIFY( writeSourceTile( source, coordinate + QLatin1Char( '.' ) + suffix, bytes ) );
+  if ( outputName == QLatin1String( "multilevel.ptp" ) )
+    QVERIFY( writeSourceTile( source, QStringLiteral( "1/0/0.png" ), bytes ) );
+
+  QgsMtpl::PackageOperationRequest request;
+  request.type = QgsMtpl::PackageOperationType::CreateTilePackage;
+  request.sourcePath = source;
+  request.outputPath = QDir( workspace.path() ).filePath( outputName );
+  request.outputFormat = QgsMtpl::PackageFormat::Ptp;
+  request.tileSize = tileSize;
+  request.metadata = metadata;
+  request.encryptOutput = encrypted;
+  request.writeSidecar = encrypted;
+  const QgsMtpl::PackageOperationResult result = QgsMtpl::PackageOperations::execute( request );
+  QVERIFY2( result.ok, qPrintable( result.error ) );
+  QCOMPARE( result.outputPaths, QStringList( { request.outputPath } ) );
+  QCOMPARE( !result.sidecarPath.isEmpty(), encrypted );
+
+  // Sidecar discovery is the same path a beginner uses after creating an encrypted package.
+  const QgsMtpl::ProbeResult probe = QgsMtplPackageService::probePath(
+    request.outputPath, {}, true, QgsMtpl::CredentialSource::None );
+  QVERIFY2( probe.ok, qPrintable( probe.error ) );
+  QCOMPARE( probe.packages.size(), 1 );
+  QVERIFY( probe.packages.constFirst().isReady() );
+  const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset( request.outputPath, false, probe.packages );
+  QVERIFY2( dataset.ok(), qPrintable( dataset.errorString() ) );
+  QCOMPARE( dataset.dataset.matrix.tileSize, tileSize );
+  QCOMPARE( dataset.dataset.payload, QgsMtpl::PayloadType::RasterImage );
+  QCOMPARE( dataset.dataset.packages.size(), 1 );
+  if ( outputName == QLatin1String( "multilevel.ptp" ) )
+  {
+    QCOMPARE( dataset.dataset.minimumZoom, 0 );
+    QCOMPARE( dataset.dataset.maximumZoom, 1 );
+  }
+  QVERIFY( QDir( workspace.path() ).entryList(
+    { QStringLiteral( ".*.mtpl-staging-*" ) }, QDir::Files | QDir::Hidden ).isEmpty() );
+}
+
+void TestMtplOperation::rejectsInvalidPtp_data()
+{
+  QTest::addColumn<QString>( "scenario" );
+  QTest::addColumn<bool>( "encrypted" );
+  const QStringList scenarios {
+    QStringLiteral( "empty-tile" ), QStringLiteral( "unsupported-image" ), QStringLiteral( "truncated-image" ),
+    QStringLiteral( "truncated-jpeg" ), QStringLiteral( "truncated-png-tail" ),
+    QStringLiteral( "size-mismatch" ), QStringLiteral( "nonsquare-image" ), QStringLiteral( "second-bad-image" ),
+    QStringLiteral( "second-size-mismatch" ), QStringLiteral( "duplicate-coordinate" ),
+    QStringLiteral( "zoom-31" ), QStringLiteral( "outside-matrix" ),
+    QStringLiteral( "invalid-json" ), QStringLiteral( "nonobject-json" ), QStringLiteral( "invalid-matrix" ),
+    QStringLiteral( "metadata-size" ), QStringLiteral( "metadata-zoom" ), QStringLiteral( "missing-geographic-matrix" ),
+    QStringLiteral( "declared-elevation" ), QStringLiteral( "partition-zoom" ), QStringLiteral( "partition-coordinate" )
+  };
+  for ( const QString &scenario : scenarios )
+  {
+    for ( const bool encrypted : { false, true } )
+      QTest::newRow( QByteArray( scenario.toLatin1() + ( encrypted ? "-encrypted" : "-plain" ) ).constData() ) << scenario << encrypted;
+  }
+}
+
+void TestMtplOperation::rejectsInvalidPtp()
+{
+  QFETCH( QString, scenario );
+  QFETCH( bool, encrypted );
+  QTemporaryDir workspace;
+  QVERIFY( workspace.isValid() );
+  QString fixtureError;
+  QByteArray bytes = QgsMtplTest::rasterTileImage( QByteArrayLiteral( "png" ), 256, 256, 1, fixtureError );
+  QVERIFY2( !bytes.isEmpty(), qPrintable( fixtureError ) );
+  QByteArray metadata = QByteArrayLiteral( "{}" );
+  QString relativePath = QStringLiteral( "0/0/0.png" );
+  QString outputName = QStringLiteral( "rejected.ptp" );
+  if ( scenario == QLatin1String( "empty-tile" ) )
+    bytes.clear();
+  else if ( scenario == QLatin1String( "unsupported-image" ) )
+    bytes = QByteArrayLiteral( "This is not an image." );
+  else if ( scenario == QLatin1String( "truncated-image" ) )
+    bytes = bytes.left( 32 );
+  else if ( scenario == QLatin1String( "truncated-jpeg" ) )
+  {
+    bytes = QgsMtplTest::rasterTileImage( QByteArrayLiteral( "jpeg" ), 256, 256, 1, fixtureError );
+    QVERIFY2( !bytes.isEmpty(), qPrintable( fixtureError ) );
+    bytes.chop( bytes.size() / 3 );
+    relativePath = QStringLiteral( "0/0/0.jpeg" );
+  }
+  else if ( scenario == QLatin1String( "truncated-png-tail" ) )
+    bytes.chop( 2 );
+  else if ( scenario == QLatin1String( "size-mismatch" ) || scenario == QLatin1String( "nonsquare-image" ) )
+  {
+    bytes = QgsMtplTest::rasterTileImage(
+      QByteArrayLiteral( "png" ), 129, scenario == QLatin1String( "nonsquare-image" ) ? 256 : 129, 1, fixtureError );
+    QVERIFY2( !bytes.isEmpty(), qPrintable( fixtureError ) );
+  }
+  else if ( scenario == QLatin1String( "zoom-31" ) )
+    relativePath = QStringLiteral( "31/0/0.png" );
+  else if ( scenario == QLatin1String( "outside-matrix" ) )
+    relativePath = QStringLiteral( "0/1/0.png" );
+  else if ( scenario == QLatin1String( "invalid-json" ) )
+    metadata = QByteArrayLiteral( "{" );
+  else if ( scenario == QLatin1String( "nonobject-json" ) )
+    metadata = QByteArrayLiteral( "[]" );
+  else if ( scenario == QLatin1String( "invalid-matrix" ) )
+    metadata = QByteArrayLiteral( "{\"mtpl_tile_matrix\":{}}" );
+  else if ( scenario == QLatin1String( "metadata-size" ) )
+    metadata = QByteArrayLiteral( "{\"tile_size\":129}" );
+  else if ( scenario == QLatin1String( "metadata-zoom" ) )
+    metadata = QByteArrayLiteral(
+      "{\"mtpl_tile_matrix\":{\"version\":1,\"crs\":\"EPSG:3857\",\"scheme\":\"xyz\","
+      "\"top_left\":[-20037508.342789244,20037508.342789244],\"z0_tile_span\":40075016.685578488,"
+      "\"z0_matrix_width\":1,\"z0_matrix_height\":1,\"min_zoom\":1,\"max_zoom\":2}}" );
+  else if ( scenario == QLatin1String( "missing-geographic-matrix" ) )
+    metadata = QByteArrayLiteral( "{\"crs\":\"EPSG:4326\"}" );
+  else if ( scenario == QLatin1String( "declared-elevation" ) )
+    metadata = QByteArrayLiteral( "{\"payload\":\"elevation\"}" );
+  else if ( scenario == QLatin1String( "partition-zoom" ) )
+    outputName = QStringLiteral( "8-11-3-1-1.ptp" );
+  else if ( scenario == QLatin1String( "partition-coordinate" ) )
+  {
+    outputName = QStringLiteral( "8-11-3-1-1.ptp" );
+    relativePath = QStringLiteral( "8/0/0.png" );
+  }
+  const QString source = QDir( workspace.path() ).filePath( QStringLiteral( "source" ) );
+  QVERIFY( writeSourceTile( source, relativePath, bytes ) );
+  if ( scenario == QLatin1String( "second-bad-image" ) )
+    QVERIFY( writeSourceTile( source, QStringLiteral( "1/0/0.png" ), QByteArrayLiteral( "broken second image" ) ) );
+  else if ( scenario == QLatin1String( "second-size-mismatch" ) )
+  {
+    const QByteArray secondBytes = QgsMtplTest::rasterTileImage( QByteArrayLiteral( "png" ), 129, 129, 2, fixtureError );
+    QVERIFY2( !secondBytes.isEmpty(), qPrintable( fixtureError ) );
+    QVERIFY( writeSourceTile( source, QStringLiteral( "1/0/0.png" ), secondBytes ) );
+  }
+  else if ( scenario == QLatin1String( "duplicate-coordinate" ) )
+    QVERIFY( writeSourceTile( source, QStringLiteral( "0/0/00.png" ), bytes ) );
+
+  QgsMtpl::PackageOperationRequest request;
+  request.type = QgsMtpl::PackageOperationType::CreateTilePackage;
+  request.sourcePath = source;
+  request.outputPath = QDir( workspace.path() ).filePath( outputName );
+  request.outputFormat = QgsMtpl::PackageFormat::Ptp;
+  request.metadata = metadata;
+  request.encryptOutput = encrypted;
+  request.writeSidecar = true;
+  const QgsMtpl::PackageOperationResult result = QgsMtpl::PackageOperations::execute( request );
+  QVERIFY( !result.ok );
+  QVERIFY( !result.canceled );
+  QVERIFY( !result.error.isEmpty() );
+  if ( scenario.startsWith( QLatin1String( "second-" ) ) )
+    QVERIFY2( result.error.contains( QStringLiteral( "1/0/0.png" ) ), qPrintable( result.error ) );
+  QVERIFY( result.outputPaths.isEmpty() );
+  QVERIFY( result.sidecarPath.isEmpty() );
+  QVERIFY( !QFileInfo::exists( request.outputPath ) );
+  QVERIFY( !QFileInfo::exists( QgsMtpl::KeySidecarStore::singleSidecarPath( request.outputPath ) ) );
+  QVERIFY( QDir( workspace.path() ).entryList(
+    { QStringLiteral( ".*.mtpl-staging-*" ) }, QDir::Files | QDir::Hidden ).isEmpty() );
+}
+
+void TestMtplOperation::cancelsPtpCreation_data()
+{
+  QTest::addColumn<bool>( "afterStaging" );
+  QTest::newRow( "during-scan" ) << false;
+  QTest::newRow( "after-staging" ) << true;
+}
+
+void TestMtplOperation::cancelsPtpCreation()
+{
+  QFETCH( bool, afterStaging );
+  QTemporaryDir workspace;
+  QVERIFY( workspace.isValid() );
+  QString fixtureError;
+  const QByteArray bytes = QgsMtplTest::rasterTileImage( QByteArrayLiteral( "png" ), 256, 256, 1, fixtureError );
+  QVERIFY2( !bytes.isEmpty(), qPrintable( fixtureError ) );
+  const QString source = QDir( workspace.path() ).filePath( QStringLiteral( "source" ) );
+  for ( int x = 0; x < 32; ++x )
+    QVERIFY( writeSourceTile( source, QStringLiteral( "5/%1/0.png" ).arg( x ), bytes ) );
+  QgsMtpl::PackageOperationRequest request;
+  request.type = QgsMtpl::PackageOperationType::CreateTilePackage;
+  request.sourcePath = source;
+  request.outputPath = QDir( workspace.path() ).filePath( QStringLiteral( "canceled.ptp" ) );
+  request.outputFormat = QgsMtpl::PackageFormat::Ptp;
+  request.encryptOutput = true;
+  request.writeSidecar = true;
+  int checks = 0;
+  bool stagedFileObserved = false;
+  const QgsMtpl::PackageOperationResult result = QgsMtpl::PackageOperations::execute( request, [&]
+  {
+    ++checks;
+    if ( !afterStaging )
+      return checks == 8;
+    const QFileInfoList files = QDir( workspace.path() ).entryInfoList(
+      { QStringLiteral( ".*.mtpl-staging-*" ) }, QDir::Files | QDir::Hidden );
+    for ( const QFileInfo &file : files )
+      stagedFileObserved = stagedFileObserved || file.size() > 0;
+    return stagedFileObserved;
+  } );
+  QVERIFY( !result.ok );
+  QVERIFY( result.canceled );
+  if ( afterStaging )
+    QVERIFY( stagedFileObserved );
+  else
+    QVERIFY( checks < 32 );
+  QVERIFY( !QFileInfo::exists( request.outputPath ) );
+  QVERIFY( result.outputPaths.isEmpty() );
+  QVERIFY( result.sidecarPath.isEmpty() );
+  QVERIFY( !QFileInfo::exists( QgsMtpl::KeySidecarStore::singleSidecarPath( request.outputPath ) ) );
+  QVERIFY( QDir( workspace.path() ).entryList(
+    { QStringLiteral( ".*.mtpl-staging-*" ) }, QDir::Files | QDir::Hidden ).isEmpty() );
 }
 
 void TestMtplOperation::rejectsEncryptedEmptySfp()
@@ -640,6 +941,7 @@ void TestMtplOperation::packageTaskLifecycle_data()
   QTest::addColumn<bool>( "sfp" );
   QTest::addColumn<QString>( "suffix" );
   QTest::newRow( "vtp" ) << false << QStringLiteral( "vtp" );
+  QTest::newRow( "ptp" ) << false << QStringLiteral( "ptp" );
   QTest::newRow( "sfp" ) << true << QStringLiteral( "sfp" );
 }
 
@@ -661,7 +963,7 @@ void TestMtplOperation::packageTaskLifecycle()
   else
   {
     QVERIFY2( QgsMtplTest::writeTileFixture(
-                sourcePath, QgsMtpl::PackageFormat::Vtp, MTPL_STORAGE_PLAIN, {}, fixtureError ),
+                sourcePath, QgsMtpl::packageFormatFromPath( sourcePath ), MTPL_STORAGE_PLAIN, {}, fixtureError ),
               qPrintable( fixtureError ) );
   }
 
@@ -708,6 +1010,11 @@ void TestMtplOperation::packageTaskLifecycle()
   QVERIFY2( probe.ok, qPrintable( probe.error ) );
   QCOMPARE( probe.packages.size(), 1 );
   QCOMPARE( probe.packages.constFirst().readiness, QgsMtpl::ReadinessState::KeyVerified );
+  if ( suffix == QLatin1String( "ptp" ) )
+  {
+    const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset( request.outputPath, false, probe.packages );
+    QVERIFY2( dataset.ok(), qPrintable( dataset.errorString() ) );
+  }
   outputKeys.clear();
   capturedResult.outputKeys.clear();
   QgsMtplPackageOperationTask::cancelAndWaitForAllActiveTasks();
@@ -719,6 +1026,7 @@ void TestMtplOperation::encryptDecryptRoundTrip_data()
   QTest::addColumn<QString>( "formatName" );
 
   QTest::newRow( "vtp" ) << false << QStringLiteral( "vtp" );
+  QTest::newRow( "ptp" ) << false << QStringLiteral( "ptp" );
   QTest::newRow( "sfp" ) << true << QStringLiteral( "sfp" );
 }
 
@@ -740,7 +1048,7 @@ void TestMtplOperation::encryptDecryptRoundTrip()
   else
   {
     QVERIFY2( QgsMtplTest::writeTileFixture(
-                sourcePath, QgsMtpl::PackageFormat::Vtp, MTPL_STORAGE_PLAIN, {}, fixtureError ),
+                sourcePath, QgsMtpl::packageFormatFromPath( sourcePath ), MTPL_STORAGE_PLAIN, {}, fixtureError ),
               qPrintable( fixtureError ) );
   }
 
@@ -858,6 +1166,15 @@ void TestMtplOperation::encryptDecryptRoundTrip()
   QCOMPARE( decryptedDescriptor.maximumZoom, sourceDescriptor.maximumZoom );
   QCOMPARE( decryptedDescriptor.metadata.value( QStringLiteral( "rangeCount" ) ),
             sourceDescriptor.metadata.value( QStringLiteral( "rangeCount" ) ) );
+  if ( formatName == QLatin1String( "ptp" ) )
+  {
+    for ( const QgsMtpl::ProbeResult &probe : { sourceProbe, verifiedProbe, rekeyedProbe, decryptedProbe } )
+    {
+      const QgsMtpl::TileDatasetBuildResult dataset = QgsMtpl::buildTileDataset(
+        probe.packages.constFirst().path, false, probe.packages );
+      QVERIFY2( dataset.ok(), qPrintable( dataset.errorString() ) );
+    }
+  }
   if ( sfp )
   {
     QCOMPARE( decryptedDescriptor.sfpEntries.size(), sourceDescriptor.sfpEntries.size() );

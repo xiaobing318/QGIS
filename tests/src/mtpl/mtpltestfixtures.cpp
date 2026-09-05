@@ -17,9 +17,14 @@
 
 #include <mtpl/mtpl.h>
 
+#include <QBuffer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
+#include <QImageWriter>
+
+#include <algorithm>
 
 namespace
 {
@@ -178,11 +183,19 @@ bool tileFixtureData( QgsMtpl::PackageFormat format, TileFixtureData &fixture, Q
   switch ( format )
   {
     case QgsMtpl::PackageFormat::Ptp:
+    {
       fixture.tileSize = 256;
       fixture.metadata = QByteArrayLiteral( "{\"tile_file_ext\":\"png\",\"source\":\"qgis-mtpl-test\"}" );
-      fixture.payload = QByteArray::fromBase64( QByteArrayLiteral(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" ) );
+      QImage image( 256, 256, QImage::Format_ARGB32 );
+      image.fill( qRgba( 40, 120, 200, 255 ) );
+      QBuffer buffer( &fixture.payload );
+      if ( !buffer.open( QIODevice::WriteOnly ) || !image.save( &buffer, "PNG" ) )
+      {
+        error = QStringLiteral( "Unable to encode the deterministic 256 by 256 PNG fixture." );
+        return false;
+      }
       break;
+    }
     case QgsMtpl::PackageFormat::Dtp:
       fixture.tileSize = 33;
       fixture.metadata = QByteArrayLiteral( "{\"data_type\":\"uint16\",\"endianness\":\"little\",\"source\":\"qgis-mtpl-test\"}" );
@@ -273,6 +286,50 @@ QByteArray QgsMtplTest::minimalVectorTilePayload()
   return QByteArray::fromHex( "1a0b0a07666978747572657802" );
 }
 
+QByteArray QgsMtplTest::rasterTileImage( const QByteArray &format, int width, int height, quint32 marker, QString &error )
+{
+  if ( width <= 0 || height <= 0 || width > 4096 || height > 4096 )
+  {
+    error = QStringLiteral( "Raster fixture dimensions must be between 1 and 4096." );
+    return {};
+  }
+  QImage image( width, height, QImage::Format_ARGB32 );
+  image.fill( qRgb( 40 + marker * 37 % 160, 40 + marker * 53 % 160, 40 + marker * 71 % 160 ) );
+  const int corner = std::max( 1, std::min( width, height ) / 8 );
+  for ( int y = 0; y < height; ++y )
+  {
+    for ( int x = 0; x < width; ++x )
+    {
+      if ( x < corner && y < corner )
+        image.setPixel( x, y, qRgb( 240, 30, 30 ) );
+      else if ( x >= width - corner && y < corner )
+        image.setPixel( x, y, qRgb( 30, 220, 40 ) );
+      else if ( x < corner && y >= height - corner )
+        image.setPixel( x, y, qRgb( 30, 50, 240 ) );
+      else if ( x >= width - corner && y >= height - corner )
+        image.setPixel( x, y, qRgb( 240, 220, 30 ) );
+      else if ( x == width / 2 || y == height / 2 )
+        image.setPixel( x, y, qRgb( 240, 240, 240 ) );
+    }
+  }
+  QByteArray bytes;
+  QBuffer buffer( &bytes );
+  if ( !buffer.open( QIODevice::WriteOnly ) )
+  {
+    error = QStringLiteral( "Unable to open the raster fixture buffer." );
+    return {};
+  }
+  QImageWriter writer( &buffer, format );
+  writer.setQuality( 95 );
+  if ( !writer.write( image ) )
+  {
+    error = writer.errorString();
+    return {};
+  }
+  error.clear();
+  return bytes;
+}
+
 bool QgsMtplTest::writeTileFixture( const QString &path,
                                     QgsMtpl::PackageFormat format,
                                     mtpl_storage_mode_t storageMode,
@@ -327,6 +384,87 @@ bool QgsMtplTest::writeTileFixture( const QString &path,
   if ( status != MTPL_STATUS_OK )
   {
     error = statusError( QStringLiteral( "Unable to write the tile fixture" ), status );
+    removePartialOutput( path, error );
+    return false;
+  }
+
+  error.clear();
+  return true;
+}
+
+bool QgsMtplTest::writePtpFixture( const QString &path,
+                                   quint32 tileSize,
+                                   const QByteArray &metadata,
+                                   mtpl_storage_mode_t storageMode,
+                                   const QgsMtpl::CryptoKeys &keys,
+                                   const QList<TileFixtureRange> &ranges,
+                                   const QList<TileFixtureEntry> &tiles,
+                                   QString &error )
+{
+  if ( !isStorageModeSupported( storageMode ) )
+  {
+    error = QStringLiteral( "The PTP fixture storage mode is not supported." );
+    return false;
+  }
+  if ( storageMode == MTPL_STORAGE_ENCRYPTED && !keys.isValid( &error ) )
+    return false;
+  if ( ranges.isEmpty() )
+  {
+    error = QStringLiteral( "The PTP fixture needs at least one tile range." );
+    return false;
+  }
+  if ( !prepareOutputPath( path, error ) )
+    return false;
+
+  const CryptoContext crypto( keys );
+  const QByteArray pathUtf8 = QFileInfo( path ).absoluteFilePath().toUtf8();
+  const mtpl_buffer_view_t metadataView = {
+    metadata.isEmpty() ? nullptr : reinterpret_cast<const uint8_t *>( metadata.constData() ),
+    static_cast<size_t>( metadata.size() )
+  };
+  void *writer = nullptr;
+  mtpl_status_t status = tileWriterCreate(
+    QgsMtpl::PackageFormat::Ptp, pathUtf8, tileSize, metadataView, storageMode,
+    storageMode == MTPL_STORAGE_ENCRYPTED ? crypto.get() : nullptr, &writer );
+  if ( status == MTPL_STATUS_OK && !writer )
+    status = MTPL_STATUS_INTERNAL_ERROR;
+
+  for ( const TileFixtureRange &fixtureRange : ranges )
+  {
+    if ( status != MTPL_STATUS_OK )
+      break;
+    const mtpl_tile_range_t range = {
+      fixtureRange.zoom,
+      fixtureRange.xMinimum,
+      fixtureRange.xMaximum,
+      fixtureRange.yMinimum,
+      fixtureRange.yMaximum
+    };
+    status = tileWriterAddRange( QgsMtpl::PackageFormat::Ptp, writer, &range );
+  }
+
+  for ( const TileFixtureEntry &fixtureTile : tiles )
+  {
+    if ( status != MTPL_STATUS_OK )
+      break;
+    const mtpl_tile_coordinate_t coordinate = { fixtureTile.zoom, fixtureTile.x, fixtureTile.y };
+    const mtpl_buffer_view_t dataView = {
+      fixtureTile.data.isEmpty() ? nullptr : reinterpret_cast<const uint8_t *>( fixtureTile.data.constData() ),
+      static_cast<size_t>( fixtureTile.data.size() )
+    };
+    status = tileWriterAddData( QgsMtpl::PackageFormat::Ptp, writer, &coordinate, dataView );
+  }
+
+  if ( writer )
+  {
+    const mtpl_status_t closeStatus = tileWriterClose( QgsMtpl::PackageFormat::Ptp, writer );
+    writer = nullptr;
+    if ( status == MTPL_STATUS_OK )
+      status = closeStatus;
+  }
+  if ( status != MTPL_STATUS_OK )
+  {
+    error = statusError( QStringLiteral( "Unable to write the configurable PTP fixture" ), status );
     removePartialOutput( path, error );
     return false;
   }

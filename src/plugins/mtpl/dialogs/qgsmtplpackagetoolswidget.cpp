@@ -160,6 +160,16 @@ namespace
     return QDir::cleanPath( QFileInfo( QDir::fromNativeSeparators( trimmed ) ).absoluteFilePath() );
   }
 
+  QString normalizedPtpCreationPath( const QString &path )
+  {
+    QString normalized = path.trimmed();
+    if ( normalized.size() >= 2 &&
+         ( ( normalized.startsWith( QLatin1Char( '"' ) ) && normalized.endsWith( QLatin1Char( '"' ) ) ) ||
+           ( normalized.startsWith( QLatin1Char( '\'' ) ) && normalized.endsWith( QLatin1Char( '\'' ) ) ) ) )
+      normalized = normalized.mid( 1, normalized.size() - 2 ).trimmed();
+    return normalized;
+  }
+
   bool pathsMatch( const QString &left, const QString &right )
   {
     const Qt::CaseSensitivity sensitivity =
@@ -244,6 +254,13 @@ QgsMtplPackageToolsWidget::QgsMtplPackageToolsWidget( QWidget *parent )
   mOutputBrowseButton->setObjectName( QStringLiteral( "mtplPackageToolOutputBrowse" ) );
   form->addRow( tr( "输出路径" ), pathRow( mOutputEdit, mOutputBrowseButton, page ) );
 
+  mPtpCreateHelpLabel = new QLabel(
+    tr( "选择包含 {z}/{x}/{y}.ext 图片树的原始影像目录，支持 PNG、JPEG 和 WebP。"
+        "每张图片的宽、高都须与“切片大小”一致，输出为单个 PTP 数据包。" ), page );
+  mPtpCreateHelpLabel->setObjectName( QStringLiteral( "mtplPackageToolPtpCreateHelp" ) );
+  mPtpCreateHelpLabel->setWordWrap( true );
+  form->addRow( mPtpCreateHelpLabel );
+
   mTileOptions = new QWidget( page );
   QFormLayout *tileForm = new QFormLayout( mTileOptions );
   tileForm->setContentsMargins( 0, 0, 0, 0 );
@@ -273,7 +290,10 @@ QgsMtplPackageToolsWidget::QgsMtplPackageToolsWidget( QWidget *parent )
   mSourceKeysBox = new QGroupBox( tr( "源密钥" ), page );
   mSourceKeysBox->setObjectName( QStringLiteral( "mtplPackageToolSourceKeys" ) );
   QFormLayout *keyForm = new QFormLayout( mSourceKeysBox );
-  auto *keyHelpLabel = new QLabel( tr( "有匹配的密钥附属文件时可留空。" ), mSourceKeysBox );
+  auto *keyHelpLabel = new QLabel(
+    tr( "有匹配的密钥附属文件时可留空。输入的密钥只用于本次操作，不会自动保存。"
+        "如果已通过插件安全保存一组密钥，输入留空时会在运行操作时请求解锁。" ),
+    mSourceKeysBox );
   keyHelpLabel->setWordWrap( true );
   keyForm->addRow( keyHelpLabel );
   mPrivateKeyEdit = new QgsPasswordLineEdit( mSourceKeysBox );
@@ -294,31 +314,19 @@ QgsMtplPackageToolsWidget::QgsMtplPackageToolsWidget( QWidget *parent )
   mDeviceKeyEdit->setAccessibleDescription( tr( "请输入偶数长度的小写十六进制设备密钥。末尾按钮用于显示或隐藏内容。" ) );
   localizePasswordVisibilityAction( mDeviceKeyEdit, tr( "显示设备密钥" ), tr( "隐藏设备密钥" ) );
   keyForm->addRow( tr( "设备密钥" ), mDeviceKeyEdit );
-  auto *keyStorageWarning = new QLabel( tr( "警告：这里输入的源密钥将以明文保存在 QGIS 设置中。请仅在可信设备上使用。" ), mSourceKeysBox );
+  auto *keyStorageWarning = new QLabel( tr( "需要长期保存密钥时，请在“数据包”页明确选择使用 QGIS 认证管理器安全记住。" ), mSourceKeysBox );
   keyStorageWarning->setWordWrap( true );
-  keyStorageWarning->setAccessibleName( tr( "密钥明文存储警告" ) );
+  keyStorageWarning->setAccessibleName( tr( "MTPL 密钥存储说明" ) );
   keyForm->addRow( keyStorageWarning );
   mainLayout->addWidget( mSourceKeysBox );
-
-  QString rememberedKeyError;
-  QgsMtpl::CryptoKeys rememberedKeys = QgsMtplCredentialStore::rememberedKeys( &rememberedKeyError );
-  if ( rememberedKeys.isValid() )
-  {
-    mPrivateKeyEdit->setText( QString::fromUtf8( rememberedKeys.privateKey ) );
-    mDeviceKeyEdit->setText( QString::fromUtf8( rememberedKeys.deviceKey ) );
-  }
-  rememberedKeys.clear();
-  connect( mPrivateKeyEdit, &QLineEdit::textEdited, this, [this] { mSourceKeysEdited = true; } );
-  connect( mDeviceKeyEdit, &QLineEdit::textEdited, this, [this] { mSourceKeysEdited = true; } );
 
   mStatusLabel = new QLabel( page );
   mStatusLabel->setObjectName( QStringLiteral( "mtplPackageToolStatus" ) );
   mStatusLabel->setAccessibleName( tr( "数据包工具状态" ) );
   mStatusLabel->setWordWrap( true );
-  if ( !rememberedKeyError.isEmpty() )
-    mStatusLabel->setText( tr( "已记住的密钥无效，已忽略。请重新输入。" ) );
-  else
-    mStatusLabel->setText( tr( "请选择源路径和输出路径，然后运行数据包操作。" ) );
+  mStatusLabel->setText( QgsMtplCredentialStore::hasRememberedKeys()
+                           ? tr( "已安全保存一组密钥。输入留空时，将在运行操作后请求解锁。" )
+                           : tr( "请选择源路径和输出路径，然后运行数据包操作。" ) );
   mainLayout->addWidget( mStatusLabel );
 
   mProgressBar = new QProgressBar( page );
@@ -419,24 +427,9 @@ void QgsMtplPackageToolsWidget::reloadRememberedKeys()
   }
 
   mReloadRememberedKeysDeferred = false;
-  if ( mSourceKeysEdited )
-    return;
-
-  QString error;
-  QgsMtpl::CryptoKeys rememberedKeys = QgsMtplCredentialStore::rememberedKeys( &error );
-  if ( rememberedKeys.isValid() )
-  {
-    mPrivateKeyEdit->setText( QString::fromUtf8( rememberedKeys.privateKey ) );
-    mDeviceKeyEdit->setText( QString::fromUtf8( rememberedKeys.deviceKey ) );
-  }
-  else
-  {
-    mPrivateKeyEdit->clear();
-    mDeviceKeyEdit->clear();
-  }
-  rememberedKeys.clear();
-  if ( !error.isEmpty() )
-    mStatusLabel->setText( tr( "已记住的密钥无效，已忽略。请重新输入。" ) );
+  mStatusLabel->setText( QgsMtplCredentialStore::hasRememberedKeys()
+                           ? tr( "已安全保存一组密钥。输入留空时，将在运行操作后请求解锁。" )
+                           : tr( "未安全保存密钥。这里输入的密钥只用于本次操作。" ) );
 }
 
 void QgsMtplPackageToolsWidget::cancelOperation()
@@ -446,15 +439,6 @@ void QgsMtplPackageToolsWidget::cancelOperation()
     return;
   setOperationUiState( OperationUiState::Canceling, tr( "正在取消数据包操作…" ) );
   mTask->cancel();
-}
-
-void QgsMtplPackageToolsWidget::clearPendingSourceKeys()
-{
-  mPendingPrivateKey.fill( '\0' );
-  mPendingDeviceKey.fill( '\0' );
-  mPendingPrivateKey.clear();
-  mPendingDeviceKey.clear();
-  mPendingSourcePath.clear();
 }
 
 bool QgsMtplPackageToolsWidget::isOperationRunning() const
@@ -483,7 +467,6 @@ void QgsMtplPackageToolsWidget::shutdown()
   concealSecrets();
   mPrivateKeyEdit->clear();
   mDeviceKeyEdit->clear();
-  clearPendingSourceKeys();
   setEnabled( false );
 }
 
@@ -596,6 +579,10 @@ void QgsMtplPackageToolsWidget::updateOperationUi()
 {
   const int operation = mOperationCombo->currentData().toInt();
   const bool createTile = isCreateTileOperation( operation );
+  const bool createPtp = operation == CreatePtpOperation;
+  mPtpCreateHelpLabel->setVisible( createPtp );
+  mOutputEdit->setPlaceholderText( createPtp ? tr( "单个输出数据包，例如 imagery.ptp" ) : QString() );
+  mTileSizeCombo->setToolTip( createPtp ? tr( "与每张原始影像的宽、高像素数一致。" ) : QString() );
   mTileOptions->setVisible( createTile );
   if ( createTile )
   {
@@ -612,6 +599,8 @@ void QgsMtplPackageToolsWidget::updateOperationUi()
   mEncryptCheck->setVisible( createTile || operation == CreateSfpOperation );
   if ( isTranscodeOperation( operation ) )
     mSourceEdit->setPlaceholderText( tr( "数据包文件或文件夹" ) );
+  else if ( createPtp )
+    mSourceEdit->setPlaceholderText( tr( "原始影像目录，内含 {z}/{x}/{y}.png 等图片" ) );
   else if ( createTile )
     mSourceEdit->setPlaceholderText( tr( "包含 {z}/{x}/{y}.ext 的文件夹" ) );
   else
@@ -710,8 +699,11 @@ void QgsMtplPackageToolsWidget::browseOutput()
 
 QString QgsMtplPackageToolsWidget::normalizedOutputPath( const QString &sourcePath ) const
 {
-  QString output = QFileInfo( mOutputEdit->text() ).absoluteFilePath();
   const int operation = mOperationCombo->currentData().toInt();
+  const QString outputText = operation == CreatePtpOperation
+                               ? normalizedPtpCreationPath( mOutputEdit->text() )
+                               : mOutputEdit->text();
+  QString output = QFileInfo( outputText ).absoluteFilePath();
   if ( isTranscodeOperation( operation ) && QFileInfo( sourcePath ).isDir() )
     return output;
 
@@ -732,23 +724,34 @@ void QgsMtplPackageToolsWidget::startOperation()
   if ( mTask || mShuttingDown )
     return;
 
-  clearPendingSourceKeys();
-
-  const QString sourcePath = QFileInfo( mSourceEdit->text() ).absoluteFilePath();
+  const int operation = mOperationCombo->currentData().toInt();
+  const bool createPtp = operation == CreatePtpOperation;
+  const QString sourceText = createPtp ? normalizedPtpCreationPath( mSourceEdit->text() ) : mSourceEdit->text();
+  if ( createPtp && sourceText.isEmpty() )
+  {
+    showInlineValidationError( tr( "请选择原始影像目录。" ) );
+    return;
+  }
+  const QString sourcePath = QFileInfo( sourceText ).absoluteFilePath();
   const QFileInfo sourceInfo( sourcePath );
   if ( !sourceInfo.exists() )
   {
     showInlineValidationError( tr( "源路径不存在。" ) );
     return;
   }
-  if ( mOutputEdit->text().trimmed().isEmpty() )
+  if ( createPtp && !sourceInfo.isDir() )
+  {
+    showInlineValidationError( tr( "请选择包含 {z}/{x}/{y} 图片树的原始影像目录。" ) );
+    return;
+  }
+  const QString outputText = createPtp ? normalizedPtpCreationPath( mOutputEdit->text() ) : mOutputEdit->text().trimmed();
+  if ( outputText.isEmpty() )
   {
     showInlineValidationError( tr( "请选择输出路径。" ) );
     return;
   }
 
   QgsMtpl::PackageOperationRequest request;
-  const int operation = mOperationCombo->currentData().toInt();
   request.encryptOutput = operation == EncryptOperation || operation == RekeyOperation ||
                           ( ( isCreateTileOperation( operation ) || operation == CreateSfpOperation ) && mEncryptCheck->isChecked() );
   request.preserveSfpMixedStorage = operation == RekeyOperation;
@@ -762,6 +765,7 @@ void QgsMtplPackageToolsWidget::startOperation()
     QgsMtpl::CryptoKeys suppliedKeys;
     suppliedKeys.privateKey = mPrivateKeyEdit->text().trimmed().toLatin1();
     suppliedKeys.deviceKey = mDeviceKeyEdit->text().trimmed().toLatin1();
+    bool loadedFromSecureStore = false;
     if ( suppliedKeys.hasAnyValue() )
     {
       const QString validationError = sourceKeysValidationError( suppliedKeys );
@@ -772,19 +776,27 @@ void QgsMtplPackageToolsWidget::startOperation()
         return;
       }
     }
+    else if ( QgsMtplCredentialStore::hasRememberedKeys() )
+    {
+      QString loadError;
+      suppliedKeys = QgsMtplCredentialStore::rememberedKeys( &loadError );
+      if ( !suppliedKeys.isValid() )
+      {
+        suppliedKeys.clear();
+        showInlineValidationError( loadError.isEmpty()
+                                     ? tr( "无法读取安全保存的 MTPL 密钥。" )
+                                     : loadError );
+        return;
+      }
+      loadedFromSecureStore = true;
+    }
 
     const QgsMtpl::CredentialSource suppliedSource = suppliedKeys.hasAnyValue()
-      ? ( mSourceKeysEdited ? QgsMtpl::CredentialSource::Explicit : QgsMtpl::CredentialSource::Remembered )
+      ? ( loadedFromSecureStore ? QgsMtpl::CredentialSource::Remembered : QgsMtpl::CredentialSource::Explicit )
       : QgsMtpl::CredentialSource::None;
     request.conversionSourcePath = sourcePath;
     request.suppliedSourceKeys = suppliedKeys;
     request.suppliedCredentialSource = suppliedSource;
-    if ( suppliedSource == QgsMtpl::CredentialSource::Explicit )
-    {
-      mPendingPrivateKey = suppliedKeys.privateKey;
-      mPendingDeviceKey = suppliedKeys.deviceKey;
-      mPendingSourcePath = sourcePath;
-    }
     if ( sourceInfo.isDir() )
       request.outputDirectory = outputPath;
     else
@@ -847,22 +859,6 @@ void QgsMtplPackageToolsWidget::operationFinished( QgsMtplPackageOperationTask *
 
   concealSecrets();
   const QgsMtpl::PackageOperationResult result = task->result();
-  QString rememberWarning;
-  bool sourceKeysRemembered = false;
-  if ( result.explicitSourceKeysVerified && !mPendingPrivateKey.isEmpty() && !mPendingDeviceKey.isEmpty() )
-  {
-    QgsMtpl::CryptoKeys verifiedKeys;
-    verifiedKeys.privateKey = mPendingPrivateKey;
-    verifiedKeys.deviceKey = mPendingDeviceKey;
-    QgsMtplCredentialStore::setRememberEnabled( true );
-    QString saveError;
-    if ( !QgsMtplCredentialStore::saveManualKeys( verifiedKeys, mPendingSourcePath, saveError ) )
-      rememberWarning = tr( "源密钥已通过数据包验证，但无法记住：%1" ).arg( saveError );
-    else
-      sourceKeysRemembered = true;
-    verifiedKeys.clear();
-  }
-  clearPendingSourceKeys();
   int succeededCount = 0;
   int skippedCount = 0;
   int failedCount = 0;
@@ -913,17 +909,9 @@ void QgsMtplPackageToolsWidget::operationFinished( QgsMtplPackageOperationTask *
     if ( result.outputPaths.size() > visibleCount )
       message += QLatin1Char( '\n' ) + tr( "另有 %1 个输出未展开。" ).arg( result.outputPaths.size() - visibleCount );
   };
-  auto appendRememberWarning = [&]( QString &message )
-  {
-    if ( !rememberWarning.isEmpty() )
-      message += QLatin1Char( '\n' ) + rememberWarning;
-  };
-
   const int operation = mRunningOperation;
   mTask = nullptr;
   mRunningOperation = -1;
-  if ( sourceKeysRemembered )
-    mSourceKeysEdited = false;
   if ( mReloadRememberedKeysDeferred )
     reloadRememberedKeys();
 
@@ -944,7 +932,6 @@ void QgsMtplPackageToolsWidget::operationFinished( QgsMtplPackageOperationTask *
     notification = message;
     appendItemSummary( message );
     appendRetainedOutputPaths( message );
-    appendRememberWarning( message );
     if ( !result.sidecarPath.isEmpty() )
     {
       message += QLatin1Char( '\n' ) + tr( "密钥附属文件：%1" ).arg( QDir::toNativeSeparators( result.sidecarPath ) );
@@ -969,7 +956,6 @@ void QgsMtplPackageToolsWidget::operationFinished( QgsMtplPackageOperationTask *
       : tr( "数据包操作已取消，已保留 %1 个完成的数据包。" ).arg( result.outputPaths.size() );
     notification = message;
     appendItemSummary( message );
-    appendRememberWarning( message );
     if ( !result.sidecarPath.isEmpty() )
       message += QLatin1Char( '\n' ) + tr( "密钥附属文件：%1" ).arg( QDir::toNativeSeparators( result.sidecarPath ) );
     if ( !result.error.isEmpty() && result.outputPaths.isEmpty() && result.error != QLatin1String( "数据包操作已取消。" ) )
@@ -983,13 +969,11 @@ void QgsMtplPackageToolsWidget::operationFinished( QgsMtplPackageOperationTask *
     message = result.error.isEmpty() ? tr( "数据包操作失败。" ) : result.error;
     notification = message;
     appendItemSummary( message );
-    appendRememberWarning( message );
     appendRetainedOutputPaths( message );
     state = OperationUiState::Failed;
     level = Qgis::MessageLevel::Critical;
   }
 
-  clearPendingSourceKeys();
   setOperationUiState( state, notification );
   setResultDetails( message, result.sidecarPath );
   applyDeferredSuggestedSource();

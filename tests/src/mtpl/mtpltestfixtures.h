@@ -34,15 +34,45 @@ struct SfpFixtureEntry
   mtpl_storage_mode_t storageMode = MTPL_STORAGE_PLAIN;
 };
 
+struct TileFixtureRange
+{
+  quint32 zoom = 0;
+  quint32 xMinimum = 0;
+  quint32 xMaximum = 0;
+  quint32 yMinimum = 0;
+  quint32 yMaximum = 0;
+};
+
+struct TileFixtureEntry
+{
+  quint32 zoom = 0;
+  quint32 x = 0;
+  quint32 y = 0;
+  QByteArray data;
+};
+
 QgsMtpl::CryptoKeys fixtureKeys();
 QgsMtpl::CryptoKeys differentFixtureKeys();
 QByteArray minimalVectorTilePayload();
+
+//! Encodes a font-free raster tile with orientation corners and a deterministic marker.
+QByteArray rasterTileImage( const QByteArray &format, int width, int height, quint32 marker, QString &error );
 
 bool writeTileFixture( const QString &path,
                        QgsMtpl::PackageFormat format,
                        mtpl_storage_mode_t storageMode,
                        const QgsMtpl::CryptoKeys &keys,
                        QString &error );
+
+//! Writes a configurable PTP fixture for dataset routing and rendering tests.
+bool writePtpFixture( const QString &path,
+                      quint32 tileSize,
+                      const QByteArray &metadata,
+                      mtpl_storage_mode_t storageMode,
+                      const QgsMtpl::CryptoKeys &keys,
+                      const QList<TileFixtureRange> &ranges,
+                      const QList<TileFixtureEntry> &tiles,
+                      QString &error );
 
 bool writeSfpFixture( const QString &path,
                       const QList<SfpFixtureEntry> &entries,

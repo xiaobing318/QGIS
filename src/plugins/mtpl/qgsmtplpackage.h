@@ -136,6 +136,8 @@ struct PackageDescriptor
   bool isSpatial() const;
   bool isLocked() const;
   bool isReady() const;
+  //! Returns TRUE only for an empty encrypted PTP probed with syntactically valid credentials.
+  bool isCredentialedEmptyPtp() const;
   bool requiresKey() const;
 };
 

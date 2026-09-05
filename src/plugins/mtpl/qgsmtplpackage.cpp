@@ -193,6 +193,19 @@ bool QgsMtpl::PackageDescriptor::isReady() const
   return readiness == ReadinessState::PlainReady || readiness == ReadinessState::KeyVerified;
 }
 
+bool QgsMtpl::PackageDescriptor::isCredentialedEmptyPtp() const
+{
+  bool presentCountOk = false;
+  const quint64 presentTileCount = metadata.value( QStringLiteral( "presentTileCount" ) )
+                                     .toULongLong( &presentCountOk );
+  return format == PackageFormat::Ptp &&
+         encryption == EncryptionState::Encrypted &&
+         readiness == ReadinessState::UnverifiableEmpty &&
+         credentialSource != CredentialSource::None &&
+         metadata.contains( QStringLiteral( "presentTileCount" ) ) &&
+         presentCountOk && presentTileCount == 0;
+}
+
 bool QgsMtpl::PackageDescriptor::requiresKey() const
 {
   return readiness == ReadinessState::KeyRequired;

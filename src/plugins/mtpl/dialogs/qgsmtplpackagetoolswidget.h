@@ -81,7 +81,6 @@ class QgsMtplPackageToolsWidget final : public QWidget
     void cancelOperation();
     void operationFinished( QgsMtplPackageOperationTask *task, quint64 generation, bool successful );
     QString normalizedOutputPath( const QString &sourcePath ) const;
-    void clearPendingSourceKeys();
     void setOperationUiState( OperationUiState state, const QString &status = QString() );
     void showInlineValidationError( const QString &message );
     void setResultDetails( const QString &message, const QString &sidecarPath = QString() );
@@ -93,6 +92,7 @@ class QgsMtplPackageToolsWidget final : public QWidget
     QPushButton *mRestoreSourceButton = nullptr;
     QLineEdit *mOutputEdit = nullptr;
     QPushButton *mOutputBrowseButton = nullptr;
+    QLabel *mPtpCreateHelpLabel = nullptr;
     QComboBox *mFormatCombo = nullptr;
     QComboBox *mTileSizeCombo = nullptr;
     QPlainTextEdit *mMetadataEdit = nullptr;
@@ -112,7 +112,6 @@ class QgsMtplPackageToolsWidget final : public QWidget
     QPointer<QgsMtplPackageOperationTask> mTask;
     quint64 mOperationGeneration = 0;
     int mRunningOperation = -1;
-    bool mSourceKeysEdited = false;
     bool mFollowsSuggestedSource = true;
     bool mShuttingDown = false;
     bool mReloadRememberedKeysDeferred = false;
@@ -120,9 +119,6 @@ class QgsMtplPackageToolsWidget final : public QWidget
     QString mSuggestedSourcePath;
     QString mDeferredSuggestedSourcePath;
     QString mSidecarPath;
-    QByteArray mPendingPrivateKey;
-    QByteArray mPendingDeviceKey;
-    QString mPendingSourcePath;
 };
 
 #endif // QGSMTPLPACKAGETOOLSWIDGET_H
