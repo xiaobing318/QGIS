@@ -146,7 +146,9 @@ class TestFileTransferLiveAcceptance(unittest.TestCase):
         record = runner.cleanup_record.read_text(encoding="utf-8")
         self.assertNotIn(runner.password, record)
         self.assertEqual(json.loads(record)["run_id"], runner.run_id)
-        self.assertEqual(list(self.root.iterdir()), [runner.cleanup_record])
+        self.assertEqual(
+            [path.resolve() for path in self.root.iterdir()], [runner.cleanup_record]
+        )
 
     def test_uncertain_remote_mkdir_is_never_deleted(self):
         runner = self.runner()

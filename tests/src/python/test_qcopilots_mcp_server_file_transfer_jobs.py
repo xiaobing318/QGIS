@@ -68,7 +68,7 @@ class FakeSftpFile:
             self.sftp.backend.write_marker.write_text("written", encoding="utf-8")
         gate = self.sftp.backend.write_gate
         if gate is not None:
-            if not gate.wait(5):
+            if not gate.wait(self.sftp.backend.write_gate_timeout):
                 raise TimeoutError("Fake SFTP write gate was not released")
             self.sftp.check_connection()
         threshold = self.sftp.backend.disconnect_after_bytes
@@ -231,6 +231,7 @@ class FakeBackend:
         self.connections = []
         self.write_observed = threading.Event()
         self.write_gate = None
+        self.write_gate_timeout = 5
         self.write_marker = None
         self.before_rename = None
         self.disconnect_after_commit = False
@@ -585,7 +586,9 @@ class TestQCopilotsMcpServerFileTransferJobs(unittest.TestCase):
     def test_transfer_namespace_and_stage_ownership_reject_legacy_prefix(self):
         _source, first = self.interrupted_upload()
         self.assertEqual(first["category"], "file_transfer")
-        self.assertEqual(self.manager.root, self.store.root / "file_transfers")
+        self.assertEqual(
+            self.manager.root, (self.store.root / "file_transfers").resolve(strict=False)
+        )
         record = copy.deepcopy(self.manager._fresh_record(
             self.manager._records[first["transfer_id"]], details=True))
         self.manager._validate_entries(record)

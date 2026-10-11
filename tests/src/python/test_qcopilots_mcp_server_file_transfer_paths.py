@@ -217,7 +217,7 @@ class TestFileTransferSourceManifest(unittest.TestCase):
             [r"C:\results\单个.csv", "/C:/results/terrain"], destination,
         )
         entries = {
-            Path(entry["target"]).relative_to(destination).as_posix(): entry
+            Path(entry["target"]).relative_to(destination.resolve(strict=False)).as_posix(): entry
             for entry in manifest
         }
         self.assertEqual(set(entries), {

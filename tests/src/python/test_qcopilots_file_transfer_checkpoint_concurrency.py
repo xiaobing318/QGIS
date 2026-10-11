@@ -188,6 +188,8 @@ class TestFileTransferCheckpointReplacement(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "nt", "Windows concurrent checkpoint acceptance")
 class TestFileTransferConcurrentManagers(unittest.TestCase):
+    TRANSFER_TIMEOUT = 45
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="qcopilots-manager-sharing-")
         self.addCleanup(temporary.cleanup)
@@ -199,26 +201,38 @@ class TestFileTransferConcurrentManagers(unittest.TestCase):
         self.backend = FakeBackend(self.root / "remote")
         self.backend.local("/uploads").mkdir()
         self.backend.write_gate = threading.Event()
+        self.backend.write_gate_timeout = self.TRANSFER_TIMEOUT
         self.config = MemoryConfigStore(self.root / "config")
         self.writer = FileTransferJobManager(self.config, self.backend, FilesystemPolicy())
         self.addCleanup(self.writer.shutdown)
         self.addCleanup(self.backend.write_gate.set)
 
     def start_writer(self):
+        # Source hashing and durable checkpoints precede the first SFTP write.
+        # Preparation and transfer share one budget within the CTest timeout.
+        self.deadline = time.monotonic() + self.TRANSFER_TIMEOUT
         initial = self.writer.start("upload", [str(self.source)], "/uploads")
-        self.assertTrue(self.backend.write_observed.wait(5))
+        while not self.backend.write_observed.is_set():
+            result = self.writer.get_job(initial["job_id"], files_limit=1)
+            if result["state"] in {"succeeded", "failed", "cancelled"}:
+                self.fail(f"Writer ended before its first write: {result}")
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                self.fail(f"Writer did not reach its first write within the transfer timeout: {result}")
+            self.backend.write_observed.wait(min(0.1, remaining))
         return initial
 
     def finish_writer(self, initial):
         self.backend.write_gate.set()
-        deadline = time.monotonic() + 45
-        while time.monotonic() < deadline:
-            result = self.writer.get_job(initial["job_id"])
+        while True:
+            result = self.writer.get_job(initial["job_id"], files_limit=1)
             if result["state"] in {"succeeded", "failed", "cancelled"}:
                 self.assertEqual(result["state"], "succeeded", result)
                 return
-            time.sleep(0.01)
-        self.fail("Isolated writer did not finish within 45 seconds")
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                self.fail(f"Writer did not finish within the transfer timeout: {result}")
+            time.sleep(min(0.01, remaining))
 
     def test_second_manager_list_and_get_during_checkpoint_writes(self):
         initial = self.start_writer()
@@ -276,10 +290,11 @@ print(json.dumps({'count': count, 'errors': errors}), flush=True)
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                  encoding="utf-8", env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         try:
-            deadline = time.monotonic() + 10
+            deadline = min(self.deadline, time.monotonic() + 10)
             while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
                 time.sleep(0.02)
-            self.assertTrue(ready.exists(), "Checkpoint reader did not initialize within 10 seconds")
+            self.assertTrue(ready.exists(),
+                            f"Checkpoint reader did not initialize before timeout (exit code {child.poll()})")
             self.finish_writer(initial)
         finally:
             try:
