@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qgis.org/qcopilots/processing_general/file_transfer_config.schema.json",
+  "title": "QCopilots 文件传输配置",
+  "description": "配置 Windows 上通过 SSH/SFTP 进行的文件和目录上传下载。安装目录中的文件是模板，实际用户文件位于 QCopilots 用户状态目录的 processing_general 子目录。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "字段作用是指定 JSON 校验文件。候选值是本文件的相对路径或完整 URI，不同值只影响编辑器提示。"
+    },
+    "config_version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1,
+      "description": "字段作用是标识配置版本。候选值只有 1，不同值会拒绝加载，避免错误解释设置。"
+    },
+    "host": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是指定 SSH 服务器。候选值是主机名或 IP 地址，不含协议和账户前缀，不同值会连接不同服务器。空值表示尚未配置。"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 22,
+      "description": "字段作用是指定 SSH 端口。候选值是 1 至 65535 的整数，不同值对应不同服务端口，默认值为 22。"
+    },
+    "username": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是指定 SSH 账户。候选值是服务器上的账户名，不同值使用不同账户权限。空值表示尚未配置。"
+    },
+    "password": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是指定 SSH 登录密码，以明文保存在当前用户配置文件中。候选值是账户密码，不同值影响认证。工具不会回显密码，空值表示清除密码。"
+    },
+    "upload_sources": {
+      "type": "array",
+      "default": [],
+      "items": {"type": "string", "minLength": 1, "description": "字段作用是指定一个本地源路径。候选值是绝对文件或目录路径，不同值上传不同内容。"},
+      "description": "字段作用是保存默认上传源列表。候选值可以混合本地文件与目录，不同值改变默认上传内容。空数组要求调用时明确给出源路径。"
+    },
+    "upload_destination": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是保存默认远端目标目录。候选值例如 C:/Data/QGISData/，不同值改变上传位置。每个源的文件名或目录名保留在目标目录下。"
+    },
+    "download_sources": {
+      "type": "array",
+      "default": [],
+      "items": {"type": "string", "minLength": 1, "description": "字段作用是指定一个远端源路径。候选值是服务器上的文件或目录路径，不同值下载不同内容。"},
+      "description": "字段作用是保存默认下载源列表。候选值可以混合远端文件与目录，不同值改变默认下载内容。空数组要求调用时明确给出源路径。"
+    },
+    "download_destination": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是保存默认本地下载目录。候选值是本地绝对目录路径，不同值改变下载位置。每个源的文件名或目录名保留在目标目录下。"
+    },
+    "connect_timeout": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 3600,
+      "default": 15,
+      "description": "字段作用是设置连接和认证超时秒数。候选值大于 0 且不超过 3600，不同值影响连接失败前的等待时间。"
+    },
+    "io_timeout": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 3600,
+      "default": 30,
+      "description": "字段作用是设置网络读写超时秒数。候选值大于 0 且不超过 3600，不同值影响断网后的失败检测时间。"
+    },
+    "known_hosts_file": {
+      "type": "string",
+      "default": "~/.ssh/known_hosts",
+      "description": "字段作用是指定额外只读的 OpenSSH 已知主机文件。候选值是本地文件路径，不同值选择不同的既有信任记录。空值使用默认的 ~/.ssh/known_hosts 文件。"
+    },
+    "max_bytes_per_second": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807,
+      "default": 0,
+      "description": "字段作用是设置传输速率上限，单位为字节每秒。候选值是非负整数，不同正值限制传输速率，0 表示不限速。"
+    }
+  }
+}

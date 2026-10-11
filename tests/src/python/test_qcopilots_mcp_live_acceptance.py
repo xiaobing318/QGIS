@@ -252,7 +252,7 @@ class _FakePendingJobSession:
 
 
 class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
-    def test_inventory_is_exactly_seventy_one_tools_on_seven_ports(self):
+    def test_inventory_is_exactly_eighty_two_tools_on_seven_ports(self):
         live.validate_expected_inventory()
         self.assertEqual(
             [service.port for service in live.SERVICES],
@@ -263,11 +263,11 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for service in live.SERVICES
             for name in live.EXPECTED_TOOLS[service.key]
         ]
-        self.assertEqual(len(names), 71)
-        self.assertEqual(len(set(names)), 71)
+        self.assertEqual(len(names), 82)
+        self.assertEqual(len(set(names)), 82)
         self.assertEqual(
             [len(live.EXPECTED_TOOLS[service.key]) for service in live.SERVICES],
-            [9, 5, 33, 6, 6, 6, 6],
+            [9, 5, 33, 6, 6, 6, 17],
         )
 
     def test_manager_config_path_and_token_loading_are_secret_safe(self):
@@ -724,6 +724,33 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for name in live.EXPECTED_TOOLS[service.key]:
                 ledger.mark(service.key, name)
         ledger.assert_all_complete()
+
+    def test_file_transfer_contract_does_not_change_settings_or_connect(self):
+        class Session:
+            service = live.SERVICES[-1]
+
+            def __init__(self):
+                self.calls = []
+
+            def call_tool(self, name, arguments):
+                self.calls.append((name, arguments))
+                if name in {"file_transfer_get_config", "file_transfer_list_jobs"}:
+                    return {"structuredContent": {}, "isError": False}
+                return {"isError": True}
+
+            def reject_tool_arguments(self, name, arguments):
+                self.calls.append((name, arguments))
+
+        runner = live.AcceptanceRunner(SYNTHETIC_TOKEN, output=lambda value: None)
+        session = Session()
+        try:
+            runner._exercise_file_transfer_contract(session)
+            self.assertEqual(len(session.calls), 11)
+            for name, arguments in session.calls:
+                if name not in {"file_transfer_get_config", "file_transfer_list_jobs"}:
+                    self.assertEqual(arguments, {"_acceptance_invalid_argument": True})
+        finally:
+            self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
 
 
 if __name__ == "__main__":

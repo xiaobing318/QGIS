@@ -4899,14 +4899,25 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(manifest["runtime"]["requirements"], "requirements.lock", plugin_dir_name)
             self.assertEqual(str(manifest["default_port"]), port, plugin_dir_name)
             self.assertNotIn("command", manifest, plugin_dir_name)
-            self.assertFalse(
-                [
-                    line
-                    for line in lock.splitlines()
-                    if line.strip() and not line.lstrip().startswith("#")
-                ],
-                plugin_dir_name,
-            )
+            dependencies = [
+                line.strip()
+                for line in lock.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+            if plugin_dir_name == "qcopilots_mcp_server_processing_general":
+                self.assertTrue(dependencies, plugin_dir_name)
+                self.assertTrue(
+                    any(line.startswith("paramiko==") for line in dependencies),
+                    plugin_dir_name,
+                )
+                for dependency in dependencies:
+                    self.assertRegex(
+                        dependency,
+                        r"^[A-Za-z0-9_.-]+==[0-9][A-Za-z0-9_.+-]*(?:\s*;.*)?$",
+                        plugin_dir_name,
+                    )
+            else:
+                self.assertFalse(dependencies, plugin_dir_name)
 
     def test_skills_uses_qgis_python_without_uv_dependency_overlay(self):
         import yaml

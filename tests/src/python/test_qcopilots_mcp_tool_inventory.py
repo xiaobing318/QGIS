@@ -103,6 +103,17 @@ EXPECTED_TOOLS = {
         "get_general_processing_job",
         "list_general_processing_jobs",
         "cancel_general_processing_job",
+        "file_transfer_get_config",
+        "file_transfer_update_config",
+        "file_transfer_test_connection",
+        "file_transfer_trust_host_key",
+        "file_transfer_start_upload",
+        "file_transfer_start_download",
+        "file_transfer_get_job",
+        "file_transfer_list_jobs",
+        "file_transfer_cancel_job",
+        "file_transfer_resume_job",
+        "file_transfer_discard",
     ],
     "qcopilots_mcp_server_qgis_binary": [
         "list_qgis_binaries",
@@ -120,7 +131,7 @@ EXPECTED_COUNTS = {
     "qcopilots_mcp_server_interactive_tools": 33,
     "qcopilots_mcp_server_processing_vector": 6,
     "qcopilots_mcp_server_processing_raster": 6,
-    "qcopilots_mcp_server_processing_general": 6,
+    "qcopilots_mcp_server_processing_general": 17,
     "qcopilots_mcp_server_qgis_binary": 6,
 }
 
@@ -144,6 +155,81 @@ class _RecordingBridge:
         return {"operation": operation, "arguments": arguments}
 
 
+class _RecordingFileTransferManager:
+    """Exercise the public wrappers without sockets or persistent user settings."""
+
+    def __init__(self, error=None):
+        self.config_store = self
+        self.backend = self
+        self.calls = []
+        self.error = error
+
+    def _record(self, operation, **arguments):
+        self.calls.append((operation, copy.deepcopy(arguments)))
+        if self.error is not None:
+            raise self.error
+        return {"operation": operation, "arguments": arguments}
+
+    def load(self, require_connection=False):
+        # The credentials only reach the injected backend, never a real server.
+        return {
+            "host": "inventory.invalid",
+            "port": 22,
+            "username": "inventory",
+            "password": "private-inventory-password",
+        }
+
+    def public(self):
+        return self._record("file_transfer_get_config")
+
+    def update(self, changes):
+        return self._record("file_transfer_update_config", changes=changes)
+
+    def test_connection(self, config):
+        return self._record("file_transfer_test_connection", config=config)
+
+    def trust_host(self, config, fingerprint, confirmation_token):
+        return self._record(
+            "file_transfer_trust_host_key",
+            config=config,
+            fingerprint=fingerprint,
+            confirmation_token=confirmation_token,
+        )
+
+    def start(
+        self,
+        direction,
+        sources=None,
+        destination=None,
+        overwrite=False,
+        client_request_id=None,
+    ):
+        return self._record(
+            f"file_transfer_start_{direction}",
+            sources=sources,
+            destination=destination,
+            overwrite=overwrite,
+            client_request_id=client_request_id,
+        )
+
+    def get_job(self, job_id, files_offset=0, files_limit=100):
+        return self._record("file_transfer_get_job", job_id=job_id, files_offset=files_offset, files_limit=files_limit)
+
+    def list_jobs(self, states=None, limit=100):
+        return self._record("file_transfer_list_jobs", states=states, limit=limit)
+
+    def cancel_job(self, job_id):
+        return self._record("file_transfer_cancel_job", job_id=job_id)
+
+    def resume_job(self, job_id, client_request_id=None):
+        return self._record(
+            "file_transfer_resume_job", job_id=job_id, client_request_id=client_request_id
+        )
+
+    def discard_transfer(self, transfer_id):
+        return self._record("file_transfer_discard", transfer_id=transfer_id)
+
+
 class TestQCopilotsMcpToolInventory(unittest.TestCase):
     HTTP_AUTH_TOKEN = "qcopilots-inventory-test-token"
 
@@ -159,7 +245,9 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
             skills,
         )
         from qcopilots_common.security_policy import filesystem_policy_from_config
+        from qcopilots_mcp_server_processing_general.server import build_general_tools
 
+        self.file_transfer_manager = _RecordingFileTransferManager()
         policy = filesystem_policy_from_config(
             {
                 "mode": "formal_restricted",
@@ -194,14 +282,14 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                     processing_tools.build_processing_tools("raster")
                 ),
                 "qcopilots_mcp_server_processing_general": (
-                    processing_tools.build_processing_tools("general")
+                    build_general_tools(manager=self.file_transfer_manager)
                 ),
                 "qcopilots_mcp_server_qgis_binary": (
                     qgis_binary_tools.build_qgis_binary_tools()
                 ),
             }
 
-    def test_manifests_define_the_exact_71_tool_surface(self):
+    def test_manifests_define_the_exact_82_tool_surface(self):
         with tempfile.TemporaryDirectory(prefix="qcopilots-inventory-") as workspace:
             surfaces = self._build_surfaces(Path(workspace))
 
@@ -231,7 +319,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         self.assertEqual(descriptor["inputSchema"]["type"], "object")
                     all_names.extend(actual_names)
 
-            self.assertEqual(len(all_names), 71)
+            self.assertEqual(len(all_names), 82)
             self.assertEqual(len(all_names), len(set(all_names)))
 
     def test_minimal_arguments_supports_any_of_array_items(self):
@@ -280,7 +368,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
         self.assertEqual(arguments["updates"][0]["feature_id"], 0)
         self.assertTrue(arguments["updates"][0]["attributes"])
 
-    def test_all_71_tool_contracts_complete_http_lifecycle_list_and_call(self):
+    def test_all_82_tool_contracts_complete_http_lifecycle_list_and_call(self):
         """Exercise every public wrapper over HTTP with a recording QGIS bridge.
 
         Functional QGIS state and subprocess behavior is covered by the focused
@@ -299,8 +387,42 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                     )
 
         self.assertEqual(len(_RecordingBridge.calls), 57)
+        self.assertEqual(
+            [operation for operation, _ in self.file_transfer_manager.calls],
+            EXPECTED_TOOLS["qcopilots_mcp_server_processing_general"][6:],
+        )
 
-    def _exercise_http_surface(self, plugin_name, tools, workspace):
+    def test_file_transfer_errors_complete_http_lifecycle_without_leaking_exception_text(self):
+        from qcopilots_mcp_server_processing_general.file_transfer_errors import FileTransferError
+        from qcopilots_mcp_server_processing_general.file_transfer_tools import build_file_transfer_tools
+
+        with tempfile.TemporaryDirectory(prefix="qcopilots-file-transfer-http-errors-") as workspace:
+            for error, expected_code in (
+                (FileTransferError("connection_failed", "Cannot reach the server."), "connection_failed"),
+                (
+                    FileTransferError(
+                        "authentication_failed",
+                        "Authentication failed for private-inventory-password.",
+                    ),
+                    "authentication_failed",
+                ),
+                (RuntimeError("private-inventory-password"), "internal_error"),
+            ):
+                with self.subTest(code=expected_code):
+                    manager = _RecordingFileTransferManager(error=error)
+                    tools = build_file_transfer_tools(manager=manager)
+                    self._exercise_http_surface(
+                        "qcopilots_mcp_server_processing_general",
+                        tools,
+                        Path(workspace),
+                        expected_error=expected_code,
+                    )
+                    self.assertEqual(
+                        [operation for operation, _ in manager.calls],
+                        [tool.name for tool in tools],
+                    )
+
+    def _exercise_http_surface(self, plugin_name, tools, workspace, expected_error=None):
         from qcopilots_common.mcp_http import McpHttpServer
 
         controller = McpHttpServer(
@@ -367,7 +489,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
             self.assertEqual(list_status, 200)
             self.assertEqual(
                 [item["name"] for item in listed["result"]["tools"]],
-                EXPECTED_TOOLS[plugin_name],
+                [tool.name for tool in tools],
             )
 
             for index, tool in enumerate(tools):
@@ -391,7 +513,17 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                 )
                 self.assertEqual(call_status, 200)
                 self.assertNotIn("error", called)
-                self.assertFalse(called["result"].get("isError", False))
+                if expected_error is None:
+                    self.assertFalse(called["result"].get("isError", False))
+                else:
+                    self.assertTrue(called["result"]["isError"])
+                    self.assertEqual(
+                        called["result"]["structuredContent"]["error"]["code"],
+                        expected_error,
+                    )
+                self.assertNotIn(
+                    "private-inventory-password", json.dumps(called["result"])
+                )
             if plugin_name == "qcopilots_mcp_server_builtin_tools":
                 self.assertEqual(
                     (workspace / "source.txt").read_text(encoding="utf-8"),

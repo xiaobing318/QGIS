@@ -1,2 +1,7 @@
-# This service currently uses only the Python standard library.
-# Keep this file for future dependencies; manager uv run adds --with-requirements only for non-comment entries.
+bcrypt==5.0.0
+cffi==2.1.1
+cryptography==50.0.2
+invoke==3.0.3
+paramiko==5.0.0
+pycparser==3.1
+pynacl==1.6.2

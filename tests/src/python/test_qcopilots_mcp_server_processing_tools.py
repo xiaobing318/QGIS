@@ -1789,6 +1789,17 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     "get_general_processing_job",
                     "list_general_processing_jobs",
                     "cancel_general_processing_job",
+                    "file_transfer_get_config",
+                    "file_transfer_update_config",
+                    "file_transfer_test_connection",
+                    "file_transfer_trust_host_key",
+                    "file_transfer_start_upload",
+                    "file_transfer_start_download",
+                    "file_transfer_get_job",
+                    "file_transfer_list_jobs",
+                    "file_transfer_cancel_job",
+                    "file_transfer_resume_job",
+                    "file_transfer_discard",
                 ],
             ),
             (
@@ -1841,7 +1852,18 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                 original_runner = module.run_mcp_server
                 module.run_mcp_server = fake_run_mcp_server
                 try:
-                    module.main()
+                    if service_id == "qcopilots.mcp_server_processing_general":
+                        provider = mock.Mock()
+                        with mock.patch.object(
+                            module,
+                            "FileTransferManagerProvider",
+                            return_value=provider,
+                        ):
+                            module.main()
+                        provider.get.assert_not_called()
+                        provider.shutdown.assert_called_once()
+                    else:
+                        module.main()
                 finally:
                     module.run_mcp_server = original_runner
 

@@ -18,21 +18,32 @@ from qcopilots_common.constants import DEFAULT_SERVICE_PORTS
 from qcopilots_common.logging import configure_logger
 from qcopilots_common.mcp_http import run_mcp_server
 from qcopilots_common.processing_tools import build_processing_tools
+from qcopilots_mcp_server_processing_general.file_transfer_tools import FileTransferManagerProvider, build_file_transfer_tools
 
 
 SERVICE_ID = "qcopilots.mcp_server_processing_general"
 
 
+def build_general_tools(manager=None, manager_provider=None):
+    """Keep the existing Processing tools and add isolated SSH transfers."""
+
+    return build_processing_tools("general") + build_file_transfer_tools(manager=manager, manager_provider=manager_provider)
+
+
 def main() -> None:
     logger = configure_logger(SERVICE_ID, os.environ.get("QCOPILOTS_LOG_FILE"))
-    run_mcp_server(
-        name="QCopilots MCP Server Processing General",
-        version="0.1.0",
-        tools=build_processing_tools("general"),
-        default_port=DEFAULT_SERVICE_PORTS[SERVICE_ID],
-        description="QCopilots safely classified general Processing MCP service.",
-        logger=logger,
-    )
+    provider = FileTransferManagerProvider()
+    try:
+        run_mcp_server(
+            name="QCopilots MCP Server Processing General",
+            version="0.1.0",
+            tools=build_general_tools(manager_provider=provider),
+            default_port=DEFAULT_SERVICE_PORTS[SERVICE_ID],
+            description="QCopilots general Processing and SSH/SFTP file transfer service.",
+            logger=logger,
+        )
+    finally:
+        provider.shutdown()
 
 
 if __name__ == "__main__":

@@ -198,6 +198,17 @@ EXPECTED_TOOLS = {
         "get_general_processing_job",
         "list_general_processing_jobs",
         "cancel_general_processing_job",
+        "file_transfer_get_config",
+        "file_transfer_update_config",
+        "file_transfer_test_connection",
+        "file_transfer_trust_host_key",
+        "file_transfer_start_upload",
+        "file_transfer_start_download",
+        "file_transfer_get_job",
+        "file_transfer_list_jobs",
+        "file_transfer_cancel_job",
+        "file_transfer_resume_job",
+        "file_transfer_discard",
     ),
 }
 
@@ -219,9 +230,9 @@ def validate_expected_inventory() -> None:
     if set(EXPECTED_TOOLS) != {service.key for service in SERVICES}:
         raise AcceptanceFailure("Expected tool inventory does not match service inventory")
     names = [name for tools in EXPECTED_TOOLS.values() for name in tools]
-    if len(names) != 71 or len(set(names)) != 71:
+    if len(names) != 82 or len(set(names)) != 82:
         raise AcceptanceFailure(
-            "Expected tool inventory must contain exactly 71 unique tool names"
+            "Expected tool inventory must contain exactly 82 unique tool names"
         )
 
 
@@ -328,8 +339,8 @@ class CoverageLedger:
     def assert_all_complete(self) -> None:
         for service_key in EXPECTED_TOOLS:
             self.assert_service_complete(service_key)
-        if sum(len(calls) for calls in self._calls.values()) != 71:
-            raise AcceptanceFailure("Live tool coverage did not reach exactly 71 tools")
+        if sum(len(calls) for calls in self._calls.values()) != 82:
+            raise AcceptanceFailure("Live tool coverage did not reach exactly 82 tools")
 
 
 class McpSession:
@@ -509,6 +520,27 @@ class McpSession:
             self.session_id = ""
             self._initialized = False
             self._listed = False
+
+    def reject_tool_arguments(self, name: str, arguments: dict[str, Any]) -> None:
+        """Verify schema rejection before a side-effectful handler can run."""
+        if not self._listed:
+            raise AcceptanceFailure("tools/call requires tools/list first")
+        self._request_id += 1
+        status, _headers, body = self._request(
+            {
+                "jsonrpc": "2.0",
+                "id": f"live-{self.service.port}-{self._request_id}",
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            },
+            include_session=True,
+        )
+        if status != 200 or not isinstance(body, dict) or (
+            body.get("error") or {}
+        ).get("code") != -32602:
+            raise AcceptanceFailure(f"{name} did not reject invalid tool arguments")
+        if self.ledger is not None:
+            self.ledger.mark(self.service.key, name)
 
     def _post_rpc(
         self,
@@ -979,7 +1011,8 @@ class AcceptanceRunner:
             messages.extend(_redacted_message(item, self._token) for item in cleanup_errors)
             raise AcceptanceFailure(". ".join(message for message in messages if message))
         self.output(
-            "PASS: all 71 QCopilots MCP tools completed live acceptance, "
+            "PASS: all 82 QCopilots MCP tool contracts completed live acceptance "
+            "(SSH transfers require the separate file transfer live acceptance runner), "
             f"requires_process_exit={bool(self.cleanup.requires_process_exit)}, "
             "process_exit_resource_count="
             f"{len(self.cleanup.requires_process_exit)}"
@@ -1020,6 +1053,8 @@ class AcceptanceRunner:
             elif "processing" in service.key:
                 category = service.key.rsplit("_", 1)[-1]
                 self._exercise_processing(session, category)
+                if category == "general":
+                    self._exercise_file_transfer_contract(session)
             else:
                 raise AcceptanceFailure(f"No live scenario for {service.service_id}")
             self.ledger.assert_service_complete(service.key)
@@ -1050,6 +1085,21 @@ class AcceptanceRunner:
             f"{session.service.service_id}.{tool_name}",
             expected_fragments,
         )
+
+    def _exercise_file_transfer_contract(self, session: McpSession) -> None:
+        """Check the SSH surface without changing configuration or contacting hosts.
+
+        Actual transfers and cleanup are covered by qcopilots_file_transfer_live_acceptance.
+        The general live runner must also work without SSH credentials and when
+        the manager explicitly disables remote network access.
+        """
+        self._success(session, "file_transfer_get_config", {})
+        self._success(session, "file_transfer_list_jobs", {"limit": 1})
+        names = EXPECTED_TOOLS["qcopilots_mcp_server_processing_general"][6:]
+        for name in names:
+            if name in {"file_transfer_get_config", "file_transfer_list_jobs"}:
+                continue
+            session.reject_tool_arguments(name, {"_acceptance_invalid_argument": True})
 
     def _exercise_builtin(self, session: McpSession) -> None:
         source = self.cleanup.reserve_path("builtin/source.txt")

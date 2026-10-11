@@ -1,0 +1,16 @@
+{
+  "$schema": "./file_transfer_config.schema.json",
+  "config_version": 1,
+  "host": "",
+  "port": 22,
+  "username": "",
+  "password": "",
+  "upload_sources": [],
+  "upload_destination": "",
+  "download_sources": [],
+  "download_destination": "",
+  "connect_timeout": 15,
+  "io_timeout": 30,
+  "known_hosts_file": "~/.ssh/known_hosts",
+  "max_bytes_per_second": 0
+}
