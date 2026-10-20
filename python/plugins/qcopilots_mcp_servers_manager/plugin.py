@@ -12,6 +12,7 @@ import concurrent.futures
 import inspect
 import ipaddress
 import json
+import os
 import re
 import secrets
 import threading
@@ -46,6 +47,7 @@ from qcopilots_common.constants import (
     CORS_ORIGINS_ENV,
     DEFAULT_BRIDGE_PORT,
     DEFAULT_HOST,
+    EXTERNAL_BROWSER_ACCESS_ENV,
     QGIS_BRIDGE_AUTH_TOKEN_ENV,
     encode_cors_origins,
 )
@@ -309,6 +311,9 @@ class QCopilotsMCPServersManagerPlugin:
         self._browser_access_persisted = False
         self._browser_access_error = ""
         self._browser_origin = ""
+        self._external_browser_access_enabled = (
+            os.environ.get(EXTERNAL_BROWSER_ACCESS_ENV, "").strip().casefold() == "on"
+        )
         self._initialize_browser_access()
         if bool(getattr(self._config_store, "blocked", False)):
             self._filesystem_policy = FilesystemPolicy(
@@ -843,27 +848,68 @@ class QCopilotsMCPServersManagerPlugin:
         return token
 
     def browser_access_snapshot(self) -> dict[str, Any]:
+        """Report browser access requested by both startup opt-in and configuration.
+
+        Availability additionally requires a persisted token and a valid origin.
+        """
+
         configured = self._browser_access_config()
-        enabled = bool(configured.get("enabled", True))
+        environment_enabled = getattr(self, "_external_browser_access_enabled", False)
+        configured_enabled = bool(configured.get("enabled", True))
+        enabled = environment_enabled and configured_enabled
         auth_token = self.browser_auth_token()
-        available = bool(
-            enabled
-            and getattr(self, "_browser_access_persisted", False)
-            and getattr(self, "_browser_origin", "")
-            and is_valid_browser_auth_token(auth_token)
+        origin = getattr(self, "_browser_origin", "")
+        disabled_reason = ""
+        error = ""
+        if not environment_enabled:
+            disabled_reason = "environment_disabled"
+            error = self.tr(
+                "External browser access is disabled. Set {0}=ON in the environment "
+                "used to launch QGIS, then restart QGIS."
+            ).format(EXTERNAL_BROWSER_ACCESS_ENV)
+        elif not configured_enabled:
+            disabled_reason = "configuration_disabled"
+            error = self.tr(
+                "External browser access is disabled by browser_access.enabled in the user configuration."
+            )
+        elif not getattr(self, "_browser_access_persisted", False) or not is_valid_browser_auth_token(auth_token):
+            disabled_reason = "token_not_persisted"
+            error = self.tr(
+                "External browser access is disabled because the shared Token could not be saved."
+            )
+            persistence_error = getattr(self, "_browser_access_error", "")
+            if persistence_error:
+                error = f"{error} {persistence_error}"
+        elif not origin:
+            disabled_reason = "invalid_origin"
+            error = self.tr(
+                "External browser access is disabled because Configure QCopilots URL is not a valid HTTP URL."
+            )
+        available = not disabled_reason
+        origins = (
+            list(dict.fromkeys((
+                origin,
+                "http://127.0.0.1:8282",
+                "http://localhost:8282",
+            )))
+            if available else []
         )
         return {
             "enabled": enabled,
+            "environment_enabled": environment_enabled,
+            "configured_enabled": configured_enabled,
             "available": available,
-            "origin": getattr(self, "_browser_origin", ""),
+            "origin": origin,
+            "origins": origins,
             "auth_token": auth_token if available else "",
-            "error": getattr(self, "_browser_access_error", ""),
+            "disabled_reason": disabled_reason,
+            "error": error,
             "port_conflict_policy": configured.get("port_conflict_policy", "fail"),
         }
 
     def _browser_cors_origins(self) -> list[str]:
         snapshot = self.browser_access_snapshot()
-        return [snapshot["origin"]] if snapshot["available"] else []
+        return snapshot["origins"]
 
     def regenerate_browser_auth_token(self) -> ConfigSaveResult:
         """Persist a new shared token before any services are restarted."""
@@ -1596,7 +1642,7 @@ def _network_overrides_manifest(
             host=host,
             advertised_host=advertised_host,
         ),
-        cors_origins=safe_cors_origins[:1],
+        cors_origins=list(dict.fromkeys(safe_cors_origins)),
     )
 
 
@@ -1690,7 +1736,7 @@ class BrowserAccessPanel(QFrame):
         layout.addWidget(title)
 
         origin_row = QHBoxLayout()
-        origin_row.addWidget(QLabel(self.plugin.tr("Allowed Origin"), self))
+        origin_row.addWidget(QLabel(self.plugin.tr("Allowed Origins"), self))
         self.origin_label = QLabel(self)
         self.origin_label.setObjectName("qcopilots_browser_origin")
         self.origin_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -1726,24 +1772,21 @@ class BrowserAccessPanel(QFrame):
 
     def update_display(self):
         snapshot = self.plugin.browser_access_snapshot()
-        origin = snapshot["origin"] or self.plugin.tr("Invalid configured QCopilots URL")
-        self.origin_label.setText(origin)
+        origins = "\n".join(snapshot["origins"]) or self.plugin.tr("None (external browser access disabled)")
+        self.origin_label.setText(origins)
         self.token_edit.setText(snapshot["auth_token"])
         self.copy_button.setEnabled(snapshot["available"])
         self.regenerate_button.setEnabled(self.restart_thread is None)
         if snapshot["available"]:
             self.status_label.setText(
                 self.plugin.tr(
-                    "Use this Token as Authorization for all six 127.0.0.1 MCP endpoints. "
+                    "Use Authorization: Bearer <Token> for all seven 127.0.0.1 MCP endpoints. "
                     "Keep Use llama-server proxy turned off. The Token is stored as plaintext "
                     "in the current user configuration. Chrome may ask for Local Network Access permission."
                 )
             )
         else:
-            detail = snapshot["error"] or self.plugin.tr(
-                "Browser access is disabled until the Token can be saved and the configured URL is valid."
-            )
-            self.status_label.setText(detail)
+            self.status_label.setText(snapshot["error"])
 
     def copy_token(self):
         snapshot = self.plugin.browser_access_snapshot()

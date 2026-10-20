@@ -1755,7 +1755,156 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "",
         )
 
-    def test_manager_browser_access_applies_one_exact_origin_only_when_persisted(self):
+    def test_manager_external_browser_access_is_opt_in_and_sampled_at_initialization(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+        from qcopilots_common.constants import EXTERNAL_BROWSER_ACCESS_ENV
+
+        token = "a" * 43
+        config = _manager_config(auth_token=token)
+        store = types.SimpleNamespace(
+            snapshot=lambda: json.loads(json.dumps(config)),
+            ensure_browser_auth_token=lambda: types.SimpleNamespace(saved=True, error=""),
+        )
+        cases = (
+            (None, False),
+            ("", False),
+            ("OFF", False),
+            ("off", False),
+            ("true", False),
+            ("1", False),
+            ("ONWARD", False),
+            ("ON", True),
+            ("on", True),
+            (" On \t", True),
+        )
+        with mock.patch.multiple(
+            manager_plugin,
+            QgisBridgeController=lambda *args, **kwargs: _FakeBridge(),
+            configure_logger=lambda *args, **kwargs: _FakeLogger(),
+            ManagerConfigStore=lambda *args, **kwargs: store,
+            ProcessController=lambda **kwargs: types.SimpleNamespace(),
+            service_log_file=lambda service_id: Path(f"{service_id}.log"),
+            _configured_qcopilots_origin=lambda: "https://example.com",
+        ):
+            for value, expected in cases:
+                with self.subTest(value=value), mock.patch.dict(os.environ):
+                    if value is None:
+                        os.environ.pop(EXTERNAL_BROWSER_ACCESS_ENV, None)
+                    else:
+                        os.environ[EXTERNAL_BROWSER_ACCESS_ENV] = value
+                    plugin = manager_plugin.QCopilotsMCPServersManagerPlugin(
+                        _FakeIface()
+                    )
+                    snapshot = plugin.browser_access_snapshot()
+                    self.assertIs(snapshot["environment_enabled"], expected)
+                    self.assertIs(snapshot["enabled"], expected)
+                    self.assertIs(snapshot["available"], expected)
+                    self.assertTrue(snapshot["configured_enabled"])
+                    self.assertEqual(plugin.browser_auth_token(), token)
+                    self.assertEqual(snapshot["auth_token"], token if expected else "")
+
+                    os.environ[EXTERNAL_BROWSER_ACCESS_ENV] = (
+                        "OFF" if expected else "ON"
+                    )
+                    self.assertEqual(plugin.browser_access_snapshot(), snapshot)
+
+    def test_manager_browser_access_applies_all_origins_to_all_seven_services(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+        from qcopilots_common.constants import CORS_ORIGINS_ENV
+
+        plugin = _browser_test_manager(manager_plugin)
+        plugin.plugins_root = _plugins_root()
+        plugin.bridge = _FakeBridge()
+        plugin._bridge_auth_token = "bridge-session-token"
+        expected_origins = [
+            "https://example.com",
+            "http://127.0.0.1:8282",
+            "http://localhost:8282",
+        ]
+
+        self.assertEqual(plugin.browser_access_snapshot()["origins"], expected_origins)
+        manifests = plugin._discover_services()
+        self.assertEqual(
+            {manifest.service_id for manifest in manifests},
+            set(DEFAULT_STARTUP_SERVICE_IDS),
+        )
+        for manifest in manifests:
+            with self.subTest(service_id=manifest.service_id):
+                self.assertEqual(manifest.cors_origins, expected_origins)
+                self.assertEqual(manifest.host, "127.0.0.1")
+                self.assertEqual(manifest.advertised_host, "127.0.0.1")
+                self.assertEqual(
+                    json.loads(plugin._service_env(manifest)[CORS_ORIGINS_ENV]),
+                    expected_origins,
+                )
+
+        plugin._external_browser_access_enabled = False
+        for manifest in plugin._discover_services():
+            with self.subTest(disabled_service_id=manifest.service_id):
+                self.assertEqual(manifest.cors_origins, [])
+                self.assertEqual(plugin._service_env(manifest)[CORS_ORIGINS_ENV], "[]")
+
+    def test_manager_browser_access_origin_list_deduplicates_local_configured_origin(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        for configured_url, expected in (
+            (
+                "HTTP://LOCALHOST:8282/chat",
+                ["http://localhost:8282", "http://127.0.0.1:8282"],
+            ),
+            (
+                "http://127.0.0.1:8282/chat",
+                ["http://127.0.0.1:8282", "http://localhost:8282"],
+            ),
+        ):
+            with self.subTest(configured_url=configured_url):
+                plugin = _browser_test_manager(manager_plugin)
+                plugin._browser_origin = manager_plugin._browser_origin_from_url(
+                    configured_url
+                )
+                self.assertEqual(plugin.browser_access_snapshot()["origins"], expected)
+                self.assertEqual(plugin._browser_cors_origins(), expected)
+
+    def test_manager_browser_access_reports_why_it_is_unavailable(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+        from qcopilots_common.constants import EXTERNAL_BROWSER_ACCESS_ENV
+
+        cases = (
+            (False, True, True, "https://example.com", "environment_disabled"),
+            (True, False, True, "https://example.com", "configuration_disabled"),
+            (True, True, False, "https://example.com", "token_not_persisted"),
+            (True, True, True, "", "invalid_origin"),
+        )
+        for environment_enabled, configured_enabled, persisted, origin, reason in cases:
+            with self.subTest(reason=reason):
+                plugin = _browser_test_manager(manager_plugin)
+                plugin._external_browser_access_enabled = environment_enabled
+                plugin._manager_config["browser_access"]["enabled"] = configured_enabled
+                plugin._browser_access_persisted = persisted
+                plugin._browser_origin = origin
+                snapshot = plugin.browser_access_snapshot()
+                self.assertFalse(snapshot["available"])
+                self.assertIs(
+                    snapshot["enabled"], environment_enabled and configured_enabled
+                )
+                self.assertEqual(snapshot["disabled_reason"], reason)
+                self.assertTrue(snapshot["error"])
+                self.assertEqual(snapshot["origins"], [])
+                self.assertEqual(snapshot["auth_token"], "")
+                self.assertEqual(plugin.browser_auth_token(), "a" * 43)
+                if reason == "environment_disabled":
+                    self.assertIn(EXTERNAL_BROWSER_ACCESS_ENV, snapshot["error"])
+                    self.assertIn("restart", snapshot["error"].lower())
+
+    def test_manager_browser_access_applies_exact_origins_only_when_persisted(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
@@ -1767,6 +1916,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 ["tools"],
             )
             plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+            plugin._external_browser_access_enabled = True
             plugin._manager_config = manager_plugin._default_manager_config()
             plugin._manager_config["browser_access"]["auth_token"] = "a" * 43
             plugin._browser_auth_token = "a" * 43
@@ -1776,7 +1926,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
             self.assertEqual(
                 plugin._browser_cors_origins(),
-                ["https://68023e96.r27.cpolar.top"],
+                [
+                    "https://68023e96.r27.cpolar.top",
+                    "http://127.0.0.1:8282",
+                    "http://localhost:8282",
+                ],
             )
             clamped = manager_plugin._network_overrides_manifest(
                 manifest,
@@ -1785,7 +1939,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             )
             self.assertEqual(
                 clamped.cors_origins,
-                ["https://68023e96.r27.cpolar.top"],
+                [
+                    "https://68023e96.r27.cpolar.top",
+                    "http://127.0.0.1:8282",
+                    "http://localhost:8282",
+                ],
             )
 
             plugin._browser_access_persisted = False
@@ -1815,6 +1973,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 return config
 
         plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+        plugin._external_browser_access_enabled = True
         plugin._config_store = FailingStore()
         plugin.logger = _FakeLogger()
 
@@ -1827,8 +1986,21 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
 
         self.assertFalse(plugin._browser_access_persisted)
         self.assertNotEqual(plugin.browser_auth_token(), unsaved_token)
+        self.assertTrue(
+            manager_plugin.is_valid_browser_auth_token(plugin.browser_auth_token())
+        )
         self.assertEqual(plugin._browser_cors_origins(), [])
         self.assertEqual(plugin.browser_access_snapshot()["auth_token"], "")
+        self.assertEqual(
+            plugin.browser_access_snapshot()["disabled_reason"], "token_not_persisted"
+        )
+        _prime_manager_runtime(plugin)
+        plugin.plugins_root = _plugins_root()
+        native_tokens = {
+            plugin.prepare_service_start(manifest)
+            for manifest in plugin._discover_services()
+        }
+        self.assertEqual(native_tokens, {plugin.browser_auth_token()})
         self.assertFalse(
             any(unsaved_token in message for message, _args in plugin.logger.messages)
         )
@@ -3609,6 +3781,46 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertIn("BrowserAccessRestartWorker", panel_source)
         self.assertIn("Use llama-server proxy turned off", panel_source)
 
+    def test_manager_browser_panel_displays_all_origins_and_clears_token_when_disabled(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        plugin = _browser_test_manager(manager_plugin)
+        panel = object.__new__(manager_plugin.BrowserAccessPanel)
+        panel.plugin = plugin
+        panel.restart_thread = None
+        panel.origin_label = _FakeLabel()
+        panel.token_edit = _FakeLabel()
+        panel.copy_button = _FakeButton()
+        panel.regenerate_button = _FakeButton()
+        panel.status_label = _FakeLabel()
+        with mock.patch.object(manager_plugin, "QApplication", _FakeApplication):
+            panel.update_display()
+            self.assertEqual(
+                panel.origin_label.text().splitlines(),
+                plugin.browser_access_snapshot()["origins"],
+            )
+            self.assertEqual(panel.token_edit.text(), "a" * 43)
+            self.assertTrue(panel.copy_button.enabled)
+            self.assertIn("Authorization: Bearer <Token>", panel.status_label.text())
+            self.assertIn("seven", panel.status_label.text())
+            self.assertIn("Use llama-server proxy turned off", panel.status_label.text())
+            panel.copy_token()
+            self.assertEqual(_FakeApplication.clipboard_text, "a" * 43)
+
+            plugin._external_browser_access_enabled = False
+            panel.update_display()
+            self.assertEqual(panel.token_edit.text(), "")
+            self.assertFalse(panel.copy_button.enabled)
+            self.assertEqual(
+                panel.status_label.text(), plugin.browser_access_snapshot()["error"]
+            )
+            self.assertNotIn("https://example.com", panel.origin_label.text())
+            _FakeApplication.clipboard_text = "existing clipboard content"
+            panel.copy_token()
+            self.assertEqual(_FakeApplication.clipboard_text, "existing clipboard content")
+
     def test_manager_dialog_has_no_refresh_all_button_or_handler(self):
         plugin_source = (
             Path(__file__).resolve().parents[3]
@@ -4992,6 +5204,17 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertTrue(switch.hitButton((0, 0)))
         self.assertTrue(switch.hitButton((53, 29)))
         self.assertFalse(switch.hitButton((54, 30)))
+
+
+def _browser_test_manager(manager_plugin):
+    plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+    plugin._external_browser_access_enabled = True
+    plugin._manager_config = _manager_config(auth_token="a" * 43)
+    plugin._browser_auth_token = "a" * 43
+    plugin._browser_access_persisted = True
+    plugin._browser_access_error = ""
+    plugin._browser_origin = "https://example.com"
+    return plugin
 
 
 def _manifest(tmp, service_id, capabilities, host="127.0.0.1", port=48211):

@@ -2836,6 +2836,144 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             self._stop_http_server(httpd, thread)
 
+    def test_browser_access_off_rejects_cached_preflight_with_unchanged_token(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        allowed_origins = [
+            "https://qcopilots.example",
+            "http://127.0.0.1:8282",
+            "http://localhost:8282",
+        ]
+        initialize_payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "browser-mode-test", "version": "1.0"},
+            },
+        }
+
+        def post(url, payload, headers):
+            return urlopen(
+                Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=self._http_headers(
+                        {"Content-Type": "application/json", **headers}
+                    ),
+                    method="POST",
+                ),
+                timeout=5,
+            )
+
+        def assert_cors(response, origin):
+            if origin:
+                self.assertEqual(
+                    response.headers["Access-Control-Allow-Origin"], origin
+                )
+                self.assertEqual(response.headers["Vary"], "Origin")
+            else:
+                self.assertNotIn("Access-Control-Allow-Origin", response.headers)
+
+        def exercise_session(url, origin=None):
+            headers = {"Origin": origin} if origin else {}
+            with post(url, initialize_payload, headers) as response:
+                self.assertEqual(response.status, 200)
+                assert_cors(response, origin)
+                session_id = response.headers["mcp-session-id"]
+                self.assertTrue(session_id)
+                self.assertEqual(
+                    json.loads(response.read().decode("utf-8"))["result"][
+                        "protocolVersion"
+                    ],
+                    "2025-06-18",
+                )
+            headers.update(
+                {
+                    "MCP-Protocol-Version": "2025-06-18",
+                    "MCP-Session-Id": session_id,
+                }
+            )
+            with post(
+                url,
+                {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                headers,
+            ) as response:
+                self.assertEqual(response.status, 202)
+                assert_cors(response, origin)
+                self.assertEqual(response.read(), b"")
+            with post(
+                url,
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+                headers,
+            ) as response:
+                self.assertEqual(response.status, 200)
+                assert_cors(response, origin)
+                self.assertEqual(
+                    json.loads(response.read().decode("utf-8"))["result"],
+                    {"tools": []},
+                )
+            with urlopen(
+                Request(url, headers=self._http_headers(headers), method="DELETE"),
+                timeout=5,
+            ) as response:
+                self.assertEqual(response.status, 204)
+                assert_cors(response, origin)
+
+        # Reuse the endpoint and persisted token across the ON -> OFF restart.
+        port = 0
+        for browser_access in (True, False):
+            server = McpHttpServer(
+                name="qcopilots-browser-mode-test",
+                version="1.0.0",
+                tools=[],
+                port=port,
+                cors_origins=allowed_origins if browser_access else [],
+                auth_token=self.HTTP_AUTH_TOKEN,
+            )
+            httpd = server.create_http_server()
+            port = httpd.server_address[1]
+            url = f"http://127.0.0.1:{port}/mcp"
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                for origin in allowed_origins:
+                    with self.subTest(browser_access=browser_access, origin=origin):
+                        if browser_access:
+                            with urlopen(
+                                Request(
+                                    url,
+                                    headers={
+                                        "Origin": origin,
+                                        "Access-Control-Request-Method": "POST",
+                                        "Access-Control-Request-Headers": (
+                                            "authorization, content-type, "
+                                            "mcp-session-id, mcp-protocol-version"
+                                        ),
+                                    },
+                                    method="OPTIONS",
+                                ),
+                                timeout=5,
+                            ) as response:
+                                self.assertEqual(response.status, 204)
+                                assert_cors(response, origin)
+                            exercise_session(url, origin)
+                        else:
+                            # A browser may skip OPTIONS while the ON response
+                            # is cached. The actual request must still fail.
+                            with self.assertRaises(HTTPError) as raised:
+                                post(url, initialize_payload, {"Origin": origin})
+                            with raised.exception as response:
+                                self.assertEqual(response.code, 403)
+                                self.assertNotIn(
+                                    "Access-Control-Allow-Origin", response.headers
+                                )
+                exercise_session(url)
+            finally:
+                self._stop_http_server(httpd, thread)
+
     def test_http_transport_rejects_invalid_browser_cors_preflights(self):
         from qcopilots_common.mcp_http import McpHttpServer
 

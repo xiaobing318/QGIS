@@ -106,6 +106,127 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             [],
         )
 
+    def test_start_uses_explicit_cors_origins_instead_of_inherited_settings(self):
+        from unittest.mock import patch
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.constants import CORS_ORIGINS_ENV, encode_cors_origins
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        browser_origins = [
+            "https://qcopilots.example",
+            "http://127.0.0.1:8282",
+            "http://localhost:8282",
+        ]
+        cases = (
+            (["*"], "[]", []),
+            (["*"], "", []),
+            (
+                ["https://inherited.example"],
+                encode_cors_origins([*browser_origins, browser_origins[0]]),
+                browser_origins,
+            ),
+            (
+                ["https://inherited.example"],
+                None,
+                ["https://manifest.example", "https://inherited.example"],
+            ),
+        )
+
+        class FakeRuntime:
+            def service_command(self, manifest, python_executable):
+                # Resolution must happen before runtime preparation and remain
+                # identical for validation and the launched process environment.
+                os.environ[CORS_ORIGINS_ENV] = "*"
+                return [str(python_executable), str(manifest.entry_path)]
+
+        for inherited, explicit, expected in cases:
+            with self.subTest(inherited=inherited, explicit=explicit):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    manifest = ServiceManifest(
+                        service_id="qcopilots.cors_service",
+                        display_name="QCopilots CORS Service",
+                        description="CORS precedence ProcessController test.",
+                        plugin_name="qcopilots_cors_service",
+                        plugin_dir=root,
+                        manifest_path=root / "qcopilots_service.json",
+                        transport=ServiceTransport(port=49531),
+                        cors_origins=["https://manifest.example"],
+                    )
+                    controller = ProcessController(root / "state", runtime=FakeRuntime())
+                    extra_env = {"QCOPILOTS_TEST": "1"}
+                    if explicit is not None:
+                        extra_env[CORS_ORIGINS_ENV] = explicit
+                    process = types.SimpleNamespace(pid=501, poll=lambda: None)
+                    with (
+                        patch.dict(
+                            os.environ,
+                            {CORS_ORIGINS_ENV: encode_cors_origins(inherited)},
+                        ),
+                        patch.object(
+                            process_controller,
+                            "resolve_service_python_executable",
+                            return_value=Path(sys.executable),
+                        ),
+                        patch.object(
+                            process_controller,
+                            "find_available_port",
+                            return_value=49531,
+                        ),
+                        patch.object(process_controller, "process_identity", return_value={}),
+                        patch.object(process_controller, "process_tree_pids", return_value=[501]),
+                        patch.object(
+                            process_controller,
+                            "service_log_file",
+                            return_value=root / "service.log",
+                        ),
+                        patch.object(controller, "_health_ok", return_value=True),
+                        patch.object(
+                            process_controller.subprocess, "Popen", return_value=process
+                        ) as popen,
+                    ):
+                        status = controller.start(manifest, extra_env=extra_env)
+
+                    self.assertTrue(status.running)
+                    self.assertEqual(status.health, "ok")
+                    environment = popen.call_args.kwargs["env"]
+                    self.assertEqual(
+                        environment[CORS_ORIGINS_ENV], encode_cors_origins(expected)
+                    )
+                    self.assertEqual(environment["QCOPILOTS_TEST"], "1")
+
+    def test_start_rejects_wildcard_from_effective_cors_configuration(self):
+        from unittest.mock import patch
+
+        from qcopilots_common.constants import CORS_ORIGINS_ENV
+        from qcopilots_common.manifest import ServiceManifest, ServiceTransport
+        from qcopilots_common.process_controller import ProcessController
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = ServiceManifest(
+                service_id="qcopilots.cors_service",
+                display_name="QCopilots CORS Service",
+                description="Effective CORS validation test.",
+                plugin_name="qcopilots_cors_service",
+                plugin_dir=root,
+                manifest_path=root / "qcopilots_service.json",
+                transport=ServiceTransport(port=49531),
+            )
+            controller = ProcessController(root / "state")
+            for inherited, extra_env in (
+                ("*", None),
+                ("[]", {CORS_ORIGINS_ENV: '["*"]'}),
+            ):
+                with (
+                    self.subTest(inherited=inherited, extra_env=extra_env),
+                    patch.dict(os.environ, {CORS_ORIGINS_ENV: inherited}),
+                    self.assertRaisesRegex(ValueError, "wildcard CORS"),
+                ):
+                    controller.start(manifest, extra_env=extra_env)
+
     def test_start_rejects_non_loopback_and_wildcard_network_settings(self):
         from qcopilots_common.manifest import ServiceManifest, ServiceTransport
         from qcopilots_common.process_controller import ProcessController

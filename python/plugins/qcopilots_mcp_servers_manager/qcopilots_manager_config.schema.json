@@ -150,21 +150,21 @@
     },
     "browser_access": {
       "type": "object",
-      "description": "字段作用是允许配置了 QCopilots URL 的浏览器页面直接访问七个本机 MCP 端点。候选子字段为 enabled、origin_source、auth_token 和 port_conflict_policy。不同取值会影响浏览器可访问性、认证凭据和端口冲突结果。浏览器仍需通过 Chrome 本地网络访问授权，并使用保存在当前用户配置中的共享 Bearer Token。该功能只允许精确的配置 URL Origin 和固定端口失败策略，不允许通配来源或端口漂移。",
+      "description": "字段作用是配置浏览器页面直接访问七个本机 MCP 端点的权限。候选子字段为 enabled、origin_source、auth_token 和 port_conflict_policy，不同取值会影响浏览器可访问性、认证凭据和端口冲突结果。启动 QGIS 时还必须设置 QCOPILOTS_EXTERNAL_BROWSER_ACCESS=ON，未设置或其他值默认关闭外部浏览器访问，修改环境变量后需要重启 QGIS。开启时允许精确的配置 URL Origin、http://127.0.0.1:8282 和 http://localhost:8282，重复来源只保留一次。浏览器仍需通过 Chrome 本地网络访问授权，并使用保存在当前用户配置中的共享 Bearer Token。该功能采用固定端口失败策略，不允许通配来源或端口漂移。",
       "additionalProperties": false,
       "required": ["enabled", "origin_source", "auth_token", "port_conflict_policy"],
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": true,
-          "description": "字段作用是启用或关闭浏览器跨域直连。候选值为 true 或 false。true 会在 Token 已成功保存且 QCopilots URL 有效时允许该精确 Origin，false 会保持 CORS 关闭但不影响 QGIS 原生桥接。"
+          "description": "字段作用是启用或关闭浏览器跨域直连。候选值为 true 或 false。true 仅在启动环境中 QCOPILOTS_EXTERNAL_BROWSER_ACCESS 为 ON、Token 已成功保存且 QCopilots URL 有效时允许浏览器访问。false 始终保持 CORS 关闭，不受环境开关覆盖。两种取值都不影响 QGIS 原生桥接。环境开关忽略大小写和首尾空白，其他取值均视为关闭。"
         },
         "origin_source": {
           "type": "string",
           "const": "configured_qcopilots_url",
           "enum": ["configured_qcopilots_url"],
           "default": "configured_qcopilots_url",
-          "description": "字段作用是指定浏览器 Origin 的唯一来源。唯一候选值为 configured_qcopilots_url，表示从 QGIS 的 Configure QCopilots URL 设置提取 scheme、host 和非默认端口，路径、查询和片段不会进入 CORS Origin。"
+          "description": "字段作用是指定主要浏览器 Origin 的来源。唯一候选值为 configured_qcopilots_url，表示从 QGIS 的 Configure QCopilots URL 设置提取 scheme、host 和非默认端口，路径、查询和片段不会进入 CORS Origin。外部浏览器访问开启时还允许固定来源 http://127.0.0.1:8282 和 http://localhost:8282，并按顺序去重。"
         },
         "auth_token": {
           "type": "string",

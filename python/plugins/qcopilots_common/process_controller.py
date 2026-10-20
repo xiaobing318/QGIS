@@ -295,7 +295,15 @@ class ProcessController:
             if _cancel_requested(cancel_event):
                 return self.status(manifest, deep=False)
 
-            _validate_service_manifest_security(manifest)
+            if extra_env is not None and CORS_ORIGINS_ENV in extra_env:
+                cors_origins = list(
+                    dict.fromkeys(decode_cors_origins(extra_env[CORS_ORIGINS_ENV]))
+                )
+            else:
+                cors_origins = _merged_cors_origins(
+                    manifest.cors_origins or DEFAULT_CORS_ORIGINS
+                )
+            _validate_service_manifest_security(manifest, cors_origins)
             effective_port_conflict_policy = _validated_port_conflict_policy(
                 port_conflict_policy
             )
@@ -448,7 +456,6 @@ class ProcessController:
             env.pop(MCP_AUTH_TOKEN_ENV, None)
             env.pop(BRIDGE_URL_ENV, None)
             env.pop(QGIS_BRIDGE_AUTH_TOKEN_ENV, None)
-            cors_origins = _merged_cors_origins(manifest.cors_origins or DEFAULT_CORS_ORIGINS)
             env.update(
                 {
                     "PYTHONUNBUFFERED": "1",
@@ -456,7 +463,6 @@ class ProcessController:
                     "QCOPILOTS_SERVICE_PORT": str(port),
                     "QCOPILOTS_MCP_PATH": manifest.mcp_path,
                     "QCOPILOTS_LOG_FILE": str(log_file),
-                    CORS_ORIGINS_ENV: encode_cors_origins(cors_origins),
                     SERVICE_DESCRIPTION_ENV: manifest.description,
                     SERVICE_TITLE_ENV: manifest.plugin_name,
                 }
@@ -468,6 +474,7 @@ class ProcessController:
                 env[BRIDGE_URL_ENV] = bridge_url
             if extra_env:
                 env.update(extra_env)
+            env[CORS_ORIGINS_ENV] = encode_cors_origins(cors_origins)
             if effective_auth_token:
                 env[MCP_AUTH_TOKEN_ENV] = effective_auth_token
             else:
@@ -1355,7 +1362,10 @@ def _health_check_host(host: str) -> str:
     return candidate
 
 
-def _validate_service_manifest_security(manifest: ServiceManifest) -> None:
+def _validate_service_manifest_security(
+    manifest: ServiceManifest,
+    cors_origins: list[str],
+) -> None:
     if manifest.host != DEFAULT_HOST:
         raise ValueError(
             "QCopilots MCP services require the literal IPv4 loopback host "
@@ -1366,9 +1376,7 @@ def _validate_service_manifest_security(manifest: ServiceManifest) -> None:
             "QCopilots MCP services do not allow a non-loopback advertised host: "
             f"{manifest.advertised_host}"
         )
-    if "*" in _merged_cors_origins(
-        manifest.cors_origins or DEFAULT_CORS_ORIGINS
-    ):
+    if "*" in cors_origins:
         raise ValueError("QCopilots MCP services do not allow wildcard CORS.")
 
 
