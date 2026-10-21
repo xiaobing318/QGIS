@@ -56,11 +56,15 @@ def build_qgis_binary_tools() -> list[McpTool]:
         McpTool(
             "list_qgis_binaries",
             (
-                "Discover the explicitly configured QGIS package binaries without "
+                "Discover the current QGIS package binaries without "
                 "starting a process. Returns a filtered, cursor-paginated page of "
                 "binary summaries, including catalog enablement, configured risk, "
                 "environment, package-relative path and disabled reasons, so a "
                 "returned binary_id can be used with the details or start tools. "
+                "Package changes are discovered on each lookup. Unreviewed binaries "
+                "are listed but cannot run, and missing configured binaries remain "
+                "listed as unavailable. Availability and policy_status distinguish "
+                "package presence from reviewed execution policy. "
                 "Listing the catalog does not execute a configured probe or binary."
             ),
             _list_binaries_schema(),
@@ -69,11 +73,13 @@ def build_qgis_binary_tools() -> list[McpTool]:
         McpTool(
             "get_qgis_binary_details",
             (
-                "Inspect one explicitly configured QGIS package binary without "
+                "Inspect one discovered or configured QGIS package binary without "
                 "running it. Given a binary_id from list_qgis_binaries, returns its "
                 "effective catalog policy, package-relative executable path, catalog "
                 "enablement, risk, environment, configured probe, exit-code rules, "
-                "and resource limits. This inspection does not execute the probe or "
+                "and resource limits when reviewed. Newly discovered binaries have "
+                "no configured probe or environment and cannot run. This inspection "
+                "does not execute the probe or "
                 "binary."
             ),
             _binary_id_schema(),
@@ -144,7 +150,8 @@ def _list_binaries_schema() -> dict[str, Any]:
                 "maxLength": 2048,
                 "description": (
                     "Pagination cursor returned by the previous "
-                    "list_qgis_binaries page. Omit it for the first page."
+                    "list_qgis_binaries page. Omit it for the first page. If the "
+                    "inventory or filters changed, restart without a cursor."
                 ),
             },
             "limit": {

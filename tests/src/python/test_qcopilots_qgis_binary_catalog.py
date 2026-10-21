@@ -700,27 +700,28 @@ def validate_catalog_against_package(
         if item.get("risk") == "R3" and item.get("enabled"):
             raise CatalogValidationError(f"risk3_enabled: {item['id']}")
 
-    configured_paths = set(paths)
+    configured_paths = {path.casefold() for path in paths}
     actual_paths = {
-        executable.relative_to(root).as_posix()
-        for executable in root.rglob("*.exe")
-        if executable.is_file()
+        executable.relative_to(root).as_posix().casefold()
+        for executable in root.rglob("*")
+        if executable.suffix.casefold() == ".exe"
+        and executable.is_file()
+        and executable.resolve(strict=True).is_relative_to(root)
     }
     missing = sorted(configured_paths - actual_paths)
     extra = sorted(actual_paths - configured_paths)
-    if missing:
-        raise CatalogValidationError(f"missing_executable: {missing[0]}")
-    if extra:
-        raise CatalogValidationError(f"extra_executable: {extra[0]}")
 
     if verify_static_probes:
         for item in binaries:
-            if item.get("probe", {}).get("mode") == "static":
+            if (
+                item["path"].casefold() in actual_paths
+                and item.get("probe", {}).get("mode") == "static"
+            ):
                 _verify_static_probe(root, item)
     return {
         **actual_counts,
-        "missing": 0,
-        "extra": 0,
+        "missing": len(missing),
+        "extra": len(extra),
         "duplicate_ids": 0,
         "duplicate_paths": 0,
     }
@@ -753,13 +754,11 @@ def probe_enabled_binaries(
     from qcopilots_common.qgis_binary_jobs import QGISBinaryJobManager
 
     root = Path(package_root).resolve(strict=True)
-    catalog = load_catalog(catalog_path)
     validation = validate_catalog_against_package(
         catalog_path,
         root,
         verify_static_probes=False,
     )
-    enabled = [item for item in catalog["binaries"] if item["enabled"]]
     failures = []
     probed = 0
     runner = run_factory or subprocess.run
@@ -791,6 +790,7 @@ def probe_enabled_binaries(
                 "run_factory": runner,
             },
         )
+        enabled = [item for item in manager.load_catalog()["binaries"] if item["enabled"]]
         try:
             for index, item in enumerate(enabled):
                 probed += 1
@@ -1600,15 +1600,13 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             _materialize_configured_paths(self.catalog, root, skip_path=missing_path)
             catalog_path = Path(root) / "catalog.json"
             _write_catalog(self.catalog, catalog_path)
-            with self.assertRaisesRegex(
-                CatalogValidationError,
-                f"missing_executable: {re.escape(missing_path)}",
-            ):
-                validate_catalog_against_package(
-                    catalog_path,
-                    root,
-                    verify_static_probes=False,
-                )
+            validation = validate_catalog_against_package(
+                catalog_path,
+                root,
+                verify_static_probes=False,
+            )
+            self.assertEqual(validation["missing"], 1)
+            self.assertEqual(validation["extra"], 0)
 
         with tempfile.TemporaryDirectory(prefix="qcopilots-binary-extra-") as root:
             _materialize_configured_paths(self.catalog, root)
@@ -1617,15 +1615,13 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             extra.write_bytes(b"MZ")
             catalog_path = Path(root) / "catalog.json"
             _write_catalog(self.catalog, catalog_path)
-            with self.assertRaisesRegex(
-                CatalogValidationError,
-                "extra_executable: bin/unexpected.exe",
-            ):
-                validate_catalog_against_package(
-                    catalog_path,
-                    root,
-                    verify_static_probes=False,
-                )
+            validation = validate_catalog_against_package(
+                catalog_path,
+                root,
+                verify_static_probes=False,
+            )
+            self.assertEqual(validation["missing"], 0)
+            self.assertEqual(validation["extra"], 1)
 
     def test_static_probe_verifies_pe_machine_and_hash(self):
         with tempfile.TemporaryDirectory(prefix="qcopilots-binary-probe-") as root:
@@ -1652,7 +1648,7 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
             ):
                 _verify_static_probe(Path(root), item)
 
-    def test_current_published_snapshot_matches_and_static_probes_pass(self):
+    def test_current_published_policies_and_present_static_probes_pass(self):
         package_root_value = os.environ.get(PUBLISHED_PACKAGE_ROOT_ENV)
         if package_root_value is None:
             self.skipTest(
@@ -1668,18 +1664,17 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
         binaries = self.catalog["binaries"]
         configured = len(binaries)
         enabled = sum(item["enabled"] for item in binaries)
+        validation = validate_catalog_against_package(
+            CATALOG_PATH,
+            package_root,
+            verify_static_probes=True,
+        )
         self.assertEqual(
-            validate_catalog_against_package(
-                CATALOG_PATH,
-                package_root,
-                verify_static_probes=True,
-            ),
+            {key: validation[key] for key in ("configured", "enabled", "disabled", "duplicate_ids", "duplicate_paths")},
             {
                 "configured": configured,
                 "enabled": enabled,
                 "disabled": configured - enabled,
-                "missing": 0,
-                "extra": 0,
                 "duplicate_ids": 0,
                 "duplicate_paths": 0,
             },

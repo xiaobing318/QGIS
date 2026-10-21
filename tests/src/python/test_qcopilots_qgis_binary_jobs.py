@@ -481,24 +481,144 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
             with self.subTest(message=message):
                 self._assert_invalid(mutate, message)
 
-    def test_rejects_missing_and_extra_executables(self):
+    def test_package_changes_refresh_without_restarting_or_authorizing_execution(self):
         fixture = BinaryFixture(self)
         missing = fixture.root / "bin" / "alpha.exe"
         missing.unlink()
-        with self.assertRaisesRegex(BinaryCatalogError, "missing_count=1"):
-            QGISBinaryJobManager(
-                catalog_path=fixture.catalog_path,
-                package_root=fixture.root,
-            )
-        missing.write_bytes(b"MZ")
         extra = fixture.root / "bin" / "extra.exe"
         extra.write_bytes(b"MZ")
-        with self.assertRaisesRegex(BinaryCatalogError, "extra_count=1"):
-            QGISBinaryJobManager(
-                catalog_path=fixture.catalog_path,
-                package_root=fixture.root,
-            )
+
+        catalog = fixture.manager.load_catalog()
+        self.assertEqual(catalog["counts"], {"configured": 4, "enabled": 1, "disabled": 3})
+        absent = fixture.manager.get_binary_details("alpha")
+        self.assertEqual(absent["availability"], "missing")
+        self.assertTrue(absent["configured_enabled"])
+        self.assertFalse(absent["enabled"])
+        self.assertEqual(absent["policy_status"], "configured")
+        discovered = fixture.manager.list_binaries({"query": "extra.exe"})["binaries"]
+        self.assertEqual(len(discovered), 1)
+        extra_id = discovered[0]["id"]
+        self.assertEqual(discovered[0]["policy_status"], "unreviewed")
+        self.assertFalse(discovered[0]["enabled"])
+        self.assertIsNone(fixture.manager.get_binary_details(extra_id)["probe"])
+        self.assertIsNone(fixture.manager.get_binary_details(extra_id)["environment"])
+        for confirmed in (False, True):
+            with self.assertRaisesRegex(BinaryExecutionError, "qgis_binary_unreviewed"):
+                fixture.manager.start({"binary_id": extra_id, "confirmed_risk": confirmed})
+        with self.assertRaisesRegex(BinaryExecutionError, "qgis_binary_unavailable"):
+            fixture.manager.start({"binary_id": "alpha"})
+        self.assertEqual(fixture.executions, [])
+
+        fresh_manager = QGISBinaryJobManager(
+            catalog_path=fixture.catalog_path,
+            package_root=fixture.root,
+        )
+        self.addCleanup(fresh_manager.shutdown, 0)
+        self.assertEqual(fresh_manager.list_binaries({})["total"], 4)
+        self.assertEqual(fresh_manager.get_binary_details(extra_id)["path"], "bin/extra.exe")
+
         extra.unlink()
+        self.assertEqual(fixture.manager.list_binaries({})["total"], 3)
+        with self.assertRaisesRegex(RuntimeError, "qgis_binary_not_found"):
+            fixture.manager.get_binary_details(extra_id)
+        extra.write_bytes(b"MZ")
+        self.assertEqual(fixture.manager.list_binaries({"query": "extra.exe"})["binaries"][0]["id"], extra_id)
+        missing.write_bytes(b"MZ")
+        restored = fixture.manager.get_binary_details("alpha")
+        self.assertEqual(restored["availability"], "available")
+        self.assertTrue(restored["enabled"])
+        self.assertIsNone(restored["disabled_reason"])
+        self.assertEqual(absent["availability"], "missing")
+        self.assertEqual(fixture.manager.start({"binary_id": "alpha"})["state"], "queued")
+
+    def test_discovery_ids_are_distinct_for_equal_names_and_policy_collisions(self):
+        fixture = BinaryFixture(self)
+        for relative in ("bin/new.EXE", "apps/tools/new.exe"):
+            target = fixture.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"MZ")
+        discovered = fixture.manager.list_binaries({"group": "unreviewed"})["binaries"]
+        self.assertEqual(len(discovered), 2)
+        self.assertEqual(len({item["id"] for item in discovered}), 2)
+        self.assertTrue(all(not item["enabled"] for item in discovered))
+        collision_id = discovered[0]["id"]
+        fixture.manager._configured_binaries[collision_id] = {
+            **fixture.manager._configured_binaries["alpha"],
+            "id": collision_id,
+        }
+        refreshed = fixture.manager.list_binaries({"group": "unreviewed"})["binaries"]
+        self.assertNotIn(collision_id, {item["id"] for item in refreshed})
+        self.assertEqual(fixture.manager.get_binary_details(collision_id)["path"], "bin/alpha.exe")
+
+    def test_unavailable_or_escaping_entries_do_not_hide_other_binaries(self):
+        fixture = BinaryFixture(self)
+        target = fixture.root.resolve() / "bin" / "alpha.exe"
+        target.unlink()
+        target.mkdir()
+        self.assertEqual(fixture.manager.get_binary_details("alpha")["availability"], "unavailable")
+        self.assertEqual(fixture.manager.list_binaries({"enabled": True})["binaries"][0]["id"], "bravo")
+        target.rmdir()
+        target.write_bytes(b"MZ")
+        extra = fixture.root.resolve() / "bin" / "outside.exe"
+        extra.write_bytes(b"MZ")
+        original_resolve = Path.resolve
+
+        def resolve_outside(candidate, *arguments, **keywords):
+            if candidate in (target, extra):
+                return fixture.root.parent / "outside-package.exe"
+            return original_resolve(candidate, *arguments, **keywords)
+
+        with mock.patch.object(Path, "resolve", resolve_outside):
+            binaries = fixture.manager.list_binaries({})["binaries"]
+            self.assertEqual(len(binaries), 3)
+            self.assertEqual(fixture.manager.get_binary_details("alpha")["availability"], "unavailable")
+            with self.assertRaisesRegex(BinaryExecutionError, "qgis_binary_unavailable"):
+                fixture.manager.start({"binary_id": "alpha"})
+            self.assertTrue(fixture.manager.get_binary_details("bravo")["enabled"])
+        self.assertEqual(fixture.executions, [])
+
+    def test_discovery_does_not_follow_directory_junctions(self):
+        fixture = BinaryFixture(self)
+        junction = fixture.root.resolve() / "linked-directory"
+        junction.mkdir()
+        (junction / "outside.exe").write_bytes(b"MZ")
+        original_is_junction = getattr(Path, "is_junction", lambda _path: False)
+
+        def is_junction(candidate):
+            return candidate == junction or original_is_junction(candidate)
+
+        with mock.patch.object(Path, "is_junction", is_junction, create=True):
+            self.assertEqual(fixture.manager.list_binaries({})["total"], 3)
+
+    def test_pagination_detects_package_or_filter_changes(self):
+        fixture = BinaryFixture(self)
+        extras = [fixture.root / "bin" / name for name in ("first.exe", "second.exe")]
+        for extra in extras:
+            extra.write_bytes(b"MZ")
+        first = fixture.manager.list_binaries({"limit": 4})
+        removed = first["binaries"][-1]
+        self.assertEqual(removed["policy_status"], "unreviewed")
+        (fixture.root / removed["path"]).unlink()
+        with self.assertRaisesRegex(ValueError, "qgis_binary_cursor_stale"):
+            fixture.manager.list_binaries({"cursor": first["next_cursor"], "limit": 4})
+
+        first = fixture.manager.list_binaries({"limit": 1})
+        (fixture.root / "bin" / "third.exe").write_bytes(b"MZ")
+        with self.assertRaisesRegex(ValueError, "qgis_binary_cursor_stale"):
+            fixture.manager.list_binaries({"cursor": first["next_cursor"], "limit": 1})
+        first = fixture.manager.list_binaries({"limit": 1})
+        with self.assertRaisesRegex(ValueError, "qgis_binary_cursor_stale"):
+            fixture.manager.list_binaries({"cursor": first["next_cursor"], "enabled": True})
+        entries = []
+        cursor = None
+        while True:
+            page = fixture.manager.list_binaries({"cursor": cursor, "limit": 1})
+            entries.extend(page["binaries"])
+            cursor = page["next_cursor"]
+            if cursor is None:
+                break
+        self.assertEqual(len(entries), 5)
+        self.assertEqual(len({item["id"] for item in entries}), 5)
 
     def test_catalog_counts_are_derived(self):
         fixture = BinaryFixture(self)
@@ -674,11 +794,13 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
         first = self.manager.list_binaries({"limit": 1})
         self.assertEqual(first["total"], 3)
         self.assertEqual(first["binaries"][0]["id"], "alpha")
-        self.assertEqual(first["next_cursor"], "1")
+        self.assertRegex(first["next_cursor"], r"^v1:[0-9a-f]{64}:1$")
         second = self.manager.list_binaries(
             {"limit": 1, "cursor": first["next_cursor"]}
         )
         self.assertEqual(second["binaries"][0]["id"], "blocked")
+        legacy = self.manager.list_binaries({"limit": 1, "cursor": "1"})
+        self.assertEqual(legacy["binaries"][0]["id"], "blocked")
         enabled_r2 = self.manager.list_binaries({"enabled": True, "risk": "R2"})
         self.assertEqual([item["id"] for item in enabled_r2["binaries"]], ["bravo"])
         queried = self.manager.list_binaries({"query": "first safe"})

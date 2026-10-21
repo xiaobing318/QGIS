@@ -80,7 +80,7 @@ _WINDOWS_RESERVED_DEVICE_RE = re.compile(
 
 
 class BinaryCatalogError(RuntimeError):
-    """Raised when the explicit QGIS binary catalog is invalid or stale."""
+    """Raised when the explicit QGIS binary execution policy is invalid."""
 
 
 class BinaryExecutionError(RuntimeError):
@@ -574,7 +574,7 @@ class QGISBinaryJobManager:
             self._raw_catalog,
             self._dependencies,
         )
-        self._catalog, self._binaries = _validate_catalog(
+        self._catalog, self._configured_binaries = _validate_catalog(
             self._raw_catalog,
             self.package_root,
         )
@@ -585,19 +585,42 @@ class QGISBinaryJobManager:
             return self._accepting and self.store.accepting
 
     def load_catalog(self) -> dict[str, Any]:
-        return _public_catalog(self._catalog)
+        binaries = self._refresh_inventory()
+        enabled_count = sum(binary["enabled"] for binary in binaries.values())
+        return _public_catalog(
+            {
+                **self._catalog,
+                "binaries": list(binaries.values()),
+                "counts": {
+                    "configured": len(binaries),
+                    "enabled": enabled_count,
+                    "disabled": len(binaries) - enabled_count,
+                },
+            }
+        )
+
+    def _refresh_inventory(self) -> dict[str, dict[str, Any]]:
+        # Build a fresh snapshot for each public lookup. Policy and running job
+        # snapshots stay immutable when package files are added or removed.
+        return _binary_inventory(self.package_root, self._configured_binaries)
 
     def list_binaries(self, arguments: dict[str, Any]) -> dict[str, Any]:
         cursor = arguments.get("cursor", "0")
         if cursor in (None, ""):
             cursor = "0"
-        if (
-            not isinstance(cursor, str)
-            or len(cursor) > 2048
-            or not cursor.isdecimal()
-        ):
-            raise ValueError("cursor must be a non-negative decimal string")
-        offset = int(cursor)
+        if not isinstance(cursor, str) or len(cursor) > 2048:
+            raise ValueError("cursor must be a pagination token")
+        cursor_fingerprint = None
+        if cursor.isdecimal():
+            # Continue accepting legacy numeric cursors. Newly issued cursors
+            # detect directory changes instead of silently skipping entries.
+            offset = int(cursor)
+        else:
+            token = re.fullmatch(r"v1:([0-9a-f]{64}):([0-9]+)", cursor)
+            if token is None:
+                raise ValueError("cursor must be a pagination token")
+            cursor_fingerprint = token.group(1)
+            offset = int(token.group(2))
         limit = arguments.get("limit", DEFAULT_LIST_LIMIT)
         if (
             isinstance(limit, bool)
@@ -624,7 +647,7 @@ class QGISBinaryJobManager:
             risk = _normalize_risk(risk)
 
         matches = []
-        for binary in self._binaries.values():
+        for binary in self._refresh_inventory().values():
             if enabled is not None and binary["enabled"] is not enabled:
                 continue
             if group is not None and binary["group"] != group:
@@ -638,11 +661,24 @@ class QGISBinaryJobManager:
                 continue
             matches.append(binary)
         matches.sort(key=lambda item: item["id"].casefold())
+        fingerprint = _fingerprint(
+            {
+                "filters": {"query": query, "group": group, "risk": risk, "enabled": enabled},
+                "binaries": [_binary_summary(item) for item in matches],
+            }
+        )
+        if cursor_fingerprint is not None and cursor_fingerprint != fingerprint:
+            raise ValueError(
+                "qgis_binary_cursor_stale: package inventory or filters changed, "
+                "restart listing without a cursor"
+            )
         page = matches[offset : offset + limit]
         next_offset = offset + len(page)
         return {
             "binaries": [_binary_summary(item) for item in page],
-            "next_cursor": str(next_offset) if next_offset < len(matches) else None,
+            "next_cursor": (
+                f"v1:{fingerprint}:{next_offset}" if next_offset < len(matches) else None
+            ),
             "total": len(matches),
         }
 
@@ -652,7 +688,7 @@ class QGISBinaryJobManager:
             if isinstance(arguments, dict)
             else _required_string(arguments, "binary_id")
         )
-        binary = self._binaries.get(binary_id)
+        binary = self._refresh_inventory().get(binary_id)
         if binary is None:
             raise RuntimeError(f"qgis_binary_not_found: {binary_id}")
         return _public_binary(binary)
@@ -712,9 +748,17 @@ class QGISBinaryJobManager:
         if existing is not None:
             return existing
 
-        binary = self._binaries.get(binary_id)
+        binary = self._refresh_inventory().get(binary_id)
         if binary is None:
             raise RuntimeError(f"qgis_binary_not_found: {binary_id}")
+        if binary["policy_status"] == "unreviewed":
+            raise BinaryExecutionError(
+                "qgis_binary_unreviewed: an explicit execution policy is required"
+            )
+        if binary["availability"] != "available":
+            raise BinaryExecutionError(
+                f"qgis_binary_unavailable: {binary['disabled_reason']}"
+            )
         if binary["risk"] == "R3":
             raise BinaryExecutionError("qgis_binary_risk_blocked: R3 binaries cannot run")
         if not binary["enabled"]:
@@ -1406,9 +1450,7 @@ def _validate_catalog(
             MAX_BINARY_STDIN_BYTES,
         )
         progress_parser = _normalize_progress_parser(merged.get("progress_parser"))
-        target = _resolve_catalog_executable(
-            package_root, relative_path, require_exists=False
-        )
+        target = package_root.joinpath(*PurePosixPath(relative_path).parts)
         normalized = {
             **merged,
             "id": binary_id,
@@ -1432,16 +1474,6 @@ def _validate_catalog(
         if enabled:
             enabled_count += 1
 
-    actual_paths = _actual_executable_paths(package_root)
-    configured_set = set(configured_paths)
-    missing = sorted(configured_set - actual_paths)
-    extra = sorted(actual_paths - configured_set)
-    if missing or extra:
-        raise BinaryCatalogError(
-            "QGIS binary catalog does not match the package executable set. "
-            f"missing={missing[:20]}, extra={extra[:20]}, "
-            f"missing_count={len(missing)}, extra_count={len(extra)}"
-        )
     actual_counts = {
         "configured": len(binaries),
         "enabled": enabled_count,
@@ -1593,18 +1625,96 @@ def _root_matches_markers(root: Path, markers: list[str]) -> bool:
     return True
 
 
-def _actual_executable_paths(package_root: Path) -> set[str]:
-    paths = set()
-    for candidate in package_root.rglob("*"):
-        if not candidate.is_file() or candidate.suffix.casefold() != ".exe":
-            continue
-        resolved = candidate.resolve(strict=True)
-        try:
-            resolved.relative_to(package_root)
-        except ValueError as err:
-            raise BinaryCatalogError(f"Executable escapes package root: {candidate}") from err
-        paths.add(candidate.relative_to(package_root).as_posix().casefold())
+def _actual_executable_paths(package_root: Path) -> dict[str, str]:
+    """Discover regular EXEs without following directory links or junctions."""
+    paths = {}
+    for directory, directories, filenames in os.walk(package_root, followlinks=False):
+        current = Path(directory)
+        safe_directories = []
+        for name in directories:
+            candidate = current / name
+            try:
+                if candidate.is_symlink() or (
+                    hasattr(candidate, "is_junction") and candidate.is_junction()
+                ):
+                    continue
+                candidate.resolve(strict=True).relative_to(package_root)
+                safe_directories.append(name)
+            except (OSError, RuntimeError, ValueError):
+                continue
+        directories[:] = safe_directories
+        for name in filenames:
+            if not name.casefold().endswith(".exe"):
+                continue
+            candidate = current / name
+            try:
+                resolved = candidate.resolve(strict=True)
+                resolved.relative_to(package_root)
+                if not resolved.is_file():
+                    continue
+                relative = candidate.relative_to(package_root).as_posix()
+                paths[relative.casefold()] = relative
+            except (OSError, RuntimeError, ValueError):
+                # A changing or inaccessible file must not hide unrelated tools.
+                continue
     return paths
+
+
+def _binary_inventory(
+    package_root: Path, configured: dict[str, dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    actual_paths = _actual_executable_paths(package_root)
+    binaries = {}
+    configured_paths = set()
+    for binary_id, policy in configured.items():
+        configured_paths.add(policy["path"].casefold())
+        binary = {
+            **policy,
+            "policy_status": "configured",
+            "configured_enabled": policy["enabled"],
+            "availability": "available",
+        }
+        try:
+            resolved = _resolve_catalog_executable(package_root, policy["path"])
+            binary["resolved_path"] = str(resolved)
+        except FileNotFoundError:
+            binary.update(
+                availability="missing",
+                enabled=False,
+                disabled_reason=f"Package executable is missing: {policy['path']}",
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            binary.update(
+                availability="unavailable",
+                enabled=False,
+                disabled_reason=f"Package executable is unavailable: {error}",
+            )
+        binaries[binary_id] = binary
+
+    for path_key in sorted(set(actual_paths) - configured_paths):
+        relative = actual_paths[path_key]
+        base_id = "discovered." + hashlib.sha256(path_key.encode("utf-8")).hexdigest()
+        binary_id = base_id
+        suffix = 0
+        while binary_id in binaries:
+            suffix += 1
+            binary_id = f"{base_id}.{suffix}"
+        binaries[binary_id] = {
+            "id": binary_id,
+            "name": PurePosixPath(relative).stem,
+            "description": "Discovered package executable without a reviewed execution policy.",
+            "path": relative,
+            "group": "unreviewed",
+            "environment": None,
+            "enabled": False,
+            "configured_enabled": False,
+            "disabled_reason": "Execution requires an explicitly reviewed catalog policy.",
+            "risk": "R3",
+            "policy_status": "unreviewed",
+            "availability": "available",
+            "probe": None,
+        }
+    return binaries
 
 
 def _normalize_relative_executable_path(value: Any) -> str:
@@ -2216,6 +2326,9 @@ def _binary_summary(binary: dict[str, Any]) -> dict[str, Any]:
             "disabled_reason",
             "risk",
             "environment",
+            "availability",
+            "policy_status",
+            "configured_enabled",
         )
     }
 
