@@ -182,6 +182,245 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         self.assertEqual(call["result"]["structuredContent"], {"echoed": "hello"})
         self.assertEqual(calls, [({"text": "hello"}, "unit-test")])
 
+    def test_tool_descriptor_preserves_canonical_schema_and_merges_alternatives(self):
+        from qcopilots_common.mcp_http import McpTool
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "layer_id": {"type": "string"},
+                "layer_ids": {"type": "array", "items": {"type": "string"}},
+                "forbidden": False,
+                "anything": True,
+            },
+            "additionalProperties": False,
+            "allOf": [{"maxProperties": 1}],
+            "oneOf": [{"required": ["layer_id"]}, {"required": ["layer_ids"]}],
+            "anyOf": [{"required": ["layer_id"]}, {"required": ["anything"]}],
+        }
+        canonical = copy.deepcopy(schema)
+        tool = McpTool("select", "Select layers", schema, lambda arguments: arguments)
+        descriptor = tool.descriptor()
+        expected = copy.deepcopy(canonical)
+        expected["allOf"].extend(
+            [{"oneOf": expected.pop("oneOf")}, {"anyOf": expected.pop("anyOf")}]
+        )
+        self.assertEqual(
+            descriptor,
+            {"name": "select", "description": "Select layers", "inputSchema": expected},
+        )
+        self.assertEqual(schema, canonical)
+        self.assertIs(tool.input_schema, schema)
+        self.assertEqual(tool.descriptor(), descriptor)
+        self.assertEqual(
+            McpTool("select", "Select layers", expected, tool.handler).descriptor(),
+            descriptor,
+        )
+
+        descriptor["inputSchema"]["properties"]["layer_id"]["type"] = "integer"
+        descriptor["inputSchema"]["allOf"][1]["oneOf"][0]["required"].append("changed")
+        self.assertEqual(schema, canonical)
+        self.assertEqual(tool.descriptor()["inputSchema"], expected)
+
+    def test_tool_descriptor_adapts_nested_schema_positions_only(self):
+        from qcopilots_common.mcp_http import McpTool
+
+        child = {
+            "type": "object",
+            "properties": {"value": {"type": "string"}},
+            "oneOf": [{"required": ["value"]}, {"maxProperties": 0}],
+        }
+        adapted_child = {
+            "type": "object",
+            "properties": {"value": {"type": "string"}},
+            "allOf": [{"oneOf": child["oneOf"]}],
+        }
+        positions = {
+            **{
+                keyword: (lambda value: {"nested": value})
+                for keyword in (
+                    "properties",
+                    "patternProperties",
+                    "$defs",
+                    "definitions",
+                    "dependentSchemas",
+                    "dependencies",
+                )
+            },
+            **{
+                keyword: (lambda value: [value])
+                for keyword in ("allOf", "anyOf", "oneOf", "prefixItems")
+            },
+            **{
+                keyword: (lambda value: value)
+                for keyword in (
+                    "additionalProperties",
+                    "unevaluatedProperties",
+                    "propertyNames",
+                    "contains",
+                    "items",
+                    "not",
+                    "if",
+                    "then",
+                    "else",
+                    "additionalItems",
+                    "unevaluatedItems",
+                    "contentSchema",
+                )
+            },
+        }
+        for keyword, wrap in positions.items():
+            with self.subTest(keyword=keyword):
+                schema = {keyword: wrap(copy.deepcopy(child))}
+                canonical = copy.deepcopy(schema)
+                descriptor = McpTool(
+                    "nested", "Nested schema", schema, lambda: None
+                ).descriptor()
+                self.assertEqual(
+                    descriptor["inputSchema"], {keyword: wrap(adapted_child)}
+                )
+                self.assertEqual(schema, canonical)
+        tuple_schema = {"items": [copy.deepcopy(child), False, True]}
+        tuple_descriptor = McpTool(
+            "tuple", "Tuple schema", tuple_schema, lambda: None
+        ).descriptor()
+        self.assertEqual(
+            tuple_descriptor["inputSchema"], {"items": [adapted_child, False, True]}
+        )
+
+        scalar_choice = {"type": "string", "oneOf": [{"const": "a"}, {"const": "b"}]}
+        self.assertEqual(
+            McpTool("scalar", "Scalar choice", scalar_choice, lambda: None).descriptor()[
+                "inputSchema"
+            ],
+            scalar_choice,
+        )
+
+    def test_tool_descriptor_preserves_schema_shaped_instance_data(self):
+        from qcopilots_common.mcp_http import McpTool
+
+        data = {
+            "$ref": "#/instance/data",
+            "$dynamicRef": "#instance-anchor",
+            "properties": {"literal": False},
+            "oneOf": [True, False],
+            "anyOf": [{"properties": {"nested": True}}],
+        }
+        schema = {
+            "type": "object",
+            "properties": {"value": {"type": "string", "default": data}},
+            "oneOf": [{"required": ["value"]}, {"maxProperties": 0}],
+            "default": copy.deepcopy(data),
+            "const": copy.deepcopy(data),
+            "enum": [copy.deepcopy(data)],
+            "examples": [copy.deepcopy(data)],
+            "dependencies": {"value": ["other"]},
+        }
+        canonical = copy.deepcopy(schema)
+        adapted = McpTool("data", "Instance data", schema, lambda: None).descriptor()[
+            "inputSchema"
+        ]
+        self.assertNotIn("oneOf", adapted)
+        self.assertEqual(adapted["allOf"], [{"oneOf": canonical["oneOf"]}])
+        for keyword in ("default", "const", "enum", "examples", "dependencies"):
+            self.assertEqual(adapted[keyword], canonical[keyword])
+        self.assertEqual(adapted["properties"]["value"]["default"], data)
+        adapted["default"]["properties"]["literal"] = True
+        self.assertEqual(schema, canonical)
+
+    def test_tool_descriptor_skips_whole_schema_with_schema_references(self):
+        from qcopilots_common.mcp_http import McpTool
+
+        for reference in ("$ref", "$dynamicRef"):
+            for location in ("root", "property", "definition", "branch", "tuple"):
+                with self.subTest(reference=reference, location=location):
+                    schema = {
+                        "type": "object",
+                        "properties": {"value": {"type": "string"}},
+                        "oneOf": [{"required": ["value"]}, {"maxProperties": 0}],
+                    }
+                    reference_schema = {reference: "#/$defs/value"}
+                    if location == "root":
+                        schema.update(reference_schema)
+                    elif location == "property":
+                        schema["properties"]["value"] = reference_schema
+                    elif location == "definition":
+                        schema["$defs"] = {"value": reference_schema}
+                    elif location == "branch":
+                        schema["oneOf"][1] = reference_schema
+                    else:
+                        schema["properties"]["tuple"] = {"items": [reference_schema]}
+                    canonical = copy.deepcopy(schema)
+                    adapted = McpTool(
+                        "refs", "References", schema, lambda: None
+                    ).descriptor()["inputSchema"]
+                    self.assertEqual(adapted, canonical)
+                    adapted["oneOf"][0]["required"].append("changed")
+                    self.assertEqual(schema, canonical)
+
+    def test_tools_call_validates_canonical_schema_after_publishing_descriptor(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer, McpTool
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "layer_id": {"type": "string"},
+                "layer_ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "oneOf": [
+                {"required": ["layer_id"], "properties": {"layer_ids": False}},
+                {"required": ["layer_ids"], "properties": {"layer_id": False}},
+            ],
+            "additionalProperties": False,
+        }
+        canonical = copy.deepcopy(schema)
+        calls = []
+
+        def handler(arguments):
+            calls.append(arguments)
+            return {"accepted": True}
+
+        server = McpJsonRpcServer(
+            server_name="schema-compatibility",
+            server_version="1.0.0",
+            tools=[McpTool("select", "Select layers", schema, handler)],
+        )
+        listed = server.handle_json_rpc(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        )["result"]["tools"][0]["inputSchema"]
+        self.assertNotIn("oneOf", listed)
+        self.assertIs(
+            listed["allOf"][0]["oneOf"][0]["properties"]["layer_ids"], False
+        )
+        cases = (
+            ({"layer_id": "one"}, True),
+            ({"layer_ids": ["one", "two"]}, True),
+            ({}, False),
+            ({"layer_id": "one", "layer_ids": ["two"]}, False),
+            ({"layer_id": "one", "unexpected": True}, False),
+            ({"layer_ids": [1]}, False),
+        )
+        for request_id, (arguments, valid) in enumerate(cases, start=2):
+            with self.subTest(arguments=arguments):
+                before = len(calls)
+                response = server.handle_json_rpc(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "method": "tools/call",
+                        "params": {"name": "select", "arguments": arguments},
+                    }
+                )
+                if valid:
+                    self.assertEqual(
+                        response["result"]["structuredContent"], {"accepted": True}
+                    )
+                    self.assertEqual(len(calls), before + 1)
+                else:
+                    self.assertEqual(response["error"]["code"], -32602)
+                    self.assertEqual(len(calls), before)
+        self.assertEqual(schema, canonical)
+
     def test_initialize_prompts_list_and_prompts_get(self):
         from qcopilots_common.mcp_http import McpJsonRpcServer, McpPrompt, McpTool
 
@@ -3511,7 +3750,8 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                     list_algorithm_schema["properties"]["cursor"]["maxLength"],
                     2048,
                 )
-                self.assertEqual(len(list_algorithm_schema["oneOf"]), 2)
+                self.assertNotIn("oneOf", list_algorithm_schema)
+                self.assertEqual(len(list_algorithm_schema["allOf"][0]["oneOf"]), 2)
                 self.assertEqual(
                     listed_tools["list_vector_processing_jobs"]["inputSchema"]["properties"]["states"]["items"]["enum"],
                     [
@@ -4372,15 +4612,19 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         controller._httpd = server
         controller._thread = thread
 
-        with self.assertRaisesRegex(RuntimeError, "did not stop"):
-            controller.stop(timeout_seconds=0.01)
+        with mock.patch(
+            "qcopilots_common.bridge.time.monotonic", side_effect=[100.0, 100.004]
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not stop"):
+                controller.stop(timeout_seconds=0.01)
 
         self.assertTrue(dispatcher.closed)
         self.assertIs(controller._httpd, server)
         self.assertIs(controller._thread, thread)
         self.assertTrue(controller._shutdown_requested)
         self.assertEqual(len(thread.join_timeouts), 1)
-        self.assertAlmostEqual(thread.join_timeouts[0], 0.01)
+        # The simulated shutdown consumes 4 ms of the shared 10 ms deadline.
+        self.assertAlmostEqual(thread.join_timeouts[0], 0.006)
 
         thread.alive = False
         controller.stop(timeout_seconds=0.01)

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import hmac
 import inspect
@@ -22,7 +23,7 @@ import threading
 import time
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from http import HTTPStatus
@@ -85,7 +86,7 @@ class McpTool:
         return {
             "name": self.name,
             "description": self.description,
-            "inputSchema": dict(self.input_schema),
+            "inputSchema": _tool_input_schema_for_clients(self.input_schema),
         }
 
 
@@ -1508,6 +1509,74 @@ def _list_item_identity(item: Mapping[str, Any]) -> str:
 
 class _SchemaValidationError(ValueError):
     pass
+
+
+def _input_schema_nodes(schema: Any) -> Iterator[dict[str, Any]]:
+    """Visit schema positions without interpreting defaults or other JSON data."""
+    if not isinstance(schema, dict):
+        return
+    yield schema
+    for keyword in (
+        "properties",
+        "patternProperties",
+        "$defs",
+        "definitions",
+        "dependentSchemas",
+        "dependencies",
+    ):
+        children = schema.get(keyword)
+        if isinstance(children, dict):
+            for child in children.values():
+                yield from _input_schema_nodes(child)
+    for keyword in ("allOf", "anyOf", "oneOf", "prefixItems"):
+        children = schema.get(keyword)
+        if isinstance(children, list):
+            for child in children:
+                yield from _input_schema_nodes(child)
+    for keyword in (
+        "additionalProperties",
+        "unevaluatedProperties",
+        "propertyNames",
+        "contains",
+        "items",
+        "not",
+        "if",
+        "then",
+        "else",
+        "additionalItems",
+        "unevaluatedItems",
+        "contentSchema",
+    ):
+        child = schema.get(keyword)
+        if keyword == "items" and isinstance(child, list):
+            for item in child:
+                yield from _input_schema_nodes(item)
+        else:
+            yield from _input_schema_nodes(child)
+
+
+def _tool_input_schema_for_clients(schema: Mapping[str, Any]) -> dict[str, Any]:
+    """Publish equivalent object constraints compatible with tool parsers.
+
+    Some clients, including llama.cpp, parse sibling alternatives before object
+    properties. Keeping those alternatives in allOf preserves their JSON Schema
+    meaning while allowing clients to discover the object's parameters. The
+    original schema remains authoritative for server-side argument validation.
+    """
+    published = copy.deepcopy(dict(schema))
+    nodes = list(_input_schema_nodes(published))
+    # Moving a schema can invalidate a JSON Pointer into its former location.
+    if any("$ref" in node or "$dynamicRef" in node for node in nodes):
+        return published
+    for node in nodes:
+        if not isinstance(node.get("properties"), dict):
+            continue
+        if "allOf" in node and not isinstance(node["allOf"], list):
+            continue
+        for keyword in ("oneOf", "anyOf"):
+            if isinstance(node.get(keyword), list):
+                node.setdefault("allOf", []).append({keyword: node.pop(keyword)})
+    return published
 
 
 def _validate_tool_arguments(

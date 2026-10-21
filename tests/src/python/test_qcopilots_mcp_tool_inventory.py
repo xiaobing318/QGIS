@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 from urllib.request import Request, urlopen
@@ -141,6 +142,20 @@ BRIDGE_SERVICES = {
     "qcopilots_mcp_server_processing_raster",
     "qcopilots_mcp_server_processing_general",
     "qcopilots_mcp_server_qgis_binary",
+}
+
+NORMALIZED_SCHEMA_TOOLS = {
+    "edit_file",
+    "read_skill",
+    "list_skill_resources",
+    "read_skill_resource",
+    "remove_map_layers",
+    "set_vector_selection",
+    "delete_vector_features",
+    "configure_vector_labels",
+    "list_vector_processing_algorithms",
+    "list_raster_processing_algorithms",
+    "list_general_processing_algorithms",
 }
 
 
@@ -368,6 +383,45 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
         self.assertEqual(arguments["updates"][0]["feature_id"], 0)
         self.assertTrue(arguments["updates"][0]["attributes"])
 
+    def test_all_82_descriptors_preserve_parameters_and_canonical_schemas(self):
+        """The advertised schema must not hide parameters or alter validation."""
+        with tempfile.TemporaryDirectory(prefix="qcopilots-schema-inventory-") as workspace:
+            surfaces = self._build_surfaces(Path(workspace))
+            normalized_names = set()
+            for tools in surfaces.values():
+                for tool in tools:
+                    with self.subTest(tool=tool.name):
+                        canonical = copy.deepcopy(tool.input_schema)
+                        advertised = tool.descriptor()["inputSchema"]
+                        self.assertEqual(tool.input_schema, canonical)
+                        self.assertEqual(advertised["type"], "object")
+                        self.assertEqual(
+                            list(advertised.get("properties", {})),
+                            list(canonical.get("properties", {})),
+                        )
+                        self.assertEqual(
+                            advertised.get("required"), canonical.get("required")
+                        )
+                        self.assertEqual(
+                            advertised.get("additionalProperties"),
+                            canonical.get("additionalProperties"),
+                        )
+                        self.assertNotIn("oneOf", advertised)
+                        self.assertNotIn("anyOf", advertised)
+                        if advertised != canonical:
+                            normalized_names.add(tool.name)
+
+                        # Consumer edits to one descriptor must not mutate the
+                        # execution schema or a subsequently listed descriptor.
+                        expected = copy.deepcopy(advertised)
+                        advertised.setdefault("properties", {})["inventory_probe"] = {
+                            "type": "string"
+                        }
+                        self.assertEqual(tool.input_schema, canonical)
+                        self.assertEqual(tool.descriptor()["inputSchema"], expected)
+
+            self.assertEqual(normalized_names, NORMALIZED_SCHEMA_TOOLS)
+
     def test_all_82_tool_contracts_complete_http_lifecycle_list_and_call(self):
         """Exercise every public wrapper over HTTP with a recording QGIS bridge.
 
@@ -384,6 +438,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         plugin_name,
                         tools,
                         Path(workspace),
+                        reject_conflicting_arguments=True,
                     )
 
         self.assertEqual(len(_RecordingBridge.calls), 57)
@@ -422,13 +477,21 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         [tool.name for tool in tools],
                     )
 
-    def _exercise_http_surface(self, plugin_name, tools, workspace, expected_error=None):
+    def _exercise_http_surface(
+        self,
+        plugin_name,
+        tools,
+        workspace,
+        expected_error=None,
+        reject_conflicting_arguments=False,
+    ):
         from qcopilots_common.mcp_http import McpHttpServer
 
+        handlers = {tool.name: mock.Mock(wraps=tool.handler) for tool in tools}
         controller = McpHttpServer(
             name=plugin_name,
             version="0.1.0",
-            tools=tools,
+            tools=[replace(tool, handler=handlers[tool.name]) for tool in tools],
             port=0,
             auth_token=self.HTTP_AUTH_TOKEN,
         )
@@ -491,6 +554,9 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                 [item["name"] for item in listed["result"]["tools"]],
                 [tool.name for tool in tools],
             )
+            self.assertEqual(
+                listed["result"]["tools"], [tool.descriptor() for tool in tools]
+            )
 
             for index, tool in enumerate(tools):
                 arguments = _tool_call_arguments(
@@ -524,6 +590,29 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                 self.assertNotIn(
                     "private-inventory-password", json.dumps(called["result"])
                 )
+                if reject_conflicting_arguments:
+                    invalid_arguments = _conflicting_tool_arguments(tool.name, arguments)
+                    if invalid_arguments is not None:
+                        before_calls = handlers[tool.name].call_count
+                        invalid_status, _, rejected = self._post(
+                            port,
+                            {
+                                "jsonrpc": "2.0",
+                                "id": f"conflict-{index}",
+                                "method": "tools/call",
+                                "params": {
+                                    "name": tool.name,
+                                    "arguments": invalid_arguments,
+                                },
+                            },
+                            session_id,
+                        )
+                        self.assertEqual(invalid_status, 200)
+                        self.assertEqual(rejected["error"]["code"], -32602)
+                        self.assertIn(
+                            "Invalid tool arguments", rejected["error"]["message"]
+                        )
+                        self.assertEqual(handlers[tool.name].call_count, before_calls)
             if plugin_name == "qcopilots_mcp_server_builtin_tools":
                 self.assertEqual(
                     (workspace / "source.txt").read_text(encoding="utf-8"),
@@ -604,6 +693,32 @@ def _minimal_arguments(schema):
             continue
         return candidate
     raise AssertionError(f"Could not construct valid arguments for schema: {schema}")
+
+
+def _conflicting_tool_arguments(name, valid_arguments):
+    if name not in NORMALIZED_SCHEMA_TOOLS:
+        return None
+    if name == "edit_file":
+        return {**valid_arguments, "old_text": "duplicate edit selector"}
+    if name in {"read_skill", "list_skill_resources", "read_skill_resource"}:
+        return {**valid_arguments, "name": "duplicate skill selector"}
+    if name == "remove_map_layers":
+        return {"layer_id": "inventory-layer", "confirmation_token": "x" * 16}
+    if name == "set_vector_selection":
+        return {"layer_id": "inventory-layer", "mode": "clear", "feature_ids": [1]}
+    if name == "delete_vector_features":
+        return {
+            "layer_id": "inventory-layer",
+            "feature_ids": [1],
+            "confirmation_token": "x" * 16,
+        }
+    if name == "configure_vector_labels":
+        return {
+            "layer_id": "inventory-layer",
+            "enabled": False,
+            "field_or_expression": "id",
+        }
+    return {"cursor": "inventory-cursor", "max_results": 1}
 
 
 def _tool_call_arguments(plugin_name, tool, workspace):

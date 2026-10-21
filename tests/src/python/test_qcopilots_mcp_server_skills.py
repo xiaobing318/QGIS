@@ -510,8 +510,9 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                             ],
                             {"type": "string", "minLength": 1},
                         )
+                    self.assertNotIn("oneOf", tools[tool_name]["inputSchema"])
                     self.assertEqual(
-                        tools[tool_name]["inputSchema"]["oneOf"],
+                        tools[tool_name]["inputSchema"]["allOf"][0]["oneOf"],
                         [
                             {"required": ["slug"]},
                             {"required": ["name"]},

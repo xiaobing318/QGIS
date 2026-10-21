@@ -1331,7 +1331,8 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
             self.assertEqual(schemas[1:], [schemas[0], schemas[0]])
             schema = schemas[0]
             self.assertFalse(schema["additionalProperties"])
-            self.assertEqual(len(schema["oneOf"]), 2)
+            self.assertNotIn("oneOf", schema)
+            self.assertEqual(len(schema["allOf"][0]["oneOf"]), 2)
             max_results_schema = schema["properties"]["max_results"]
             self.assertEqual(max_results_schema["type"], "integer")
             self.assertEqual(max_results_schema["minimum"], 1)

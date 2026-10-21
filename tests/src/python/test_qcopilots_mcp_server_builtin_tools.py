@@ -1469,8 +1469,9 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 "utf-8",
             )
             self.assertIn("edits", descriptors["edit_file"]["inputSchema"]["properties"])
+            self.assertNotIn("oneOf", descriptors["edit_file"]["inputSchema"])
             self.assertEqual(
-                len(descriptors["edit_file"]["inputSchema"]["oneOf"]),
+                len(descriptors["edit_file"]["inputSchema"]["allOf"][0]["oneOf"]),
                 3,
             )
             self.assertFalse(
