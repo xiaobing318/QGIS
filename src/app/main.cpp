@@ -43,6 +43,7 @@
 #include <QStyle>
 #include <QStyleFactory>
 #include <QSurfaceFormat>
+#include <QVersionNumber>
 
 using namespace Qt::StringLiterals;
 
@@ -1076,10 +1077,12 @@ int main( int argc, char *argv[] )
   QCoreApplication::setAttribute( Qt::AA_ShareOpenGLContexts, true );
 #endif
 
-  // Workaround upstream Qt issue (https://qt-project.atlassian.net/browse/QTBUG-139109) which
-  // causes QGIS' main window to flash on app launch and make the app completely
-  // unresponsive when editing an attribute form QML widget.
-  QQuickWindow::setGraphicsApi( QSGRendererInterface::Software );
+  // Work around QTBUG-139109 (https://qt-project.atlassian.net/browse/QTBUG-139109):
+  // creating a QQuickWidget during QDialog::exec() can exit the modal event loop early.
+  // This is fixed in Qt 6.11.1. Check the runtime version so fixed Qt libraries can
+  // choose their default renderer instead of forcing software rendering.
+  if ( QVersionNumber::fromString( QLatin1String( qVersion() ) ) < QVersionNumber( 6, 11, 1 ) )
+    QQuickWindow::setGraphicsApi( QSGRendererInterface::Software );
 
   // Accelerate speed of wheel scrolling
   qputenv( "QT_QUICK_FLICKABLE_WHEEL_DECELERATION", "4500" );

@@ -51,7 +51,9 @@ void QgsQCopilotsPlugin::initGui()
   mToggleAction->setCheckable( true );
   mToggleAction->setChecked( mDock && mDock->isVisible() );
   mToggleAction->setWhatsThis( tr( "Show or hide the QCopilots browser container" ) );
-  connect( mToggleAction, &QAction::toggled, this, &QgsQCopilotsPlugin::toggleDock );
+  // Visibility notifications also cover inactive dock tabs. Only user actions
+  // should turn a checked-state update into an explicit show or hide request.
+  connect( mToggleAction, &QAction::triggered, this, &QgsQCopilotsPlugin::toggleDock );
 
   mConfigureUrlAction = new QAction(
     QIcon( QStringLiteral( ":/qcopilots/icons/qcopilots-configureurl.svg" ) ),

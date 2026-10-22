@@ -115,7 +115,7 @@ namespace
     settings->setAttribute( QWebEngineSettings::JavascriptCanPaste, false );
     settings->setAttribute( QWebEngineSettings::LocalStorageEnabled, true );
     settings->setAttribute( QWebEngineSettings::FocusOnNavigationEnabled, true );
-    settings->setAttribute( QWebEngineSettings::ScrollAnimatorEnabled, false );
+    settings->setAttribute( QWebEngineSettings::ScrollAnimatorEnabled, true );
     settings->setAttribute( QWebEngineSettings::FullScreenSupportEnabled, true );
     settings->setAttribute( QWebEngineSettings::ScreenCaptureEnabled, false );
     settings->setAttribute( QWebEngineSettings::WebGLEnabled, true );

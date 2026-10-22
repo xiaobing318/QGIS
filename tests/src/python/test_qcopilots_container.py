@@ -377,7 +377,7 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assert_web_setting(settings_block, "JavascriptCanPaste", "false")
         self.assert_web_setting(settings_block, "WebGLEnabled", "true")
         self.assert_web_setting(settings_block, "Accelerated2dCanvasEnabled", "true")
-        self.assert_single_web_setting(settings_block, "ScrollAnimatorEnabled", "false")
+        self.assert_single_web_setting(settings_block, "ScrollAnimatorEnabled", "true")
         self.assert_web_setting(settings_block, "ScreenCaptureEnabled", "false")
         self.assert_web_setting(settings_block, "PlaybackRequiresUserGesture", "true")
         self.assert_web_setting(settings_block, "DnsPrefetchEnabled", "false")
