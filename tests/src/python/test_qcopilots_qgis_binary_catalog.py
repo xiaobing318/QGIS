@@ -1550,7 +1550,11 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 else:
                     self.assertTrue(item["enabled"])
                     self.assertTrue(probe["arguments"])
-                    self.assertEqual(probe["success_exit_codes"], [0, 1, 2])
+                    if item["group"] == "gdal_python":
+                        self.assertEqual(probe["arguments"], ["--help"])
+                        self.assertEqual(probe["success_exit_codes"], [0])
+                    else:
+                        self.assertEqual(probe["success_exit_codes"], [0, 1, 2])
 
     def test_environment_scripts_are_fixed_relative_catalog_paths(self):
         profiles = self.catalog["environment_profiles"]
@@ -1679,6 +1683,73 @@ class TestQCopilotsQGISBinaryCatalog(unittest.TestCase):
                 "duplicate_paths": 0,
             },
         )
+
+    def test_gdal_python_probes_reject_missing_launcher_companions(self):
+        catalog = copy.deepcopy(self.catalog)
+        catalog["binaries"] = [
+            item
+            for item in catalog["binaries"]
+            if item["enabled"] and item["group"] == "gdal_python"
+        ]
+        catalog["package_root_resolution"]["markers"] = [
+            catalog["binaries"][0]["path"]
+        ]
+        catalog["environment_profiles"]["qgis"] = {
+            "inherit_environment": True,
+            "setup_scripts": [],
+            "variables": {},
+        }
+        with tempfile.TemporaryDirectory(
+            prefix="qcopilots-gdal-launcher-probes-"
+        ) as directory:
+            package_root = Path(directory)
+            _materialize_configured_paths(catalog, package_root)
+            catalog_path = package_root / "catalog.json"
+            _write_catalog(catalog, catalog_path)
+            calls = []
+
+            def run_factory(command, **keywords):
+                del keywords
+                calls.append(command)
+                executable = Path(command[0])
+                companion = executable.with_name(executable.stem + "-script.py")
+                if not companion.is_file():
+                    return SimpleNamespace(
+                        returncode=2,
+                        stdout=b"",
+                        stderr=f"Cannot open {companion}\n".encode("utf-8"),
+                    )
+                return SimpleNamespace(
+                    returncode=0,
+                    stdout=b"usage: GDAL Python utility --help\n",
+                    stderr=b"",
+                )
+
+            missing = probe_enabled_binaries(
+                package_root, catalog_path, run_factory=run_factory
+            )
+            self.assertEqual(missing["probed"], len(catalog["binaries"]))
+            self.assertEqual(missing["failed"], len(catalog["binaries"]))
+            self.assertEqual(
+                missing["failures"],
+                [
+                    {"binary_id": item["id"], "reason": "exit_code=2"}
+                    for item in catalog["binaries"]
+                ],
+            )
+            for item in catalog["binaries"]:
+                executable = package_root / item["path"]
+                executable.with_name(executable.stem + "-script.py").write_text(
+                    "#!python3.exe\n", encoding="utf-8"
+                )
+            available = probe_enabled_binaries(
+                package_root, catalog_path, run_factory=run_factory
+            )
+            self.assertEqual(available["probed"], len(catalog["binaries"]))
+            self.assertEqual(available["failed"], 0)
+            self.assertEqual(available["failures"], [])
+            self.assertEqual(len(calls), 2 * len(catalog["binaries"]))
+            self.assertTrue(all(command[1:] == ["--help"] for command in calls))
 
     def test_enabled_probe_runner_isolates_environment_and_cleans_workspace(self):
         with tempfile.TemporaryDirectory(

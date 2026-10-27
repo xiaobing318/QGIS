@@ -92,30 +92,35 @@ class TestPyQgsAppStartup(unittest.TestCase):
         ] + additionalArguments
         p = subprocess.Popen(call, env=myenv)
 
-        s = 0
-        while not os.path.exists(myTestFile):
-            p.poll()
-            if p.returncode is not None:
-                raise Exception(
-                    f'Return code: {p.returncode}, Call: "{" ".join(call)}", Env: {env}'
-                )
-            time.sleep(1)
-            s += 1
-            if s > timeOut:
-                raise Exception(
-                    f'Timed out waiting for application start, Call: "{" ".join(call)}", Env: {env}'
-                )
-
-        with open(myTestFile, encoding="utf-8") as res_file:
-            lines = res_file.readlines()
-
         try:
-            p.terminate()
-        except OSError as e:
-            if e.errno != errno.ESRCH:
-                raise e
+            s = 0
+            while not os.path.exists(myTestFile):
+                p.poll()
+                if p.returncode is not None:
+                    raise Exception(
+                        f'Return code: {p.returncode}, Call: "{" ".join(call)}", Env: {env}'
+                    )
+                time.sleep(1)
+                s += 1
+                if s > timeOut:
+                    raise Exception(
+                        f'Timed out waiting for application start, Call: "{" ".join(call)}", Env: {env}'
+                    )
 
-        return lines
+            with open(myTestFile, encoding="utf-8") as res_file:
+                return res_file.readlines()
+        finally:
+            if p.poll() is None:
+                try:
+                    p.terminate()
+                except OSError as e:
+                    if e.errno != errno.ESRCH:
+                        raise e
+            try:
+                p.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                p.wait(timeout=10)
 
     def testPyQgisStartupEnvVar(self):
         # verify PYQGIS_STARTUP env variable file is run by embedded interpreter
@@ -166,8 +171,12 @@ class TestPyQgsAppStartup(unittest.TestCase):
         )
 
         self.assertEqual(
-            testfile_lines,
-            [testmod + "\n", "--specialScriptArgument's\n", 'a "Quoted" text arg\n'],
+            testfile_lines[1:],
+            ["--specialScriptArgument's\n", 'a "Quoted" text arg\n'],
+        )
+        self.assertEqual(
+            os.path.normcase(os.path.normpath(testfile_lines[0].rstrip("\n"))),
+            os.path.normcase(os.path.normpath(testmod)),
         )
 
 

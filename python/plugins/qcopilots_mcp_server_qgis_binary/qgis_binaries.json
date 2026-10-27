@@ -11595,9 +11595,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11653,9 +11651,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11685,9 +11681,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11717,9 +11711,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11749,9 +11741,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11781,9 +11771,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11813,9 +11801,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11845,9 +11831,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11877,9 +11861,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11909,9 +11891,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11941,9 +11921,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -11973,9 +11951,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -12031,9 +12007,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -12063,9 +12037,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -12095,9 +12067,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },
@@ -12127,9 +12097,7 @@
           "--help"
         ],
         "success_exit_codes": [
-          0,
-          1,
-          2
+          0
         ],
         "timeout_seconds": 15
       },

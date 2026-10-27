@@ -716,6 +716,123 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
         finally:
             shutil.rmtree(registry.root, ignore_errors=True)
 
+    def test_gdal_python_calculation_checks_all_output_pixels(self):
+        runner = live.AcceptanceRunner(SYNTHETIC_TOKEN, output=lambda value: None)
+        raster_input = runner.cleanup.reserve_output_path("binary/input.tif")
+        raster_input.write_bytes(b"input raster fixture")
+        calls = []
+
+        def run_job(session, *, binary_id, arguments, confirmed_risk):
+            del session
+            calls.append((binary_id, arguments, confirmed_risk))
+            if binary_id == "apps.python312.scripts.gdal_calc":
+                output = next(arg for arg in arguments if arg.startswith("--outfile="))
+                Path(output.partition("=")[2]).write_bytes(b"calculated raster fixture")
+            else:
+                Path(arguments[-1]).write_text(
+                    "0.5 1.5 2\n1.5 1.5 3\n0.5 0.5 4\n1.5 0.5 5\n",
+                    encoding="utf-8",
+                )
+            return {"state": "succeeded"}
+
+        try:
+            with patch.object(
+                runner,
+                "_success",
+                return_value={
+                    "id": "apps.python312.scripts.gdal_calc",
+                    "risk": "R2",
+                    "enabled": True,
+                },
+            ), patch.object(runner, "_run_binary_job", side_effect=run_job):
+                runner._exercise_gdal_python_calculation(object(), raster_input)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[0][0], "apps.python312.scripts.gdal_calc")
+            self.assertIn("--calc=A+1", calls[0][1])
+            self.assertIn(str(raster_input), calls[0][1])
+            self.assertEqual(calls[1][0], "bin.gdal_translate")
+            self.assertEqual(calls[1][1][:2], ["-of", "XYZ"])
+            self.assertTrue(all(call[2] is True for call in calls))
+        finally:
+            self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
+
+    def test_gdal_python_calculation_rejects_missing_or_incorrect_output(self):
+        scenarios = (
+            (None, "produced no registered output"),
+            (
+                "0.5 1.5 1\n1.5 1.5 2\n0.5 0.5 3\n1.5 0.5 4\n",
+                "incorrect output pixels",
+            ),
+            ("0.5 1.5 2\n", "pixels could not be read"),
+            (
+                "0.5 1.5 invalid\n1.5 1.5 3\n0.5 0.5 4\n1.5 0.5 5\n",
+                "pixels could not be read",
+            ),
+        )
+        for sample_text, expected_error in scenarios:
+            with self.subTest(sample_text=sample_text):
+                runner = live.AcceptanceRunner(
+                    SYNTHETIC_TOKEN, output=lambda value: None
+                )
+                raster_input = runner.cleanup.reserve_path("binary/input.tif")
+
+                def run_job(session, *, binary_id, arguments, confirmed_risk):
+                    del session, confirmed_risk
+                    if sample_text is not None:
+                        if binary_id == "apps.python312.scripts.gdal_calc":
+                            output = next(
+                                arg for arg in arguments if arg.startswith("--outfile=")
+                            )
+                            Path(output.partition("=")[2]).write_bytes(b"raster")
+                        else:
+                            Path(arguments[-1]).write_text(sample_text, encoding="utf-8")
+                    return {"state": "succeeded"}
+
+                try:
+                    with patch.object(
+                        runner,
+                        "_success",
+                        return_value={
+                            "id": "apps.python312.scripts.gdal_calc",
+                            "risk": "R2",
+                            "enabled": True,
+                        },
+                    ), patch.object(runner, "_run_binary_job", side_effect=run_job):
+                        with self.assertRaisesRegex(
+                            live.AcceptanceFailure, expected_error
+                        ):
+                            runner._exercise_gdal_python_calculation(
+                                object(), raster_input
+                            )
+                finally:
+                    self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
+
+    def test_gdal_python_calculation_does_not_hide_launcher_failure(self):
+        runner = live.AcceptanceRunner(SYNTHETIC_TOKEN, output=lambda value: None)
+        try:
+            with patch.object(
+                runner,
+                "_success",
+                return_value={
+                    "id": "apps.python312.scripts.gdal_calc",
+                    "risk": "R2",
+                    "enabled": True,
+                },
+            ), patch.object(
+                runner,
+                "_run_binary_job",
+                side_effect=live.AcceptanceFailure("Cannot open gdal_calc-script.py"),
+            ) as run_job:
+                with self.assertRaisesRegex(
+                    live.AcceptanceFailure, "gdal_calc-script.py"
+                ):
+                    runner._exercise_gdal_python_calculation(
+                        object(), runner.cleanup.reserve_path("binary/input.tif")
+                    )
+            self.assertEqual(run_job.call_count, 1)
+        finally:
+            self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
+
     def test_coverage_ledger_requires_every_public_tool(self):
         ledger = live.CoverageLedger()
         with self.assertRaises(live.AcceptanceFailure):

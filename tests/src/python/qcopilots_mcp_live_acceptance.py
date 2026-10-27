@@ -1894,6 +1894,8 @@ class AcceptanceRunner:
                 "The confirmed R2 gdal_translate run produced no registered output"
             )
 
+        self._exercise_gdal_python_calculation(session, translated_output)
+
         r3_page = self._success(
             session,
             "list_qgis_binaries",
@@ -1940,6 +1942,63 @@ class AcceptanceRunner:
             },
             ("disabled", "risk blocked", "cannot run"),
         )
+
+    def _exercise_gdal_python_calculation(
+        self, session: McpSession, raster_input: Path
+    ) -> None:
+        binary_id = "apps.python312.scripts.gdal_calc"
+        details = self._success(
+            session,
+            "get_qgis_binary_details",
+            {"binary_id": binary_id},
+        )
+        if (
+            details.get("id") != binary_id
+            or details.get("risk") != "R2"
+            or details.get("enabled") is not True
+        ):
+            raise AcceptanceFailure("gdal_calc returned an unexpected R2 policy")
+
+        calculated_output = self.cleanup.reserve_output_path("binary/gdal-calc.tif")
+        sampled_output = self.cleanup.reserve_output_path("binary/gdal-calc.xyz")
+        self._run_binary_job(
+            session,
+            binary_id=binary_id,
+            arguments=[
+                "-A",
+                str(raster_input),
+                "--calc=A+1",
+                f"--outfile={calculated_output}",
+                "--type=Float32",
+                "--format=GTiff",
+                "--quiet",
+            ],
+            confirmed_risk=True,
+        )
+        if not calculated_output.is_file() or calculated_output.stat().st_size <= 0:
+            raise AcceptanceFailure("gdal_calc produced no registered output")
+
+        # Read the actual result through GDAL, without requiring PyQGIS or GDAL
+        # bindings in the independent acceptance runner's Python environment.
+        self._run_binary_job(
+            session,
+            binary_id="bin.gdal_translate",
+            arguments=["-of", "XYZ", str(calculated_output), str(sampled_output)],
+            confirmed_risk=True,
+        )
+        try:
+            samples = [
+                line.split()
+                for line in sampled_output.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            if len(samples) != 4 or any(len(sample) != 3 for sample in samples):
+                raise ValueError("Expected four XYZ pixels")
+            values = [float(sample[2]) for sample in samples]
+        except (OSError, UnicodeError, ValueError) as err:
+            raise AcceptanceFailure("gdal_calc output pixels could not be read") from err
+        if values != [2.0, 3.0, 4.0, 5.0]:
+            raise AcceptanceFailure("gdal_calc A+1 returned incorrect output pixels")
 
     def _run_binary_job(
         self,
