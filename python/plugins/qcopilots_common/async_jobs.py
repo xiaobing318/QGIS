@@ -60,6 +60,7 @@ class _JobEntry:
     snapshot: dict[str, Any]
     request_fingerprint: str | None
     created_sequence: int
+    idempotency_key: tuple[str, str, str] | None = None
     runtime: Any = None
     terminal_monotonic: float | None = None
     terminal_sequence: int | None = None
@@ -106,9 +107,10 @@ class AsyncJobStore:
         )
         self._now = now or time.monotonic
         self._on_evict = on_evict
+        self._retention_guards: list[Callable[[Any], bool]] = []
         self._lock = threading.RLock()
         self._jobs: dict[str, _JobEntry] = {}
-        self._idempotency: dict[tuple[str, str], str] = {}
+        self._idempotency: dict[tuple[str, str, str], str] = {}
         self._cleanup_audits: dict[str, list[dict[str, Any]]] = {}
         self._accepting = True
         self._next_created_sequence = 0
@@ -119,24 +121,41 @@ class AsyncJobStore:
         with self._lock:
             return self._accepting
 
+    def add_retention_guard(self, predicate: Callable[[Any], bool]) -> None:
+        """Protect owned runtimes without replacing an existing eviction hook.
+
+        Guards run under the store lock, before eviction callbacks. They must
+        inspect only in-memory state and must never wait or perform file I/O.
+        Re-registering the same guard is harmless.
+        """
+        if not callable(predicate):
+            raise TypeError("retention guard must be callable")
+        with self._lock:
+            if predicate not in self._retention_guards:
+                self._retention_guards.append(predicate)
+
     def lookup_idempotent(
         self,
         scope: str,
         client_request_id: str | None,
         request_fingerprint: str | None,
+        *,
+        idempotency_namespace: str = "",
     ) -> dict[str, Any] | None:
-        """Return the existing snapshot for a matching idempotent request."""
+        """Return a request within its scope and internal operation namespace."""
 
         if not client_request_id:
             return None
+        key = (str(scope), str(idempotency_namespace), client_request_id)
         with self._lock:
             self._purge_locked()
-            job_id = self._idempotency.get((str(scope), client_request_id))
+            job_id = self._idempotency.get(key)
             if job_id is None:
                 return None
             entry = self._jobs.get(job_id)
             if entry is None:
-                self._idempotency.pop((str(scope), client_request_id), None)
+                if self._idempotency.get(key) == job_id:
+                    self._idempotency.pop(key, None)
                 return None
             if entry.request_fingerprint != request_fingerprint:
                 raise IdempotencyConflictError(
@@ -152,6 +171,7 @@ class AsyncJobStore:
         *,
         client_request_id: str | None = None,
         request_fingerprint: str | None = None,
+        idempotency_namespace: str = "",
         runtime: Any = None,
     ) -> tuple[dict[str, Any], bool]:
         """Atomically create a job or return its idempotent predecessor."""
@@ -162,7 +182,10 @@ class AsyncJobStore:
                 raise RuntimeError("QCopilots job manager is stopping")
             self._purge_locked()
             existing = self.lookup_idempotent(
-                normalized_scope, client_request_id, request_fingerprint
+                normalized_scope,
+                client_request_id,
+                request_fingerprint,
+                idempotency_namespace=idempotency_namespace,
             )
             if existing is not None:
                 return existing, False
@@ -194,6 +217,13 @@ class AsyncJobStore:
                 snapshot=public_snapshot,
                 request_fingerprint=request_fingerprint,
                 created_sequence=self._next_created_sequence,
+                idempotency_key=(
+                    normalized_scope,
+                    str(idempotency_namespace),
+                    client_request_id,
+                )
+                if client_request_id
+                else None,
                 runtime=runtime,
                 terminal_monotonic=self._now()
                 if state in TERMINAL_JOB_STATES
@@ -201,8 +231,8 @@ class AsyncJobStore:
                 terminal_sequence=terminal_sequence,
             )
             self._jobs[job_id] = entry
-            if client_request_id:
-                self._idempotency[(normalized_scope, client_request_id)] = job_id
+            if entry.idempotency_key is not None:
+                self._idempotency[entry.idempotency_key] = job_id
             self._enforce_terminal_limit_locked(normalized_scope)
             return copy.deepcopy(public_snapshot), True
 
@@ -260,6 +290,8 @@ class AsyncJobStore:
         job_id: str,
         cleanup: dict[str, Any],
         scope: str | None = None,
+        *,
+        refresh_retention: bool = False,
     ) -> dict[str, Any]:
         """Refresh cleanup evidence after a terminal job retries recovery."""
 
@@ -270,6 +302,8 @@ class AsyncJobStore:
                     "Cleanup receipts can only be refreshed for terminal jobs"
                 )
             entry.snapshot["cleanup"] = copy.deepcopy(cleanup)
+            if refresh_retention:
+                entry.terminal_monotonic = self._now()
             return copy.deepcopy(entry.snapshot)
 
     def transition(
@@ -400,13 +434,30 @@ class AsyncJobStore:
             )
         )
         excess = len(terminal) - self.max_terminal_jobs_per_scope
-        for _, _, job_id in terminal[: max(0, excess)]:
-            self._evict_locked(job_id)
+        for _, _, job_id in terminal:
+            if excess <= 0:
+                break
+            if self._evict_locked(job_id):
+                excess -= 1
 
-    def _evict_locked(self, job_id: str) -> None:
+    def _evict_locked(self, job_id: str) -> bool:
+        """Try once to evict a job, allowing active recovery to retain ownership.
+
+        The callback runs under the store lock and must not wait for a worker.
+        It may return ``defer_eviction=True`` while asynchronous recovery still
+        uses the runtime. A later purge or limit check will retry.
+        """
+
         entry = self._jobs.get(job_id)
         if entry is None:
-            return
+            return False
+        for predicate in self._retention_guards:
+            try:
+                if predicate(entry.runtime):
+                    return False
+            except Exception:
+                # An unknown ownership state cannot authorize releasing it.
+                return False
         if self._on_evict:
             try:
                 cleanup = self._on_evict(job_id, entry.runtime)
@@ -417,6 +468,8 @@ class AsyncJobStore:
                     "residual_paths": [],
                     "error": str(err),
                 }
+            if isinstance(cleanup, dict) and cleanup.get("defer_eviction") is True:
+                return False
             if isinstance(cleanup, dict) and cleanup.get("complete") is False:
                 receipt = _bounded_cleanup_receipt(cleanup)
                 receipt["eviction_cleanup_failed"] = True
@@ -424,9 +477,10 @@ class AsyncJobStore:
                 self._record_cleanup_audit_locked(entry, receipt)
         entry.runtime = None
         self._jobs.pop(job_id, None)
-        client_request_id = entry.snapshot.get("client_request_id")
-        if client_request_id:
-            self._idempotency.pop((entry.scope, client_request_id), None)
+        key = entry.idempotency_key
+        if key is not None and self._idempotency.get(key) == job_id:
+            self._idempotency.pop(key, None)
+        return True
 
     def _record_cleanup_audit_locked(
         self,

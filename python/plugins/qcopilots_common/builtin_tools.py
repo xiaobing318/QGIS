@@ -21,7 +21,6 @@ import tempfile
 import threading
 import time
 from collections.abc import Iterable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -665,19 +664,6 @@ class BuiltinTools:
             },
         }
 
-    def get_datetime(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        timezone_name = arguments.get("timezone")
-        if timezone_name is None and arguments.get("utc"):
-            timezone_name = "UTC"
-        timezone_name = timezone_name or "local"
-        if timezone_name not in {"local", "UTC"}:
-            raise ValueError("timezone must be local or UTC")
-        if timezone_name == "UTC":
-            value = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            return {"iso": value, "timezone": "UTC"}
-        value = datetime.now().astimezone().replace(microsecond=0).isoformat()
-        return {"iso": value, "timezone": "local"}
-
     def _safe_path(
         self,
         value: str | Path,
@@ -796,12 +782,6 @@ def build_builtin_tools(
             _edit_schema(),
             _builtin_mcp_handler(tools.edit_file),
         ),
-        McpTool(
-            "get_datetime",
-            "Return the current date and time.",
-            _datetime_schema(),
-            _builtin_mcp_handler(tools.get_datetime),
-        ),
     ]
 
 
@@ -849,10 +829,6 @@ def write_file(arguments: dict[str, Any]) -> dict[str, Any]:
 
 def edit_file(arguments: dict[str, Any]) -> dict[str, Any]:
     return _configured_builtin_tools().edit_file(arguments)
-
-
-def get_datetime(arguments: dict[str, Any]) -> dict[str, Any]:
-    return _configured_builtin_tools().get_datetime(arguments)
 
 
 def _default_root() -> Path:
@@ -2150,17 +2126,3 @@ def _edit_schema() -> dict[str, Any]:
         },
     ]
     return schema
-
-
-def _datetime_schema() -> dict[str, Any]:
-    return _base_schema(
-        {
-            "timezone": {
-                "type": "string",
-                "enum": ["local", "UTC"],
-                "default": "local",
-            },
-            "utc": {"type": "boolean", "default": False},
-        },
-        [],
-    )

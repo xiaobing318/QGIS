@@ -1809,6 +1809,285 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 manager.removeLayout(layout)
 
     @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
+    def test_real_layout_legend_fits_after_render_and_project_round_trip(self):
+        import json
+
+        from qgis.PyQt.QtCore import QSize
+        from qgis.core import (
+            Qgis,
+            QgsCategorizedSymbolRenderer,
+            QgsCoordinateReferenceSystem,
+            QgsLayoutExporter,
+            QgsLayoutItemLabel,
+            QgsLayoutItemLegend,
+            QgsLayoutItemMap,
+            QgsLayoutItemScaleBar,
+            QgsMarkerSymbol,
+            QgsProject,
+            QgsRendererCategory,
+            QgsVectorLayer,
+        )
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        manager = project.layoutManager()
+        previous_file_name = project.fileName()
+        previous_dirty = bool(project.isDirty())
+        previous_crs = project.crs()
+        project.setCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
+        layer_ids = []
+        layout_names = []
+        tools = QgisBridgeTools(None)
+        layer_names = [
+            "Regional emergency response facilities serving the eastern districts",
+            "城市应急避难场所与社区公共服务设施分布",
+            "RegionalResponseFacilitiesEast",
+        ]
+        labels = [
+            "Primary response stations with permanent medical personnel",
+            "Community support stations with emergency supplies",
+        ]
+
+        def assert_rendered_layout_fits(layout, dpi):
+            image = QgsLayoutExporter(layout).renderPageToImage(0, QSize(), dpi)
+            self.assertFalse(image.isNull())
+            page_rect = layout.pageCollection().page(0).rect()
+            maps = [
+                item for item in layout.items() if isinstance(item, QgsLayoutItemMap)
+            ]
+            legends = [
+                item for item in layout.items() if isinstance(item, QgsLayoutItemLegend)
+            ]
+            self.assertEqual(len(maps), 1)
+            self.assertEqual(len(legends), 1)
+            legend = legends[0]
+            # Disabling content sizing can hide overflow by clipping the text.
+            self.assertTrue(legend.resizeToContents())
+            self.assertGreater(legend.autoWrapLinesAfter(), 0)
+            legend_layers = {
+                node.layerId(): node for node in legend.model().rootGroup().findLayers()
+            }
+            for layer_id in layer_ids:
+                self.assertIn(layer_id, legend_layers)
+                self.assertEqual(
+                    len(legend.model().layerLegendNodes(legend_layers[layer_id])), 2
+                )
+            legend_rect = legend.sceneBoundingRect()
+            self.assertGreaterEqual(
+                legend_rect.left() - maps[0].sceneBoundingRect().right(), 2.5
+            )
+            self.assertGreaterEqual(maps[0].rect().width(), 40)
+            self.assertGreaterEqual(maps[0].rect().height(), 40)
+            for item in layout.items():
+                if not isinstance(
+                    item,
+                    (
+                        QgsLayoutItemLegend,
+                        QgsLayoutItemMap,
+                        QgsLayoutItemLabel,
+                        QgsLayoutItemScaleBar,
+                    ),
+                ):
+                    continue
+                with self.subTest(item=type(item).__name__, dpi=dpi):
+                    bounds = item.sceneBoundingRect()
+                    self.assertGreaterEqual(bounds.left(), 9.8)
+                    self.assertGreaterEqual(bounds.top(), 9.8)
+                    self.assertLessEqual(bounds.right(), page_rect.width() - 9.8)
+                    self.assertLessEqual(bounds.bottom(), page_rect.height() - 9.8)
+            # The initial render must have established the real legend dimensions.
+            second_image = QgsLayoutExporter(layout).renderPageToImage(0, QSize(), dpi)
+            self.assertFalse(second_image.isNull())
+            second_rect = legend.sceneBoundingRect()
+            self.assertAlmostEqual(second_rect.width(), legend_rect.width(), delta=0.1)
+            self.assertAlmostEqual(
+                second_rect.height(), legend_rect.height(), delta=0.1
+            )
+            return image
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reopened = QgsProject()
+            try:
+                source = root / "district-response-stations.geojson"
+                source.write_text(
+                    json.dumps(
+                        {
+                            "type": "FeatureCollection",
+                            "crs": {
+                                "type": "name",
+                                "properties": {"name": "EPSG:3857"},
+                            },
+                            "features": [
+                                {
+                                    "type": "Feature",
+                                    "geometry": {
+                                        "type": "Point",
+                                        "coordinates": [2000 + index * 3000, 3000],
+                                    },
+                                    "properties": {"zone": index + 1},
+                                }
+                                for index in range(2)
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                for index, name in enumerate(layer_names):
+                    layer = QgsVectorLayer(str(source), name, "ogr")
+                    self.assertTrue(layer.isValid())
+                    categories = []
+                    for category, label in enumerate(labels, 1):
+                        symbol = QgsMarkerSymbol.createSimple(
+                            {"color": "45,110,160", "name": "circle"}
+                        )
+                        if index == 2:
+                            symbol.setSize(150)
+                            symbol.setSizeUnit(Qgis.RenderUnit.MapUnits)
+                        categories.append(QgsRendererCategory(category, symbol, label))
+                    layer.setRenderer(QgsCategorizedSymbolRenderer("zone", categories))
+                    project.addMapLayer(layer)
+                    layer_ids.append(layer.id())
+
+                for orientation in ("landscape", "portrait"):
+                    with self.subTest(orientation=orientation):
+                        name = f"QCopilots complete legend {orientation}"
+                        layout_names.append(name)
+                        created = tools.interactive_layout_create(
+                            {
+                                "name": name,
+                                "title": "District emergency response",
+                                "page_size": "A4",
+                                "orientation": orientation,
+                                "map_extent": [0, 0, 10000, 10000],
+                            }
+                        )
+                        self.assertTrue(created["created"])
+                        layout = manager.layoutByName(name)
+                        self.assertIsNotNone(layout)
+                        image = assert_rendered_layout_fits(layout, 150)
+                        self.assertTrue(image.save(str(root / f"{orientation}.png")))
+                        self.assertGreater(
+                            (root / f"{orientation}.png").stat().st_size, 1000
+                        )
+                        # Changing export DPI must not push content out of the page.
+                        assert_rendered_layout_fits(layout, 300)
+                        self.assertEqual(
+                            [
+                                project.mapLayer(layer_id).name()
+                                for layer_id in layer_ids
+                            ],
+                            layer_names,
+                        )
+                        for layer_id in layer_ids:
+                            self.assertEqual(
+                                [
+                                    category.label()
+                                    for category in project.mapLayer(layer_id)
+                                    .renderer()
+                                    .categories()
+                                ],
+                                labels,
+                            )
+                        project_path = root / f"{orientation}.qgz"
+                        self.assertTrue(project.write(str(project_path)))
+                        self.assertTrue(reopened.read(str(project_path)))
+                        restored = reopened.layoutManager().layoutByName(name)
+                        self.assertIsNotNone(restored)
+                        assert_rendered_layout_fits(restored, 150)
+                        reopened.clear()
+            finally:
+                reopened.clear()
+                for name in layout_names:
+                    layout = manager.layoutByName(name)
+                    if layout is not None:
+                        manager.removeLayout(layout)
+                project.removeMapLayers(layer_ids)
+                project.setFileName(previous_file_name)
+                project.setCrs(previous_crs)
+                project.setDirty(previous_dirty)
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
+    def test_real_layout_unfittable_legend_is_not_registered(self):
+        from qgis.core import (
+            QgsCategorizedSymbolRenderer,
+            QgsCoordinateReferenceSystem,
+            QgsMarkerSymbol,
+            QgsProject,
+            QgsRendererCategory,
+            QgsSingleSymbolRenderer,
+            QgsVectorLayer,
+        )
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        manager = project.layoutManager()
+        name = "QCopilots oversized legend must fail"
+        unbroken_name = "QCopilots unbroken legend must fail"
+        previous_dirty = bool(project.isDirty())
+        previous_crs = project.crs()
+        project.setCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
+        layer = QgsVectorLayer(
+            "Point?crs=EPSG:3857&field=zone:integer",
+            "District response types",
+            "memory",
+        )
+        layer.setRenderer(
+            QgsCategorizedSymbolRenderer(
+                "zone",
+                [
+                    QgsRendererCategory(
+                        index,
+                        QgsMarkerSymbol.createSimple({"color": "45,110,160"}),
+                        f"Emergency response district category {index:03}",
+                    )
+                    for index in range(100)
+                ],
+            )
+        )
+        project.addMapLayer(layer)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "(?i)legend|layout|fit"):
+                QgisBridgeTools(None).interactive_layout_create(
+                    {
+                        "name": name,
+                        "page_size": "A4",
+                        "orientation": "landscape",
+                        "map_extent": [0, 0, 10000, 10000],
+                    }
+                )
+            self.assertIsNone(manager.layoutByName(name))
+            layer.setName("RegionalResponseDistrict" * 12)
+            layer.setRenderer(
+                QgsSingleSymbolRenderer(
+                    QgsMarkerSymbol.createSimple({"color": "45,110,160"})
+                )
+            )
+            with self.assertRaisesRegex(RuntimeError, "(?i)legend|layout|fit"):
+                QgisBridgeTools(None).interactive_layout_create(
+                    {
+                        "name": unbroken_name,
+                        "page_size": "A4",
+                        "orientation": "portrait",
+                        "map_extent": [0, 0, 10000, 10000],
+                    }
+                )
+            self.assertIsNone(manager.layoutByName(unbroken_name))
+            self.assertEqual(layer.name(), "RegionalResponseDistrict" * 12)
+        finally:
+            for failed_name in (name, unbroken_name):
+                failed_layout = manager.layoutByName(failed_name)
+                if failed_layout is not None:
+                    manager.removeLayout(failed_layout)
+            project.removeMapLayer(layer.id())
+            project.setCrs(previous_crs)
+            project.setDirty(previous_dirty)
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
     def test_real_project_map_and_vector_outputs_are_staged(self):
         from qgis.core import QgsProject
         from qgis.testing import start_app

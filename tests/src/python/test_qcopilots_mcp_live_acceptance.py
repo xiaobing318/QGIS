@@ -251,8 +251,76 @@ class _FakePendingJobSession:
         }
 
 
+class _FakeProcessingSession:
+    def __init__(self, category):
+        self.service = next(
+            service for service in live.SERVICES
+            if service.key == f"qcopilots_mcp_server_processing_{category}"
+        )
+        self.category = category
+        self.algorithm_id = {
+            "vector": "native:buffer",
+            "raster": "gdal:warpreproject",
+            "general": "native:package",
+        }[category]
+        self.calls = []
+        self.jobs = {}
+        self.read_counts = {}
+        self.preview_executed = False
+
+    def call_tool(self, name, arguments):
+        self.calls.append((name, dict(arguments)))
+        if name == f"list_{self.category}_processing_algorithms":
+            payload = {"algorithms": [{"id": self.algorithm_id}]}
+        elif name == f"get_{self.category}_processing_algorithm_details":
+            payload = {"id": self.algorithm_id}
+        elif name == f"start_{self.category}_processing_algorithm":
+            operation = (
+                "preview"
+                if arguments.get("overwrite_outputs")
+                and not arguments.get("overwrite_confirmation_token")
+                else "execute"
+            )
+            job_id = f"job-{len(self.jobs)}"
+            payload = {
+                "job_id": job_id,
+                "client_request_id": arguments["client_request_id"],
+                "operation": operation,
+                "phase": "preflight",
+                "state": "queued",
+                "algorithm_executed": False,
+            }
+            self.jobs[job_id] = (dict(payload), dict(arguments))
+            self.read_counts[job_id] = 0
+        elif name == f"list_{self.category}_processing_jobs":
+            payload = {"jobs": [dict(item[0]) for item in self.jobs.values()]}
+        elif name in {
+            f"get_{self.category}_processing_job",
+            f"cancel_{self.category}_processing_job",
+        }:
+            job_id = arguments["job_id"]
+            payload, request = self.jobs[job_id]
+            self.read_counts[job_id] += 1
+            if self.read_counts[job_id] >= 2:
+                output_path = Path(request["parameters"]["OUTPUT"])
+                payload.update(state="succeeded", phase="complete", cleanup={"complete": True})
+                if payload["operation"] == "preview":
+                    payload["algorithm_executed"] = self.preview_executed
+                    payload["confirmation_required"] = output_path.exists()
+                    if output_path.exists():
+                        payload["overwrite_confirmation_token"] = "synthetic-approval-" * 2
+                else:
+                    payload["algorithm_executed"] = True
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_bytes(b"synthetic Processing output")
+            payload = dict(payload)
+        else:
+            raise AssertionError(f"Unexpected Processing call: {name}")
+        return {"structuredContent": payload, "isError": False}
+
+
 class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
-    def test_inventory_is_exactly_eighty_two_tools_on_seven_ports(self):
+    def test_inventory_matches_expected_tools_on_seven_ports(self):
         live.validate_expected_inventory()
         self.assertEqual(
             [service.port for service in live.SERVICES],
@@ -263,11 +331,11 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for service in live.SERVICES
             for name in live.EXPECTED_TOOLS[service.key]
         ]
-        self.assertEqual(len(names), 82)
-        self.assertEqual(len(set(names)), 82)
+        self.assertEqual(len(names), 81)
+        self.assertEqual(len(set(names)), 81)
         self.assertEqual(
             [len(live.EXPECTED_TOOLS[service.key]) for service in live.SERVICES],
-            [9, 5, 33, 6, 6, 6, 17],
+            [8, 5, 33, 6, 6, 6, 17],
         )
 
     def test_manager_config_path_and_token_loading_are_secret_safe(self):
@@ -487,6 +555,67 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
         )
         self.assertTrue(recovered)
         self.assertEqual(registration.job_id, "recovered-job")
+
+    def test_processing_previews_are_polled_before_execution_on_all_services(self):
+        for category in ("vector", "raster", "general"):
+            with self.subTest(category=category):
+                runner = live.AcceptanceRunner(SYNTHETIC_TOKEN, output=lambda message: None)
+                session = _FakeProcessingSession(category)
+                try:
+                    runner._exercise_processing(session, category)
+                    starts = [args for name, args in session.calls if name.startswith("start_")]
+                    self.assertEqual(len(starts), 4)
+                    self.assertEqual(
+                        [args["overwrite_outputs"] for args in starts],
+                        [True, False, True, True],
+                    )
+                    self.assertEqual(starts[0]["client_request_id"], starts[1]["client_request_id"])
+                    self.assertEqual(starts[2]["client_request_id"], starts[3]["client_request_id"])
+                    self.assertNotIn("overwrite_confirmation_token", starts[2])
+                    self.assertIn("overwrite_confirmation_token", starts[3])
+                    self.assertTrue(all(count >= 2 for count in session.read_counts.values()))
+                    self.assertEqual(runner.cleanup.jobs, [])
+                    self.assertEqual(len({name for name, _ in session.calls}), 6)
+                finally:
+                    self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
+
+    def test_processing_preview_must_not_claim_algorithm_execution(self):
+        runner = live.AcceptanceRunner(SYNTHETIC_TOKEN, output=lambda message: None)
+        session = _FakeProcessingSession("vector")
+        session.preview_executed = True
+        try:
+            with self.assertRaisesRegex(live.AcceptanceFailure, "confused preview"):
+                runner._exercise_processing(session, "vector")
+            self.assertEqual(
+                len([name for name, _ in session.calls if name.startswith("start_")]),
+                1,
+            )
+        finally:
+            self.assertEqual(runner.cleanup.cleanup_filesystem(), [])
+
+    def test_pending_processing_job_recovery_distinguishes_operation(self):
+        class Session(_FakePendingJobSession):
+            def call_tool(self, name, arguments):
+                return {
+                    "structuredContent": {
+                        "jobs": [
+                            {"job_id": "preview", "client_request_id": "same-id", "operation": "preview"},
+                            {"job_id": "execution", "client_request_id": "same-id", "operation": "execute"},
+                        ]
+                    },
+                    "isError": False,
+                }
+
+        registration = live.JobRegistration(
+            service=live.SERVICES[3],
+            get_tool="get_vector_processing_job",
+            cancel_tool="cancel_vector_processing_job",
+            list_tool="list_vector_processing_jobs",
+            client_request_id="same-id",
+            operation="execute",
+        )
+        self.assertTrue(live.AcceptanceRunner._resolve_pending_job(Session(), registration))
+        self.assertEqual(registration.job_id, "execution")
 
     def test_default_loopback_opener_disables_proxy_and_redirects(self):
         proxy_handlers = [

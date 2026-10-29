@@ -2447,6 +2447,94 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
         self.assertAlmostEqual(processing.timeouts[0], 0.8)
         self.assertAlmostEqual(binary.timeouts[0], 0.4)
 
+    def test_bridge_stop_retains_pending_processing_recovery_until_retry_completes(self):
+        with mock.patch(
+            "qcopilots_common.bridge._make_main_thread_dispatcher",
+            return_value=None,
+        ):
+            controller = QgisBridgeController(iface=object(), port=0)
+        processing = mock.Mock()
+        processing.shutdown.side_effect = [
+            {"complete": False, "pending_job_ids": ["pending-file-job"]},
+            {"complete": False, "pending_job_ids": ["pending-file-job"]},
+            {"complete": True, "pending_job_ids": []},
+        ]
+        binary = mock.Mock()
+        binary.shutdown.return_value = None
+        httpd = mock.Mock()
+        dispatcher = mock.Mock()
+        controller._processing_job_manager = processing
+        controller._qgis_binary_job_manager = binary
+        controller._httpd = httpd
+        controller._dispatcher = dispatcher
+
+        for attempt in range(2):
+            with self.assertRaisesRegex(
+                RuntimeError, "Processing shutdown is incomplete.*pending-file-job"
+            ):
+                controller.stop(timeout_seconds=0)
+            self.assertIs(controller._processing_job_manager, processing)
+            self.assertTrue(controller._stopping.is_set())
+            self.assertEqual(processing.shutdown.call_count, attempt + 1)
+            with self.assertRaisesRegex(RuntimeError, "bridge is stopping"):
+                controller._get_processing_job_manager()
+            with self.assertRaisesRegex(RuntimeError, "recovery is still pending.*Retry bridge stop"):
+                controller.start()
+            self.assertIs(controller._processing_job_manager, processing)
+            self.assertTrue(controller._stopping.is_set())
+
+        self.assertIsNone(controller._httpd)
+        self.assertIsNone(controller._thread)
+        self.assertIsNone(controller._qgis_binary_job_manager)
+        binary.shutdown.assert_called_once_with(timeout_seconds=0.0)
+        httpd.server_close.assert_called_once_with()
+        self.assertEqual(dispatcher.close.call_count, 2)
+
+        controller.stop(timeout_seconds=0)
+        self.assertIsNone(controller._processing_job_manager)
+        self.assertEqual(processing.shutdown.call_count, 3)
+
+    def test_bridge_stop_preserves_processing_owner_after_shutdown_exception(self):
+        with mock.patch(
+            "qcopilots_common.bridge._make_main_thread_dispatcher",
+            return_value=None,
+        ):
+            controller = QgisBridgeController(iface=object(), port=0)
+        processing = mock.Mock()
+        processing.shutdown.side_effect = [
+            RuntimeError("recovery callback failed"),
+            {"complete": True, "pending_job_ids": []},
+        ]
+        binary = mock.Mock()
+        binary.shutdown.return_value = None
+        controller._processing_job_manager = processing
+        controller._qgis_binary_job_manager = binary
+
+        with self.assertRaisesRegex(RuntimeError, "recovery callback failed"):
+            controller.stop(timeout_seconds=0)
+        self.assertIs(controller._processing_job_manager, processing)
+        self.assertIsNone(controller._qgis_binary_job_manager)
+        controller.stop(timeout_seconds=0)
+        self.assertIsNone(controller._processing_job_manager)
+
+    def test_bridge_stop_does_not_treat_incomplete_receipt_as_success(self):
+        for receipt in (
+            {"complete": False, "pending_job_ids": []},
+            {"complete": True, "pending_job_ids": ["pending-recovery"]},
+            {},
+        ):
+            with self.subTest(receipt=receipt), mock.patch(
+                "qcopilots_common.bridge._make_main_thread_dispatcher",
+                return_value=None,
+            ):
+                controller = QgisBridgeController(iface=object(), port=0)
+                processing = mock.Mock()
+                processing.shutdown.return_value = receipt
+                controller._processing_job_manager = processing
+                with self.assertRaisesRegex(RuntimeError, "shutdown is incomplete"):
+                    controller.stop(timeout_seconds=0)
+                self.assertIs(controller._processing_job_manager, processing)
+
 
 if __name__ == "__main__":
     unittest.main()

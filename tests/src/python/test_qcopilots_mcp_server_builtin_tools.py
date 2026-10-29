@@ -871,7 +871,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 "allowed",
             )
 
-    def test_datetime_and_exec_shell_command_are_bounded(self):
+    def test_exec_shell_command_is_bounded(self):
         import json
 
         from qcopilots_common.builtin_tools import BuiltinTools
@@ -880,20 +880,6 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             tools = BuiltinTools(root_path=root, command_timeout_seconds=1)
-
-            datetime_result = tools.get_datetime({"timezone": "UTC"})
-            self.assertEqual(datetime_result["timezone"], "UTC")
-            self.assertRegex(
-                datetime_result["iso"],
-                r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$",
-            )
-            self.assertEqual(tools.get_datetime({"utc": True})["timezone"], "UTC")
-            self.assertEqual(
-                tools.get_datetime({"timezone": "local", "utc": True})["timezone"],
-                "local",
-            )
-            with self.assertRaisesRegex(ValueError, "local or UTC"):
-                tools.get_datetime({"timezone": "Europe/London"})
 
             command_result = tools.exec_shell_command(
                 {
@@ -1412,12 +1398,12 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 "exec_shell_command",
                 "write_file",
                 "edit_file",
-                "get_datetime",
             }
-            self.assertEqual(len(tool_names), 9)
+            self.assertEqual(len(tool_names), 8)
             self.assertEqual(len(tool_names), len(set(tool_names)))
             self.assertSetEqual(set(tool_names), expected_tool_names)
             self.assertIn("copy_file", tool_names)
+            self.assertNotIn("get_datetime", tool_names)
             self.assertNotIn("probe_local_http_service", tool_names)
             descriptors = {
                 tool["name"]: tool
@@ -1493,12 +1479,6 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 descriptors["write_file"]["inputSchema"]["allOf"][0]["then"]["required"],
                 ["expected_sha256"],
             )
-            self.assertIn("timezone", descriptors["get_datetime"]["inputSchema"]["properties"])
-            self.assertEqual(
-                descriptors["get_datetime"]["inputSchema"]["properties"]["timezone"]["enum"],
-                ["local", "UTC"],
-            )
-
             for request_id, invalid_command in enumerate(
                 (
                     "echo qcopilots",
@@ -1585,7 +1565,29 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 )["stdout"].strip(),
                 "qcopilots",
             )
-            self.assertIn("iso", self._call_tool(server, "get_datetime", {"timezone": "UTC"}))
+
+    def test_removed_datetime_tool_has_no_python_or_mcp_entry_point(self):
+        from qcopilots_common import builtin_tools
+        from qcopilots_common.mcp_http import McpJsonRpcServer
+
+        self.assertFalse(hasattr(builtin_tools, "get_datetime"))
+        self.assertFalse(hasattr(builtin_tools.BuiltinTools, "get_datetime"))
+        with tempfile.TemporaryDirectory() as tmp:
+            server = McpJsonRpcServer(
+                server_name="qcopilots-builtin-test",
+                server_version="1.0.0",
+                tools=builtin_tools.build_builtin_tools(root_path=Path(tmp)),
+            )
+            response = server.handle_json_rpc(
+                {
+                    "jsonrpc": "2.0",
+                    "id": "removed-datetime",
+                    "method": "tools/call",
+                    "params": {"name": "get_datetime", "arguments": {}},
+                }
+            )
+            self.assertEqual(response["error"]["message"], "Unknown tool: get_datetime")
+            self.assertNotIn("result", response)
 
     def test_builtin_policy_rejection_is_an_mcp_tool_error(self):
         from qcopilots_common.builtin_tools import build_builtin_tools
@@ -2207,15 +2209,6 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                         headers=authorization_headers,
                     )["stdout"].strip(),
                     "qcopilots",
-                )
-                self.assertIn(
-                    "iso",
-                    self._post_tool(
-                        port,
-                        "get_datetime",
-                        {"timezone": "UTC"},
-                        headers=authorization_headers,
-                    ),
                 )
             finally:
                 httpd.shutdown()

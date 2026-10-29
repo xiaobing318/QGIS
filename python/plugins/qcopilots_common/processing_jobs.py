@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -32,6 +33,11 @@ from qcopilots_common.async_jobs import (
     utc_now_rfc3339,
 )
 from qcopilots_common.security_policy import FilesystemPolicy
+from qcopilots_common.processing_file_worker import (
+    ProcessingFileCancelled, file_work_context as _processing_file_work_context,
+    in_file_work, check_file_cancelled, report_file_progress, make_file_task,
+)
+from qcopilots_common.processing_input_cache import capture_input_cache, compare_input_cache
 
 
 def json_safe_value(value: Any, _seen: set[int] | None = None) -> Any:
@@ -225,7 +231,23 @@ class _ProcessingRuntime:
     cleanup_residual_paths: list[str] = field(default_factory=list)
     cleanup_residual_layer_ids: list[str] = field(default_factory=list)
     cleanup_errors: list[str] = field(default_factory=list)
+    cleanup_file_errors: list[str] = field(default_factory=list)
     task: Any = None
+    file_task: Any = None
+    file_callbacks: int = 0
+    pending_callbacks: int = 0
+    algorithm_result_received: bool = False
+    cancel_event: threading.Event = field(default_factory=threading.Event)
+    operation: str = "execute"
+    approved_snapshot: dict[str, Any] | None = None
+    input_templates: list[dict[str, Any]] = field(default_factory=list)
+    output_plans: list[dict[str, Any]] = field(default_factory=list)
+    band_counts: dict[str, int] = field(default_factory=dict)
+    cache_changes: list[dict[str, Any]] = field(default_factory=list)
+    pending_results: Any = None
+    pending_terminal: dict[str, Any] | None = None
+    phase: str = "preflight"
+    scheduling_algorithm: bool = False
     feedback_messages: list[str] = field(default_factory=list)
     sink_counts: dict[str, int] = field(default_factory=dict)
     lock: threading.RLock = field(default_factory=threading.RLock)
@@ -234,6 +256,8 @@ class _ProcessingRuntime:
         """Release QGIS objects after their task no longer references context."""
 
         with self.lock:
+            if self.file_task is not None or self.scheduling_algorithm or self.pending_callbacks:
+                return
             preserve_recovery = bool(
                 self.cleanup_residual_paths
                 or self.cleanup_residual_layer_ids
@@ -248,6 +272,8 @@ class _ProcessingRuntime:
             self.algorithm = None
             self.feedback = None
             self.parameters = {}
+            self.pending_results = None
+            self.pending_terminal = None
             if not preserve_recovery:
                 self.output_stages.clear()
                 self.output_promotion_receipt = None
@@ -280,7 +306,7 @@ class ProcessingOverwriteConfirmationStore:
         self._lock = threading.RLock()
         self._next_sequence = 0
 
-    def issue(self, fingerprint: str) -> str:
+    def issue(self, fingerprint: str, *, snapshot=None, request_fingerprint=None) -> str:
         with self._lock:
             self._purge_expired()
             while len(self._entries) >= self.max_entries:
@@ -295,10 +321,23 @@ class ProcessingOverwriteConfirmationStore:
             self._next_sequence += 1
             self._entries[token] = {
                 "fingerprint": fingerprint,
+                "snapshot": copy.deepcopy(snapshot),
+                "request_fingerprint": request_fingerprint,
                 "expires_at": self._clock() + self.ttl_seconds,
                 "sequence": self._next_sequence,
             }
             return token
+
+    def claim(self, token: str, request_fingerprint: str) -> dict[str, Any]:
+        with self._lock:
+            entry = self._entries.pop(str(token), None)
+            if entry is None:
+                raise RuntimeError("Processing overwrite confirmation token is invalid or already used")
+            if entry["expires_at"] <= self._clock():
+                raise RuntimeError("Processing overwrite confirmation token has expired")
+            if entry.get("request_fingerprint") != request_fingerprint or not isinstance(entry.get("snapshot"), dict):
+                raise RuntimeError("Processing parameters changed after preview. Request a new confirmation token.")
+            return copy.deepcopy(entry["snapshot"])
 
     def consume(self, token: str, fingerprint: str) -> None:
         with self._lock:
@@ -344,6 +383,7 @@ class ProcessingJobManager:
             scope_field="category",
             on_evict=self._cleanup_evicted_runtime,
         )
+        self.store.add_retention_guard(_processing_runtime_requires_retention)
         self._lock = threading.RLock()
         self._accepting = True
         self._generation = 0
@@ -394,8 +434,11 @@ class ProcessingJobManager:
                 "overwrite_outputs": overwrite_outputs,
             }
         )
+        if overwrite_confirmation_token and not overwrite_outputs:
+            raise ValueError("overwrite_confirmation_token requires overwrite_outputs=true")
+        operation = "preview" if overwrite_outputs and not overwrite_confirmation_token else "execute"
         existing = self.store.lookup_idempotent(
-            category, client_request_id, request_fingerprint
+            category, client_request_id, request_fingerprint, idempotency_namespace=operation
         )
         if existing is not None:
             return existing
@@ -428,96 +471,248 @@ class ProcessingJobManager:
         sanitized_parameters = self._parameter_sanitizer()(
             policy_parameters, algorithm.parameterDefinitions()
         )
-        authorizer = self._output_authorizer()
-        authorization_context: dict[str, Any] = {}
-        if authorizer is _authorize_processing_output_destinations:
-            authorization = authorizer(
-                algorithm,
-                sanitized_parameters,
-                algorithm.parameterDefinitions(),
-                overwrite_outputs,
-                overwrite_confirmation_token,
-                self._overwrite_confirmations,
-                authorization_context=authorization_context,
-            )
-        else:
-            authorization = authorizer(
-                algorithm,
-                sanitized_parameters,
-                algorithm.parameterDefinitions(),
-                overwrite_outputs,
-                overwrite_confirmation_token,
-                self._overwrite_confirmations,
-            )
-        if authorization is not None:
-            return authorization
-        authorized_input_versions = authorization_context.get("input_versions")
-        if authorized_input_versions is None:
-            authorized_input_versions = _processing_input_versions(
-                sanitized_parameters,
-                algorithm.parameterDefinitions(),
-            )
-        feedback = self._feedback_factory()()
-        context = self._context_factory()(feedback)
-        execution_mode = (
-            "main_thread" if self._is_no_threading()(algorithm) else "qgs_task"
-        )
-        cancellable = (
-            False
-            if execution_mode == "main_thread"
-            else bool(self._is_algorithm_cancellable()(algorithm))
+        definitions = list(algorithm.parameterDefinitions())
+        custom_authorizer = self._output_authorizer()
+        if custom_authorizer is not _authorize_processing_output_destinations:
+            custom_authorizer(algorithm, sanitized_parameters, definitions,
+                              overwrite_outputs, overwrite_confirmation_token,
+                              self._overwrite_confirmations)
+        elif not any(_processing_definition_is_destination(item) for item in definitions):
+            raise RuntimeError("Processing algorithm has no separate destination and is unsupported by the MCP start service")
+        plans = _processing_output_plans(sanitized_parameters, definitions)
+        templates = _processing_input_versions(sanitized_parameters, definitions, defer_files=True)
+        runtime = _ProcessingRuntime(
+            algorithm=algorithm, parameters=dict(sanitized_parameters), context=None,
+            feedback=None, add_outputs_to_project=add_outputs, generation=generation,
+            overwrite_outputs=overwrite_outputs, operation=operation,
+            input_templates=templates, output_plans=plans,
+            band_counts=_processing_raster_band_counts(templates),
         )
         job_id = str(uuid.uuid4())
-        execution_parameters, output_stages = _stage_processing_output_destinations(
-            sanitized_parameters,
-            algorithm.parameterDefinitions(),
-        )
-        runtime = _ProcessingRuntime(
-            algorithm=algorithm,
-            parameters=dict(execution_parameters),
-            context=context,
-            feedback=feedback,
-            add_outputs_to_project=add_outputs,
-            generation=generation,
-            overwrite_outputs=overwrite_outputs,
-            authorized_input_versions=authorized_input_versions,
-            output_stages=output_stages,
-        )
-        self._connect_feedback(job_id, category, runtime)
-        now = utc_now_rfc3339()
+        execution_mode = "main_thread" if self._is_no_threading()(algorithm) else "qgs_task"
         initial = {
-            "job_id": job_id,
-            "category": category,
-            "client_request_id": client_request_id,
-            "state": "queued",
-            "execution_mode": execution_mode,
-            "cancellable": cancellable,
-            "overwrite_outputs": overwrite_outputs,
-            "algorithm": _algorithm_summary(algorithm),
-            "progress_percent": 0.0,
-            "progress_text": "",
-            "processed_count": 0,
-            "cancel_requested": False,
-            "created_at": now,
-            "started_at": None,
-            "finished_at": None,
-            "error": None,
+            "job_id": job_id, "category": category, "client_request_id": client_request_id,
+            "state": "queued", "operation": operation, "phase": "preflight",
+            "phase_progress": {"bytes_completed": 0, "bytes_total": 0},
+            "algorithm_executed": False, "execution_mode": execution_mode,
+            "cancellable": True, "overwrite_outputs": overwrite_outputs,
+            "algorithm": _algorithm_summary(algorithm), "progress_percent": 0.0,
+            "progress_text": "Processing file preflight queued", "processed_count": 0,
+            "cancel_requested": False, "created_at": utc_now_rfc3339(),
+            "started_at": None, "finished_at": None, "error": None,
         }
-        try:
-            snapshot, created = self.store.create(
-                category,
-                initial,
-                client_request_id=client_request_id,
-                request_fingerprint=request_fingerprint,
-                runtime=runtime,
+        with self._lock:
+            if not self._accepting or generation != self._generation:
+                raise RuntimeError("QCopilots Processing job manager is stopping")
+            # Recheck after metadata preparation. Concurrent submissions must
+            # share one admission decision, and replays never need a new slot.
+            existing = self.store.lookup_idempotent(
+                category, client_request_id, request_fingerprint,
+                idempotency_namespace=operation,
             )
-        except Exception:
-            _cleanup_processing_runtime_outputs(runtime)
-            raise
+            if existing is not None:
+                return existing
+            retained_ids = {
+                job_id for job_id, scope, _ in self.store.active_runtime_items()
+                if scope == category
+            }
+            retained_ids.update(
+                job_id for job_id, scope, owned in self.store.terminal_runtime_items()
+                if scope == category and _processing_runtime_requires_retention(owned)
+            )
+            capacity = max(1, self.store.max_terminal_jobs_per_scope)
+            if len(retained_ids) >= capacity:
+                raise RuntimeError(
+                    "processing_recovery_capacity_exceeded: "
+                    f"{category} already has {capacity} active or retained recovery jobs. "
+                    "Query and finish recovery of existing jobs before starting new work."
+                )
+            snapshot, created = self.store.create(
+                category, initial, client_request_id=client_request_id,
+                request_fingerprint=request_fingerprint, runtime=runtime,
+                idempotency_namespace=operation,
+            )
         if not created:
-            _cleanup_processing_runtime_outputs(runtime)
             return snapshot
+        try:
+            if overwrite_confirmation_token:
+                runtime.approved_snapshot = self._overwrite_confirmations.claim(
+                    overwrite_confirmation_token, request_fingerprint,
+                )
+            self._submit_file_work(
+                job_id, category, runtime, "preflight",
+                lambda: _processing_file_preflight(runtime),
+                lambda result: self._preflight_completed(
+                    job_id, category, runtime, result, request_fingerprint),
+            )
+        except Exception as err:
+            return self._finish_failed(job_id, category, "preflight_failed", "preflight", str(err), runtime)
+        return self.store.get(job_id, category)
 
+    def _submit_file_work(self, job_id, category, runtime, phase, function, completed, *, recovery=False):
+        if runtime.file_task is not None or runtime.pending_callbacks:
+            raise RuntimeError("Processing file task is already active")
+        runtime.phase = phase
+        snapshot = self.store.get(job_id, category)
+        if snapshot["state"] == "queued":
+            self.store.transition(job_id, "running", category, started_at=utc_now_rfc3339())
+        self._safe_patch(job_id, category, phase=phase, cancellable=not recovery,
+                         phase_progress={"bytes_completed": 0, "bytes_total": 0})
+        cancel_event = None if recovery else runtime.cancel_event
+        def progress(done, total):
+            self._safe_patch(job_id, category, phase=runtime.phase, phase_progress={"bytes_completed": done, "bytes_total": total})
+        def complete(error, value):
+            if error is not None:
+                if recovery:
+                    runtime.cleanup_errors.append(str(error))
+                    runtime.cleanup_file_errors.append(str(error))
+                    completed(None)
+                elif isinstance(error, ProcessingFileCancelled):
+                    self._finish_cancelled(job_id, category, runtime)
+                else:
+                    self._finish_failed(job_id, category, "file_operation_failed", phase, str(error), runtime)
+                return
+            if not recovery and (runtime.cancel_event.is_set() or runtime.generation != self._generation):
+                self._finish_cancelled(job_id, category, runtime)
+                return
+            try:
+                completed(value)
+            except Exception as err:
+                code = "output_postprocessing_failed" if phase == "verify_outputs" else "file_completion_failed"
+                stage = "postprocess" if phase == "verify_outputs" else phase
+                self._finish_failed(job_id, category, code, stage, str(err), runtime)
+        completion_received = False
+        def done(error, value):
+            nonlocal completion_received
+            if completion_received:
+                return
+            completion_received = True
+            # finished() is still inside QgsTaskManager's completion stack.
+            # Detach that completed task now, but retain its plain result and
+            # runtime until the queued continuation owns the next phase.
+            runtime.file_callbacks += 1
+            try:
+                self._defer_continuation(
+                    runtime, lambda: complete(error, value), release_file_task=True
+                )
+            except Exception as err:
+                self._continuation_schedule_failed(job_id, category, runtime, err)
+            finally:
+                runtime.file_callbacks -= 1
+        injected = self._dependencies.get("file_runner")
+        if injected is not None:
+            runtime.file_task = True
+            injected(function, done, cancel_event, progress)
+            return
+        task = make_file_task(function, done, cancel_event=cancel_event, progress=progress)
+        runtime.file_task = task
+        try:
+            if not self._task_manager().addTask(task):
+                raise RuntimeError("QGIS task manager rejected the Processing file task")
+        except Exception:
+            runtime.file_task = None
+            raise
+
+    def _defer_continuation(self, runtime, callback, *, release_file_task=False):
+        """Resume only after the current QgsTask completion stack unwinds."""
+        runtime.pending_callbacks += 1
+        if release_file_task:
+            runtime.file_task = None
+        resumed = False
+        def resume():
+            nonlocal resumed
+            if resumed:
+                return
+            resumed = True
+            runtime.pending_callbacks -= 1
+            runtime.file_callbacks += 1
+            try:
+                callback()
+            finally:
+                runtime.file_callbacks -= 1
+        try:
+            scheduler = self._dependencies.get("continuation_scheduler")
+            if scheduler is None:
+                self._single_shot()(0, resume)
+            else:
+                scheduler(resume)
+        except Exception:
+            if not resumed:
+                runtime.pending_callbacks -= 1
+            raise
+
+    def _continuation_schedule_failed(self, job_id, category, runtime, error):
+        # Do not recursively register recovery while still inside finished().
+        # A later get/stop can retry once an application event loop is available.
+        runtime.cleanup_file_errors.append(f"Could not queue Processing continuation: {error}")
+        runtime.cleanup_residual_paths = _processing_known_recovery_paths(runtime)
+        receipt = _processing_cleanup_receipt(runtime)
+        if self.store.get(job_id, category)["state"] in TERMINAL_JOB_STATES:
+            self.store.patch_cleanup_receipt(job_id, receipt, category)
+            return
+        self.store.transition(
+            job_id, "failed", category, phase="complete", cancellable=False,
+            finished_at=utc_now_rfc3339(),
+            error={"code": "continuation_schedule_failed", "stage": runtime.phase,
+                   "message": str(error)},
+            cleanup=receipt,
+        )
+
+    def _preflight_completed(self, job_id, category, runtime, result, request_fingerprint):
+        _validate_processing_versions(
+            [v for v in runtime.input_templates if v.get("kind") == "project_layer"],
+            "Processing project input changed during preflight",
+        )
+        runtime.authorized_input_versions = result["input_versions"]
+        if runtime.operation == "preview":
+            payload = {
+                "confirmation_required": bool(result["collisions"]),
+                "algorithm_id": str(runtime.algorithm.id()), "overwrite_outputs": True,
+                "overwrite_targets": result["collisions"],
+                "input_versions": result["input_versions"],
+                "parameters_sha256": _request_fingerprint(json_safe_value(runtime.parameters)),
+            }
+            if result["collisions"]:
+                token = self._overwrite_confirmations.issue(
+                    _request_fingerprint(result["approval_snapshot"]),
+                    snapshot=result["approval_snapshot"], request_fingerprint=request_fingerprint,
+                )
+                payload.update(overwrite_confirmation_token=token,
+                               confirmation_expires_in_seconds=self._overwrite_confirmations.ttl_seconds,
+                               confirmation_expires_at=datetime.fromtimestamp(
+                                   time.time()+self._overwrite_confirmations.ttl_seconds, timezone.utc
+                               ).isoformat().replace("+00:00", "Z"))
+            self.store.transition(job_id, "succeeded", category, phase="complete", cancellable=False,
+                                  finished_at=utc_now_rfc3339(), result=payload,
+                                  progress_text="Processing overwrite preview completed; algorithm was not run",
+                                  cleanup=_processing_cleanup_receipt(runtime), **payload)
+            runtime.release_completed_objects(keep_context=False)
+            return
+        runtime.parameters = result["parameters"]
+        runtime.output_stages = result["stages"]
+        runtime.feedback = self._feedback_factory()()
+        runtime.context = self._context_factory()(runtime.feedback)
+        self._connect_feedback(job_id, category, runtime)
+        self._schedule_algorithm(job_id, category, runtime)
+
+    def _schedule_algorithm(self, job_id, category, runtime):
+        runtime.scheduling_algorithm = True
+        try:
+            return self._schedule_algorithm_body(job_id, category, runtime)
+        finally:
+            runtime.scheduling_algorithm = False
+            if runtime.pending_terminal is not None and runtime.file_task is None and runtime.task is None:
+                self._recover_runtime(job_id, category, runtime)
+
+    def _schedule_algorithm_body(self, job_id, category, runtime):
+        runtime.phase = "execute"
+        algorithm = runtime.algorithm
+        execution_parameters = runtime.parameters
+        add_outputs = runtime.add_outputs_to_project
+        feedback, context = runtime.feedback, runtime.context
+        execution_mode = self.store.get(job_id, category)["execution_mode"]
+        self._safe_patch(job_id, category, phase="execute", phase_progress=None,
+                         cancellable=(execution_mode != "main_thread" and bool(self._is_algorithm_cancellable()(algorithm))))
         try:
             prepared_parameters = self._prepare_outputs()(
                 algorithm, dict(execution_parameters), add_outputs
@@ -538,20 +733,11 @@ class ProcessingJobManager:
                 if (
                     not self._accepting
                     or runtime.generation != self._generation
-                    or current["state"] != "queued"
+                    or current["state"] not in {"queued", "running"}
                     or current.get("cancel_requested")
                 ):
                     if current["state"] not in TERMINAL_JOB_STATES:
-                        _cleanup_processing_runtime_outputs(runtime)
-                        current = self.store.transition(
-                            job_id,
-                            "cancelled",
-                            category,
-                            cancel_requested=True,
-                            finished_at=utc_now_rfc3339(),
-                            progress_text="Cancelled before Processing was scheduled",
-                            cleanup=_processing_cleanup_receipt(runtime),
-                        )
+                        current = self._finish_cancelled(job_id, category, runtime)
                     runtime.release_completed_objects(keep_context=False)
                     return current
                 try:
@@ -595,7 +781,7 @@ class ProcessingJobManager:
                 task,
                 "destroyed",
                 lambda *_args, job_id=job_id, category=category, runtime=runtime: (
-                    self._release_finished_runtime(job_id, category, runtime)
+                    self._algorithm_task_destroyed(job_id, category, runtime)
                 ),
             )
             with self._lock:
@@ -604,20 +790,11 @@ class ProcessingJobManager:
                 if (
                     not self._accepting
                     or runtime.generation != self._generation
-                    or current["state"] != "queued"
+                    or current["state"] not in {"queued", "running"}
                     or current.get("cancel_requested")
                 ):
                     if current["state"] not in TERMINAL_JOB_STATES:
-                        _cleanup_processing_runtime_outputs(runtime)
-                        current = self.store.transition(
-                            job_id,
-                            "cancelled",
-                            category,
-                            cancel_requested=True,
-                            finished_at=utc_now_rfc3339(),
-                            progress_text="Cancelled before Processing was scheduled",
-                            cleanup=_processing_cleanup_receipt(runtime),
-                        )
+                        current = self._finish_cancelled(job_id, category, runtime)
                     task = _detach_unsubmitted_task(runtime, task)
                     runtime.release_completed_objects(keep_context=False)
                     return current
@@ -663,6 +840,7 @@ class ProcessingJobManager:
             return failed
         return self.store.get(job_id, category)
 
+
     def get(self, arguments: dict[str, Any] | str) -> dict[str, Any]:
         if isinstance(arguments, dict):
             job_id = _required_nonempty_string(arguments.get("job_id"), "job_id")
@@ -670,20 +848,13 @@ class ProcessingJobManager:
             if category is not None:
                 category = _required_category(category)
         else:
-            job_id = _required_nonempty_string(arguments, "job_id")
-            category = None
+            job_id, category = _required_nonempty_string(arguments, "job_id"), None
         snapshot = self.store.get(job_id, category)
-        cleanup = snapshot.get("cleanup") or {}
-        if snapshot["state"] in TERMINAL_JOB_STATES and cleanup.get("complete") is False:
+        if snapshot["state"] in TERMINAL_JOB_STATES and (snapshot.get("cleanup") or {}).get("complete") is False:
             runtime = self.store.get_runtime(job_id, snapshot["category"])
-            if runtime is not None and runtime.task is None:
-                self._release_finished_runtime(
-                    job_id,
-                    snapshot["category"],
-                    runtime,
-                )
-                snapshot = self.store.get(job_id, snapshot["category"])
-        return snapshot
+            if runtime is not None and runtime.file_task is None:
+                self._recover_runtime(job_id, snapshot["category"], runtime)
+        return self.store.get(job_id, category)
 
     def list(self, arguments: dict[str, Any]) -> dict[str, Any]:
         category = _required_category(arguments.get("category"))
@@ -709,127 +880,114 @@ class ProcessingJobManager:
             if category is not None:
                 category = _required_category(category)
         else:
-            job_id = _required_nonempty_string(arguments, "job_id")
-            category = None
-        with self._lock:
-            snapshot, runtime, requested = self.store.request_cancel(job_id, category)
-            if not requested or runtime is None:
-                return snapshot
-            task = runtime.task
-            if task is not None:
-                try:
-                    task.cancel()
-                except Exception as err:
-                    return self._finish_failed(
-                        job_id,
-                        snapshot["category"],
-                        "cancel_failed",
-                        "cancel",
-                        str(err),
-                        runtime,
-                    )
+            job_id, category = _required_nonempty_string(arguments, "job_id"), None
+        snapshot, runtime, requested = self.store.request_cancel(job_id, category)
+        if not requested or runtime is None:
+            return snapshot
+        runtime.cancel_event.set()
+        if runtime.pending_callbacks:
             return self.store.get(job_id, snapshot["category"])
+        task = runtime.file_task if runtime.file_task is not None else runtime.task
+        if task is not None:
+            try:
+                task.cancel()
+            except AttributeError:
+                pass
+        else:
+            self._finish_cancelled(job_id, snapshot["category"], runtime)
+        return self.store.get(job_id, snapshot["category"])
 
-    def shutdown(self, timeout_seconds: float = 5) -> None:
+    def shutdown(self, timeout_seconds: float = 5) -> dict[str, Any]:
         timeout = float(timeout_seconds)
         if not math.isfinite(timeout) or timeout < 0:
             raise ValueError("timeout_seconds must be finite and non-negative")
         with self._lock:
-            if not self._accepting:
-                return
-            self._accepting = False
-            self._generation += 1
+            if self._accepting:
+                self._accepting = False
+                self._generation += 1
         self.store.shutdown()
         self._overwrite_confirmations.clear()
-
-        active = self.store.active_runtime_items()
         tasks = []
-        for job_id, category, runtime in active:
+        for job_id, category, runtime in self.store.active_runtime_items():
             if runtime is None:
                 continue
-            task = runtime.task
-            if task is None:
-                # No task or main-thread callback has been registered yet.
-                # The registration lock and generation guard prevent either
-                # form of execution from being scheduled after shutdown.
-                _cleanup_processing_runtime_outputs(runtime)
-                self.store.transition(
-                    job_id,
-                    "cancelled",
-                    category,
-                    cancel_requested=True,
-                    finished_at=utc_now_rfc3339(),
-                    progress_text="Cancelled while QGIS bridge was stopping",
-                    cleanup=_processing_cleanup_receipt(runtime),
-                )
-                runtime.release_completed_objects(keep_context=False)
-                continue
+            runtime.cancel_event.set()
             try:
-                self.store.request_cancel(job_id, category)
+                self.store.transition(job_id, "cancelling", category, cancel_requested=True)
             except RuntimeError:
-                # Shutdown cancellation is internal and also applies to tasks
-                # which do not advertise user cancellation.
-                self.store.patch(job_id, category, cancel_requested=True)
-            try:
-                task.cancel()
-            except Exception:
                 pass
-            tasks.append((job_id, category, task, runtime))
-
+            # Recovery is allowed to finish even though execution was cancelled.
+            for task in (runtime.task, runtime.file_task):
+                if task is None or task is True:
+                    continue
+                if runtime.pending_callbacks and task is runtime.task:
+                    continue
+                if task is not runtime.file_task or runtime.phase != "cleanup":
+                    try:
+                        task.cancel()
+                    except Exception:
+                        pass
+            if (runtime.task is None and runtime.file_task is None
+                    and not runtime.pending_callbacks):
+                self._finish_cancelled(job_id, category, runtime)
+        # A terminal algorithm may still own an active recovery attempt.
+        # Schedule eligible retries before collecting the bounded wait set.
+        for job_id, category, runtime in self.store.terminal_runtime_items():
+            if runtime is not None and runtime.file_task is None:
+                self._release_finished_runtime(job_id, category, runtime)
+        all_items = self.store.active_runtime_items() + self.store.terminal_runtime_items()
+        for _, _, runtime in all_items:
+            if runtime is None:
+                continue
+            for task in (runtime.task, runtime.file_task):
+                if runtime.pending_callbacks and task is runtime.task:
+                    continue
+                if task is not None and task is not True and all(task is not seen for seen in tasks):
+                    tasks.append(task)
         deadline = time.monotonic() + timeout
-        for job_id, category, task, runtime in tasks:
-            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+        for task in tasks:
+            remaining = max(0, int((deadline-time.monotonic())*1000))
+            if not remaining:
+                break
             wait = getattr(task, "waitForFinished", None)
-            finished = False
-            if callable(wait) and remaining_ms > 0:
+            if callable(wait):
                 try:
-                    finished = bool(wait(remaining_ms))
-                except TypeError:
-                    # A no-argument compatibility overload may block forever.
-                    # Skip it so bridge shutdown always remains bounded.
-                    pass
+                    wait(remaining)
                 except Exception:
                     pass
-            try:
-                snapshot = self.store.get(job_id, category)
-            except RuntimeError:
-                continue
-            if snapshot["state"] not in TERMINAL_JOB_STATES:
-                if finished:
-                    _cleanup_processing_runtime_outputs(runtime)
-                    self.store.transition(
-                        job_id,
-                        "cancelled",
-                        category,
-                        cancel_requested=True,
-                        finished_at=utc_now_rfc3339(),
-                        progress_text="Cancelled while QGIS bridge was stopping",
-                        cleanup=_processing_cleanup_receipt(runtime),
-                    )
-                    runtime.release_completed_objects(keep_context=False)
-
-        for job_id, category, runtime in self.store.terminal_runtime_items():
+        # finished() callbacks own cleanup and object release on the main
+        # thread. A bounded wait never authorizes racing an active worker.
+        pending = []
+        all_items = self.store.active_runtime_items() + self.store.terminal_runtime_items()
+        for job_id, category, runtime in all_items:
             if runtime is None:
                 continue
-            self._release_finished_runtime(job_id, category, runtime)
+            snapshot = self.store.get(job_id, category)
+            receipt = _processing_cleanup_receipt(runtime)
+            terminal = snapshot["state"] in TERMINAL_JOB_STATES
+            if (terminal and receipt["complete"]
+                    and not runtime.file_callbacks and not runtime.pending_callbacks):
+                continue
+            pending.append(job_id)
+            receipt.update(complete=False, retry_recommended=True,
+                           residual_paths=_processing_known_recovery_paths(runtime),
+                           errors=receipt["errors"] + ["Shutdown reached its wait limit with task completion or recovery still pending"])
+            if terminal:
+                self.store.patch_cleanup_receipt(job_id, receipt, category)
+            else:
+                self._safe_patch(job_id, category, cleanup=receipt)
+        return {"complete": not pending, "pending_job_ids": pending}
 
     @staticmethod
-    def _cleanup_evicted_runtime(
-        _job_id: str,
-        runtime: _ProcessingRuntime | None,
-    ) -> dict[str, Any]:
+    def _cleanup_evicted_runtime(_job_id, runtime):
         if runtime is None:
-            return {
-                "complete": True,
-                "residual_paths": [],
-                "residual_layer_ids": [],
-                "errors": [],
-                "retry_recommended": False,
-            }
-        _cleanup_processing_runtime_outputs(runtime)
-        cleanup = _processing_cleanup_receipt(runtime)
+            return {"complete": True, "residual_paths": [], "residual_layer_ids": [], "errors": [], "retry_recommended": False}
+        if _processing_runtime_requires_retention(runtime):
+            return {**_processing_cleanup_receipt(runtime), "defer_eviction": True}
+        # Called under the job-store lock. Never hash or recover files here.
+        receipt = _processing_cleanup_receipt(runtime)
         runtime.release_completed_objects(keep_context=False)
-        return cleanup
+        return receipt
 
     def _run_main_thread(self, job_id: str, category: str) -> None:
         try:
@@ -843,20 +1001,11 @@ class ProcessingJobManager:
         if (
             not accepting
             or runtime.generation != current_generation
-            or snapshot["state"] != "queued"
+            or snapshot["state"] not in {"queued", "running"}
             or snapshot.get("cancel_requested")
         ):
             if snapshot["state"] not in TERMINAL_JOB_STATES:
-                _cleanup_processing_runtime_outputs(runtime)
-                self.store.transition(
-                    job_id,
-                    "cancelled",
-                    category,
-                    cancel_requested=True,
-                    finished_at=utc_now_rfc3339(),
-                    cleanup=_processing_cleanup_receipt(runtime),
-                )
-                runtime.release_completed_objects(keep_context=False)
+                self._finish_cancelled(job_id, category, runtime)
             return
         self.store.transition(
             job_id,
@@ -864,6 +1013,7 @@ class ProcessingJobManager:
             category,
             started_at=utc_now_rfc3339(),
             progress_text="Processing algorithm started",
+            algorithm_executed=True, phase="execute",
         )
         try:
             results = self._main_thread_runner()(
@@ -888,7 +1038,10 @@ class ProcessingJobManager:
             snapshot = self.store.get(job_id, category)
         except RuntimeError:
             return
-        if snapshot["state"] != "queued":
+        if snapshot["state"] == "cancelling":
+            self._safe_patch(job_id, category, algorithm_executed=True, phase="execute")
+            return
+        if snapshot["state"] not in {"queued", "running"}:
             return
         self.store.transition(
             job_id,
@@ -896,232 +1049,163 @@ class ProcessingJobManager:
             category,
             started_at=utc_now_rfc3339(),
             progress_text="Processing algorithm started",
+            algorithm_executed=True, phase="execute",
         )
 
-    def _on_task_executed(
-        self, job_id: str, category: str, successful: bool, results: Any
-    ) -> None:
+    def _on_task_executed(self, job_id, category, successful, results):
         try:
             runtime = self.store.get_runtime(job_id, category)
             snapshot = self.store.get(job_id, category)
         except RuntimeError:
             return
-        if snapshot["state"] in TERMINAL_JOB_STATES:
-            self._release_finished_runtime(job_id, category, runtime)
+        if snapshot["state"] in TERMINAL_JOB_STATES or runtime.algorithm_result_received:
             return
-        with self._lock:
-            accepting = self._accepting
-        if not accepting and snapshot.get("cancel_requested"):
-            _cleanup_processing_runtime_outputs(runtime)
-            self.store.transition(
-                job_id,
-                "cancelled",
-                category,
-                cancel_requested=True,
-                finished_at=utc_now_rfc3339(),
-                progress_text="Processing completed after bridge shutdown and was discarded",
-                cleanup=_processing_cleanup_receipt(runtime),
-            )
-            runtime.release_completed_objects(keep_context=False)
-            return
-        cancelled = (
-            _call_boolean(runtime.feedback, "isCanceled")
-            or _call_boolean(runtime.task, "isCanceled")
+        runtime.algorithm_result_received = True
+        runtime.phase = "verify_outputs" if successful else "cleanup"
+        self._safe_patch(
+            job_id, category, phase=runtime.phase, cancellable=bool(successful),
+            phase_progress={"bytes_completed": 0, "bytes_total": 0},
         )
-        if successful:
-            self._finish_succeeded(job_id, category, results, runtime)
-        elif cancelled:
-            _cleanup_processing_runtime_outputs(runtime)
-            self.store.transition(
-                job_id,
-                "cancelled",
-                category,
-                cancel_requested=True,
-                finished_at=utc_now_rfc3339(),
-                progress_text="Processing algorithm cancelled",
-                cleanup=_processing_cleanup_receipt(runtime),
-            )
-        else:
-            self._finish_failed(
-                job_id,
-                category,
-                "algorithm_execution_failed",
-                "execute",
-                "Processing algorithm reported an unsuccessful result",
+        try:
+            self._defer_continuation(
                 runtime,
-                details={"results": json_safe_value(results)},
+                lambda: self._algorithm_completion(
+                    job_id, category, runtime, successful, results),
             )
-
-    def _on_task_terminated(self, job_id: str, category: str) -> None:
-        try:
-            runtime = self.store.get_runtime(job_id, category)
-            snapshot = self.store.get(job_id, category)
-        except RuntimeError:
-            return
-        if snapshot["state"] in TERMINAL_JOB_STATES:
-            self._release_finished_runtime(job_id, category, runtime)
-            return
-        if _call_boolean(runtime.task, "isCanceled") or _call_boolean(
-            runtime.feedback, "isCanceled"
-        ):
-            _cleanup_processing_runtime_outputs(runtime)
-            self.store.transition(
-                job_id,
-                "cancelled",
-                category,
-                cancel_requested=True,
-                finished_at=utc_now_rfc3339(),
-                progress_text="Processing algorithm cancelled",
-                cleanup=_processing_cleanup_receipt(runtime),
-            )
-            return
-        self._finish_failed(
-            job_id,
-            category,
-            "task_terminated",
-            "execute",
-            "Processing task terminated unexpectedly",
-            runtime,
-        )
-
-    def _finish_succeeded(
-        self,
-        job_id: str,
-        category: str,
-        results: Any,
-        runtime: _ProcessingRuntime,
-    ) -> dict[str, Any]:
-        try:
-            current = self.store.get(job_id, category)
-            if current["state"] in TERMINAL_JOB_STATES:
-                return current
-            published_results = results
-            if runtime.output_stages:
-                _validate_processing_versions(
-                    runtime.authorized_input_versions,
-                    "Processing input changed while the job was running",
-                )
-                _validate_processing_stage_targets(runtime.output_stages)
-                runtime.output_promotion_receipt = _promote_processing_outputs(
-                    runtime.output_stages,
-                    overwrite=runtime.overwrite_outputs,
-                )
-                runtime.output_promotion_state = "promoted"
-                published_results = _rewrite_processing_output_results(
-                    results,
-                    runtime.output_stages,
-                )
-                _rewrite_processing_context_layer_destinations(
-                    runtime.context,
-                    runtime.output_stages,
-                )
-            if runtime.add_outputs_to_project:
-                runtime.postprocess_initial_layer_ids = _processing_project_layer_ids()
-                loaded = self._post_processor()(
-                    runtime.algorithm,
-                    runtime.context,
-                    runtime.feedback,
-                    published_results,
-                )
-                if loaded is False:
-                    raise RuntimeError("One or more result layers could not be loaded")
-                runtime.postprocess_initial_layer_ids = None
-            runtime.retain_context_for_results = bool(
-                not runtime.add_outputs_to_project
-                and _processing_results_require_context(
-                    published_results,
-                    runtime.context,
-                )
-            )
-            cleanup_residuals = []
-            if runtime.output_promotion_receipt is not None:
-                runtime.output_promotion_state = "published_success"
-                cleanup_residuals.extend(
-                    _commit_processing_output_promotion(
-                        runtime.output_promotion_receipt
-                    )
-                )
-                if not cleanup_residuals:
-                    runtime.output_promotion_receipt = None
-                    runtime.output_promotion_state = "none"
-            stage_residuals = _cleanup_processing_stages(runtime.output_stages)
-            cleanup_residuals.extend(stage_residuals)
-            if not stage_residuals:
-                runtime.output_stages.clear()
-            runtime.cleanup_residual_paths = sorted(set(cleanup_residuals))
-            completed = self.store.transition(
-                job_id,
-                "succeeded",
-                category,
-                progress_percent=100.0,
-                progress_text="Processing algorithm completed",
-                finished_at=utc_now_rfc3339(),
-                error=None,
-                result=json_safe_value(published_results),
-                cleanup=_processing_cleanup_receipt(runtime),
-            )
-            if runtime.task is None and _processing_cleanup_receipt(runtime)[
-                "complete"
-            ]:
-                runtime.release_completed_objects(
-                    keep_context=runtime.retain_context_for_results
-                )
-            return completed
         except Exception as err:
-            return self._finish_failed(
-                job_id,
-                category,
-                "output_postprocessing_failed",
-                "postprocess",
-                str(err),
-                runtime,
-            )
+            self._continuation_schedule_failed(job_id, category, runtime, err)
 
-    def _finish_failed(
-        self,
-        job_id: str,
-        category: str,
-        code: str,
-        stage: str,
-        message: str,
-        runtime: _ProcessingRuntime,
-        details: Any = None,
-    ) -> dict[str, Any]:
-        _cleanup_processing_runtime_outputs(runtime)
-        cleanup_details = _processing_cleanup_receipt(runtime)
-        if not cleanup_details["complete"]:
-            details = {
-                "original_error": {
-                    "code": code,
-                    "stage": stage,
-                    "details": details,
-                },
-                "cleanup": cleanup_details,
-            }
-            code = "output_state_indeterminate"
-            message = (
-                f"{message}. Output cleanup was incomplete, inspect residual_paths"
+    def _algorithm_completion(self, job_id, category, runtime, successful, results, *, terminated=False):
+        cancelled = (runtime.cancel_event.is_set() or _call_boolean(runtime.feedback, "isCanceled")
+                     or _call_boolean(runtime.task, "isCanceled") or runtime.generation != self._generation)
+        if cancelled:
+            self._finish_cancelled(job_id, category, runtime)
+        elif successful:
+            self._finish_succeeded(job_id, category, results, runtime)
+        elif terminated:
+            self._finish_failed(job_id, category, "task_terminated", "execute", "Processing task terminated unexpectedly", runtime)
+        else:
+            self._finish_failed(job_id, category, "algorithm_execution_failed", "execute",
+                                "Processing algorithm reported an unsuccessful result", runtime,
+                                details={"results": json_safe_value(results)})
+
+    def _on_task_terminated(self, job_id, category):
+        try:
+            runtime = self.store.get_runtime(job_id, category)
+            snapshot = self.store.get(job_id, category)
+        except RuntimeError:
+            return
+        if (snapshot["state"] in TERMINAL_JOB_STATES or runtime.file_task is not None
+                or runtime.algorithm_result_received or runtime.pending_callbacks
+                or runtime.phase != "execute"):
+            return
+        runtime.algorithm_result_received = True
+        runtime.phase = "cleanup"
+        try:
+            self._defer_continuation(
+                runtime,
+                lambda: self._algorithm_completion(
+                    job_id, category, runtime, False, {}, terminated=True),
             )
+        except Exception as err:
+            self._continuation_schedule_failed(job_id, category, runtime, err)
+
+    def _finish_succeeded(self, job_id, category, results, runtime):
+        current = self.store.get(job_id, category)
+        if current["state"] in TERMINAL_JOB_STATES:
+            return current
+        runtime.pending_results = results
+        try:
+            _validate_processing_versions(
+                [v for v in runtime.authorized_input_versions if v.get("kind") == "project_layer"],
+                "Processing project input changed while the job was running",
+            )
+            if runtime.output_stages:
+                runtime.output_promotion_receipt = _new_processing_output_promotion_receipt()
+            self._submit_file_work(job_id, category, runtime, "verify_outputs",
+                                   lambda: _processing_verify_and_publish(runtime),
+                                   lambda _: self._outputs_published(job_id, category, runtime))
+        except Exception as err:
+            return self._finish_failed(job_id, category, "output_postprocessing_failed", "postprocess", str(err), runtime)
+        return self.store.get(job_id, category)
+
+    def _outputs_published(self, job_id, category, runtime):
+        self._safe_patch(job_id, category, phase="load_outputs", cancellable=False,
+                         input_cache_changes=list(runtime.cache_changes))
+        published_results = _rewrite_processing_output_results(runtime.pending_results, runtime.output_stages)
+        _rewrite_processing_context_layer_destinations(runtime.context, runtime.output_stages)
+        if runtime.add_outputs_to_project:
+            runtime.postprocess_initial_layer_ids = _processing_project_layer_ids()
+            loaded = self._post_processor()(runtime.algorithm, runtime.context, runtime.feedback, published_results)
+            if loaded is False:
+                raise RuntimeError("One or more result layers could not be loaded")
+            runtime.postprocess_initial_layer_ids = None
+        runtime.retain_context_for_results = bool(
+            not runtime.add_outputs_to_project and _processing_results_require_context(published_results, runtime.context))
+        runtime.pending_results = json_safe_value(published_results)
+        runtime.output_promotion_state = "published_success"
+        runtime.pending_terminal = {"state": "succeeded", "error": None,
+                                    "result": runtime.pending_results,
+                                    "progress_percent": 100.0,
+                                    "progress_text": "Processing algorithm completed"}
+        self._recover_runtime(job_id, category, runtime)
+
+    def _finish_cancelled(self, job_id, category, runtime):
+        runtime.cancel_event.set()
+        runtime.pending_terminal = {"state": "cancelled", "error": None,
+                                    "cancel_requested": True,
+                                    "progress_text": "Processing job cancelled"}
+        self._recover_runtime(job_id, category, runtime)
+        return self.store.get(job_id, category)
+
+    def _recover_runtime(self, job_id, category, runtime):
+        if runtime.file_task is not None or runtime.scheduling_algorithm or runtime.pending_callbacks:
+            return
+        _cleanup_processing_project_layers(runtime)
+        def recovered(_):
+            receipt = _processing_cleanup_receipt(runtime)
+            snapshot = self.store.get(job_id, category)
+            if snapshot["state"] in TERMINAL_JOB_STATES:
+                self.store.patch_cleanup_receipt(
+                    job_id, receipt, category,
+                    refresh_retention=receipt["complete"],
+                )
+            else:
+                terminal = dict(runtime.pending_terminal or {"state": "failed", "error": {"code": "cleanup_failed"}})
+                state = terminal.pop("state")
+                if not receipt["complete"] and state != "succeeded":
+                    terminal["error"] = {"code": "output_state_indeterminate", "stage": "cleanup",
+                                         "message": "Output cleanup was incomplete, inspect residual_paths",
+                                         "details": {"original_error": terminal.get("error"), "cleanup": receipt}}
+                    state = "failed"
+                self.store.transition(job_id, state, category, phase="complete", cancellable=False,
+                                      finished_at=utc_now_rfc3339(), cleanup=receipt, **terminal)
+            if runtime.task is None and receipt["complete"]:
+                runtime.release_completed_objects(keep_context=runtime.retain_context_for_results)
+        if not runtime.output_stages and runtime.output_promotion_receipt is None:
+            previous_file_errors = set(runtime.cleanup_file_errors)
+            runtime.cleanup_errors = [e for e in runtime.cleanup_errors if e not in previous_file_errors]
+            runtime.cleanup_file_errors.clear()
+            runtime.cleanup_residual_paths.clear()
+            recovered(None)
+            return
+        try:
+            self._submit_file_work(job_id, category, runtime, "cleanup",
+                                   lambda: _cleanup_processing_runtime_file_outputs(runtime), recovered,
+                                   recovery=True)
+        except Exception as err:
+            runtime.cleanup_file_errors.append(f"Could not schedule file recovery: {err}")
+            runtime.cleanup_residual_paths = _processing_known_recovery_paths(runtime)
+            recovered(None)
+
+    def _finish_failed(self, job_id, category, code, stage, message, runtime, details=None):
         with runtime.lock:
             feedback_messages = list(runtime.feedback_messages)
-        failed = self.store.transition(
-            job_id,
-            "failed",
-            category,
-            finished_at=utc_now_rfc3339(),
-            progress_text=message,
-            error={
-                "code": code,
-                "stage": stage,
-                "message": message,
-                "details": json_safe_value(details) if details is not None else None,
-                "feedback_messages": feedback_messages,
-            },
-            cleanup=cleanup_details,
-        )
-        if runtime.task is None and cleanup_details["complete"]:
-            runtime.release_completed_objects(keep_context=False)
-        return failed
+        runtime.pending_terminal = {"state": "failed", "progress_text": message,
+            "error": {"code": code, "stage": stage, "message": message,
+                      "details": json_safe_value(details), "feedback_messages": feedback_messages}}
+        self._recover_runtime(job_id, category, runtime)
+        return self.store.get(job_id, category)
 
     def _connect_feedback(
         self, job_id: str, category: str, runtime: _ProcessingRuntime
@@ -1213,32 +1297,23 @@ class ProcessingJobManager:
         except RuntimeError:
             pass
 
-    def _release_finished_runtime(
-        self,
-        job_id: str,
-        category: str,
-        runtime: _ProcessingRuntime,
-    ) -> None:
+    def _release_finished_runtime(self, job_id, category, runtime):
+        if runtime.file_task is not None or runtime.task is not None or runtime.pending_callbacks:
+            return
         try:
             snapshot = self.store.get(job_id, category)
         except RuntimeError:
             return
         if snapshot["state"] not in TERMINAL_JOB_STATES:
             return
-        _cleanup_processing_runtime_outputs(
-            runtime,
-            terminal_state=snapshot["state"],
-        )
-        self.store.patch_cleanup_receipt(
-            job_id,
-            _processing_cleanup_receipt(runtime),
-            category,
-        )
-        keep_context = bool(
-            snapshot["state"] == "succeeded"
-            and runtime.retain_context_for_results
-        )
-        runtime.release_completed_objects(keep_context=keep_context)
+        if (snapshot.get("cleanup") or {}).get("complete", True):
+            runtime.release_completed_objects(keep_context=runtime.retain_context_for_results)
+        else:
+            self._recover_runtime(job_id, category, runtime)
+
+    def _algorithm_task_destroyed(self, job_id, category, runtime):
+        runtime.task = None
+        self._release_finished_runtime(job_id, category, runtime)
 
     def _ensure_initialized(self) -> None:
         dependency = self._dependencies.get("ensure_initialized")
@@ -1611,7 +1686,7 @@ def _processing_output_plans(
                 f"destination: {path}. Use a new isolated output directory."
             )
         is_container = path.suffix.lower() in CONTAINER_OUTPUT_SUFFIXES
-        if is_container and path.exists():
+        if is_container and path.exists() and separator and options:
             raise RuntimeError(
                 "Processing cannot safely replace or append to an existing container "
                 f"destination: {path}. Use a new isolated container path."
@@ -1853,6 +1928,7 @@ def _processing_output_family_paths(path: Path) -> list[Path]:
 def _processing_input_versions(
     parameters: dict[str, Any],
     parameter_definitions: Any,
+    *, defer_files: bool = False,
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + MAX_PROCESSING_FINGERPRINT_SECONDS
     definitions = {str(item.name()): item for item in parameter_definitions or []}
@@ -1898,7 +1974,7 @@ def _processing_input_versions(
                             f"more than {MAX_PROCESSING_INPUT_VERSIONS} inputs"
                         )
     file_versions = [
-        _processing_file_version(path, deadline=deadline)
+        ({"path": str(path), "_pending_file": True} if defer_files else _processing_file_version(path, deadline=deadline))
         for path in sorted(paths.values(), key=lambda item: _path_identity(item))
     ]
     return file_versions + [layers[key] for key in sorted(layers)]
@@ -2191,43 +2267,69 @@ def _processing_file_version(
         "modified_ns": int(metadata.st_mtime_ns),
     }
     if path.is_file():
-        if metadata.st_size > MAX_PROCESSING_VERSION_FILE_BYTES:
+        if not in_file_work() and metadata.st_size > MAX_PROCESSING_VERSION_FILE_BYTES:
             raise RuntimeError(
                 "Could not establish a bounded strong file version for "
                 f"{path}: file exceeds {MAX_PROCESSING_VERSION_FILE_BYTES} bytes"
             )
         version["sha256"] = _processing_file_sha256(path, deadline=deadline)
+        after = path.stat()
+        if (metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            raise RuntimeError(f"Processing file changed while establishing its version: {path}")
     elif path.is_dir():
         manifest = _processing_directory_manifest(path, deadline=deadline)
         version.update(manifest)
     return version
 
 
-def _processing_file_sha256(
-    path: Path,
-    *,
-    deadline: float | None = None,
-) -> str:
-    deadline = (
-        time.monotonic() + MAX_PROCESSING_FINGERPRINT_SECONDS
-        if deadline is None
-        else float(deadline)
-    )
-    metadata = path.stat()
-    if metadata.st_size > MAX_PROCESSING_VERSION_FILE_BYTES:
-        raise RuntimeError(
-            "Could not establish a bounded strong file version for "
-            f"{path}: file exceeds {MAX_PROCESSING_VERSION_FILE_BYTES} bytes"
-        )
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while True:
+def _processing_file_sha256(path: Path, *, deadline: float | None = None, enforce_deadline: bool = False) -> str:
+    background = in_file_work()
+    deadline = time.monotonic() + MAX_PROCESSING_FINGERPRINT_SECONDS if deadline is None else float(deadline)
+    def identity(stat):
+        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+    before = path.stat()
+    if not background and before.st_size > MAX_PROCESSING_VERSION_FILE_BYTES:
+        raise RuntimeError(f"Could not establish a bounded strong file version for {path}: file exceeds {MAX_PROCESSING_VERSION_FILE_BYTES} bytes")
+    # File timestamps can remain unchanged for a same-size concurrent write,
+    # including after a Windows writer closes. Verify two complete observations
+    # instead of treating unchanged metadata as evidence of unchanged content.
+    # This remains a consistency check, not an atomic filesystem snapshot.
+    total = before.st_size * 2
+    report_file_progress(0, total)
+    observed_digest = None
+    for pass_index in range(2):
+        digest = hashlib.sha256()
+        completed = 0
+        check_file_cancelled()
+        with path.open("rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if identity(before) != identity(opened):
+                raise RuntimeError(f"Processing file changed before fingerprinting: {path}")
+            while completed < before.st_size:
+                check_file_cancelled()
+                if not background or enforce_deadline:
+                    _check_processing_fingerprint_deadline(deadline)
+                chunk = handle.read(min(1024 * 1024, before.st_size - completed))
+                if not chunk:
+                    raise RuntimeError(f"Processing file was truncated during fingerprinting: {path}")
+                digest.update(chunk)
+                completed += len(chunk)
+                report_file_progress(pass_index * before.st_size + completed, total)
+            after_handle = os.fstat(handle.fileno())
+            if handle.read(1) or identity(after_handle) != identity(opened) or after_handle.st_ctime_ns != opened.st_ctime_ns:
+                raise RuntimeError(f"Processing file changed during fingerprinting: {path}")
+        after_path = path.stat()
+        if identity(after_path) != identity(before) or after_path.st_ctime_ns != before.st_ctime_ns:
+            raise RuntimeError(f"Processing file changed after fingerprinting: {path}")
+        check_file_cancelled()
+        if not background or enforce_deadline:
             _check_processing_fingerprint_deadline(deadline)
-            chunk = handle.read(1024 * 1024)
-            if not chunk:
-                break
-            digest.update(chunk)
-    return digest.hexdigest()
+        current_digest = digest.hexdigest()
+        if observed_digest is not None and current_digest != observed_digest:
+            raise RuntimeError(f"Processing file changed between fingerprint observations: {path}")
+        observed_digest = current_digest
+    return observed_digest
 
 
 def _processing_directory_manifest(
@@ -2293,6 +2395,7 @@ def _processing_directory_manifest(
                         _processing_file_sha256(
                             entry_path,
                             deadline=deadline,
+                            enforce_deadline=True,
                         ).encode("ascii")
                     )
                 else:
@@ -2378,75 +2481,105 @@ def _promote_processing_outputs(
     stages: list[dict[str, Any]],
     *,
     overwrite: bool,
+    receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    receipt: dict[str, Any] = {
-        "published": [],
-        "published_versions": [],
-        "backups": [],
-        "backup_roots": [],
-        "rollback_complete": None,
-        "rollback_errors": [],
-        "residual_paths": [],
-    }
+    # The asynchronous caller owns the receipt throughout publication. The
+    # legacy standalone helper still rolls back on failure before returning.
+    caller_owns_receipt = receipt is not None
+    receipt = receipt if receipt is not None else _new_processing_output_promotion_receipt()
+    if receipt.get("published") or receipt.get("backups") or receipt.get("backup_roots"):
+        raise RuntimeError("Processing output receipt already contains a publication")
+    prepared = []
+    target_identities = set()
     try:
+        # Validate every stage before moving even the first existing target.
         for stage in stages:
-            staging_root = stage["staging_root"]
-            artifacts = sorted(staging_root.iterdir(), key=lambda item: item.name)
+            artifacts = sorted(stage["staging_root"].iterdir(), key=lambda item: item.name)
             if not artifacts:
                 raise RuntimeError(
                     "Processing completed without creating the staged output for "
                     f"{stage['parameter']}"
                 )
-            existing = [
-                path for path in stage["family_paths"] if path.exists()
-            ]
-            artifact_targets = [
-                stage["target"].parent / artifact.name for artifact in artifacts
-            ]
-            existing.extend(
-                path
-                for path in artifact_targets
-                if path.exists() and path not in existing
-            )
+            if stage["staged_target"] not in artifacts:
+                raise RuntimeError(
+                    "Processing completed without creating its requested output file for "
+                    f"{stage['parameter']}"
+                )
             authorized_versions = {
                 _path_identity(Path(item["path"])): item
                 for item in stage["authorized_versions"]
             }
-            for path in existing:
+            existing = []
+            for path in stage["family_paths"]:
                 expected = authorized_versions.get(_path_identity(path))
-                if expected is None:
-                    raise RuntimeError(
-                        "Processing produced an output sidecar which collided with an "
-                        f"unpreviewed existing path: {path}"
-                    )
-                if _processing_file_version(path) != expected:
+                current = _processing_file_version(path)
+                if expected is None or current != expected:
                     raise RuntimeError(
                         "Processing overwrite target changed after confirmation: "
                         f"{path}"
                     )
+                if current.get("exists"):
+                    existing.append(path)
+            artifact_plans = []
+            for artifact in artifacts:
+                if artifact.is_symlink():
+                    raise RuntimeError(
+                        f"Processing staged publication does not support symbolic links: {artifact}"
+                    )
+                version = _processing_file_version(artifact)
+                if not version.get("exists") or version.get("is_directory") or "sha256" not in version:
+                    raise RuntimeError(
+                        "Processing staged publication requires regular file outputs: "
+                        f"{artifact}"
+                    )
+                target = stage["target"].parent / artifact.name
+                identity = _path_identity(target)
+                if identity in target_identities:
+                    raise RuntimeError(f"Processing staged outputs resolve to the same target: {target}")
+                target_identities.add(identity)
+                if identity not in authorized_versions:
+                    target_version = _processing_file_version(target)
+                    if target_version.get("exists"):
+                        raise RuntimeError(
+                            "Processing produced an output sidecar which collided with an "
+                            f"unpreviewed existing path: {target}"
+                        )
+                artifact_plans.append((artifact, target, version))
             if existing and not overwrite:
                 raise FileExistsError(
-                    "Processing output appeared after preflight and was not "
-                    "overwritten: " + ", ".join(str(path) for path in existing)
+                    "Processing output appeared after preflight and was not overwritten: "
+                    + ", ".join(str(path) for path in existing)
                 )
-            if existing:
-                backup_root = Path(
-                    tempfile.mkdtemp(
-                        prefix=f".{stage['target'].stem}.qcopilots-backup-",
-                        dir=str(stage["target"].parent),
+            prepared.append((stage, authorized_versions, existing, artifact_plans))
+
+        for stage, authorized_versions, existing, artifact_plans in prepared:
+            # Earlier stages may have taken a long time to hash. Recheck the
+            # complete family, including paths which were originally absent.
+            for path in stage["family_paths"]:
+                if _processing_file_version(path) != authorized_versions[_path_identity(path)]:
+                    raise RuntimeError(
+                        f"Processing output family changed before publication: {path}"
                     )
-                )
+            if existing:
+                backup_root = Path(tempfile.mkdtemp(
+                    prefix=f".{stage['target'].stem}.qcopilots-backup-",
+                    dir=str(stage["target"].parent),
+                ))
                 receipt["backup_roots"].append(backup_root)
                 for index, path in enumerate(existing):
-                    backup = backup_root / f"{index}-{path.name}"
                     original_version = authorized_versions[_path_identity(path)]
+                    if _processing_file_version(path) != original_version:
+                        raise RuntimeError(
+                            f"Processing overwrite target changed before backup: {path}"
+                        )
+                    backup = backup_root / f"{index}-{path.name}"
                     os.replace(path, backup)
-                    backup_item = {
+                    # Record the move before any hashing can fail or be cancelled.
+                    receipt["backups"].append({
                         "backup": backup,
                         "target": path,
                         "original_version": original_version,
-                    }
-                    receipt["backups"].append(backup_item)
+                    })
                     moved_version = _processing_file_version(backup)
                     moved_version["path"] = str(path)
                     if moved_version != original_version:
@@ -2454,24 +2587,43 @@ def _promote_processing_outputs(
                             "Processing overwrite target changed while it was being "
                             f"backed up: {path}"
                         )
-            for artifact, target in zip(artifacts, artifact_targets):
-                if artifact.is_dir():
-                    raise RuntimeError(
-                        "Processing directory outputs are unsupported by staged "
-                        f"publication: {target}"
-                    )
+            for artifact, target, artifact_version in artifact_plans:
+                if _processing_file_version(artifact) != artifact_version:
+                    raise RuntimeError(f"Processing staged output changed before publication: {artifact}")
+                published_version = dict(artifact_version, path=str(target))
                 _link_processing_file_no_clobber(artifact, target)
-                artifact.unlink()
+                # The target exists from this instant. In particular, unlink of
+                # the staged name must not precede receipt registration.
                 receipt["published"].append(target)
-                receipt["published_versions"].append(
-                    {
-                        "target": target,
-                        "version": _processing_file_version(target),
-                    }
+                receipt["published_versions"].append({
+                    "target": target,
+                    "version": published_version,
+                })
+                artifact.unlink()
+                if _processing_file_version(target) != published_version:
+                    raise RuntimeError(f"Processing output changed during publication: {target}")
+        for stage, _authorized_versions, _existing, artifact_plans in prepared:
+            expected_targets = {
+                _path_identity(target): dict(version, path=str(target))
+                for _artifact, target, version in artifact_plans
+            }
+            final_family = set(stage["family_paths"])
+            final_family.update(target for _artifact, target, _version in artifact_plans)
+            for target in final_family:
+                expected = expected_targets.get(
+                    _path_identity(target), {"path": str(target), "exists": False}
                 )
+                if _processing_file_version(target) != expected:
+                    raise RuntimeError(
+                        f"Processing output family changed during publication: {target}"
+                    )
         return receipt
     except Exception as err:
-        rollback = _rollback_processing_output_promotion(receipt)
+        if caller_owns_receipt:
+            # The owner schedules recovery independently from operation cancel.
+            raise
+        with _processing_file_work_context(cancel_event=None, progress=None):
+            rollback = _rollback_processing_output_promotion(receipt)
         if not rollback["complete"]:
             raise RuntimeError(
                 f"{err}. Processing output rollback was incomplete, residual paths: "
@@ -2480,11 +2632,14 @@ def _promote_processing_outputs(
         raise
 
 
+
+
 def _rollback_processing_output_promotion(receipt: dict[str, Any]) -> dict[str, Any]:
+    # Every attempt replaces the previous attempt's errors. A successful retry
+    # must not be permanently poisoned by an old sharing violation.
     errors = []
     backups_by_target = {
-        _path_identity(item["target"]): item
-        for item in receipt.get("backups", [])
+        _path_identity(item["target"]): item for item in receipt.get("backups", [])
     }
     published_versions = {
         _path_identity(item["target"]): item["version"]
@@ -2507,55 +2662,46 @@ def _rollback_processing_output_promotion(receipt: dict[str, Any]) -> dict[str, 
                     "the output published by this job"
                 )
                 continue
-            _remove_processing_path(path)
+            if current.get("exists"):
+                _remove_processing_path(path)
         except Exception as err:
             errors.append(f"remove {path}: {err}")
     for item in reversed(receipt.get("backups", [])):
-        backup = item["backup"]
-        target = item["target"]
+        backup, target = item["backup"], item["target"]
+        original_signature = _processing_version_signature(item["original_version"])
         try:
-            if _processing_version_signature(
-                _processing_file_version(target)
-            ) == _processing_version_signature(item["original_version"]):
-                if backup.exists():
-                    _remove_processing_path(backup)
+            target_version = _processing_file_version(target)
+            backup_version = _processing_file_version(backup)
+            if _processing_version_signature(target_version) == original_signature:
+                if backup_version.get("exists"):
+                    if _processing_version_signature(backup_version) != original_signature:
+                        raise RuntimeError("backup content changed and was preserved")
+                    backup.unlink()
                 continue
-            if target.exists():
+            if target_version.get("exists"):
                 errors.append(
-                    f"retain concurrent target {target}: original backup remains at "
-                    f"{backup}"
+                    f"retain concurrent target {target}: original backup remains at {backup}"
                 )
                 continue
-            if backup.exists():
-                _link_processing_file_no_clobber(backup, target)
-                backup.unlink()
-            if _processing_version_signature(_processing_file_version(target)) != (
-                _processing_version_signature(item["original_version"])
-            ):
+            if _processing_version_signature(backup_version) != original_signature:
+                raise RuntimeError("backup is missing or no longer matches its original snapshot")
+            _link_processing_file_no_clobber(backup, target)
+            # Verify before dropping the last private name of the backup.
+            if _processing_version_signature(_processing_file_version(target)) != original_signature:
                 raise RuntimeError("restored content does not match its backup snapshot")
+            backup.unlink()
         except Exception as err:
             errors.append(f"restore {target}: {err}")
     for root in receipt.get("backup_roots", []):
         try:
             if root.exists():
-                outstanding_backups = [
-                    item["backup"]
-                    for item in receipt.get("backups", [])
-                    if item["backup"].exists()
-                    and item["backup"].parent == root
-                ]
-                if outstanding_backups:
-                    errors.append(
-                        "retain backup directory "
-                        f"{root}: restoration is incomplete"
-                    )
-                    continue
-                shutil.rmtree(root)
-                if root.exists():
-                    raise RuntimeError("directory still exists after removal")
+                # Never recursively remove an unexpected file from a backup
+                # directory while claiming that all original data was restored.
+                root.rmdir()
         except Exception as err:
             errors.append(f"remove backup directory {root}: {err}")
     residual_paths = _processing_receipt_residual_paths(receipt)
+    errors.extend(receipt.get("residual_errors", []))
     receipt["rollback_errors"] = errors
     receipt["residual_paths"] = residual_paths
     receipt["rollback_complete"] = not errors and not residual_paths
@@ -2566,17 +2712,36 @@ def _rollback_processing_output_promotion(receipt: dict[str, Any]) -> dict[str, 
     }
 
 
+
+
 def _commit_processing_output_promotion(receipt: dict[str, Any]) -> list[str]:
-    residuals = []
+    """Discard only known, unchanged backups after successful publication."""
+
+    residuals = set()
+    errors = []
+    for item in receipt.get("backups", []):
+        backup = item["backup"]
+        try:
+            version = _processing_file_version(backup)
+            if not version.get("exists"):
+                continue
+            if _processing_version_signature(version) != _processing_version_signature(item["original_version"]):
+                raise RuntimeError("backup content changed and was preserved")
+            backup.unlink()
+        except Exception as err:
+            errors.append(f"remove committed backup {backup}: {err}")
+            residuals.add(str(backup))
     for root in receipt.get("backup_roots", []):
         try:
             if root.exists():
-                shutil.rmtree(root)
-                if root.exists():
-                    raise RuntimeError("directory still exists after removal")
-        except Exception:
-            residuals.append(str(root))
-    return residuals
+                root.rmdir()
+        except Exception as err:
+            errors.append(f"remove committed backup directory {root}: {err}")
+            residuals.add(str(root))
+    receipt["commit_errors"] = errors
+    return sorted(residuals)
+
+
 
 
 def _cleanup_processing_stages(stages: list[dict[str, Any]]) -> list[str]:
@@ -2627,24 +2792,47 @@ def _processing_version_signature(version: dict[str, Any]) -> dict[str, Any]:
 
 
 def _processing_receipt_residual_paths(receipt: dict[str, Any]) -> list[str]:
+    """Keep auditing other paths even when one target cannot be fingerprinted."""
+
+    errors = []
+    residuals = set()
     backups_by_target = {
-        _path_identity(item["target"]): item
-        for item in receipt.get("backups", [])
+        _path_identity(item["target"]): item for item in receipt.get("backups", [])
     }
-    candidates = [
-        path
-        for path in receipt.get("published", [])
-        if _path_identity(path) not in backups_by_target
-    ]
+
+    def include_if_present(path):
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            return
+        except Exception as err:
+            errors.append(f"inspect residual {path}: {err}")
+        residuals.add(str(path))
+
+    for path in receipt.get("published", []):
+        if _path_identity(path) not in backups_by_target:
+            include_if_present(path)
     for item in backups_by_target.values():
-        current = _processing_file_version(item["target"])
-        if _processing_version_signature(current) != _processing_version_signature(
-            item["original_version"]
-        ):
-            candidates.append(item["target"])
-    candidates.extend(item["backup"] for item in receipt.get("backups", []))
-    candidates.extend(receipt.get("backup_roots", []))
-    return sorted({str(path) for path in candidates if path.exists()})
+        target = item["target"]
+        try:
+            current = _processing_file_version(target)
+            restored = _processing_version_signature(current) == (
+                _processing_version_signature(item["original_version"])
+            )
+            if not restored:
+                # A missing original is an unresolved target too. Do not hide
+                # it merely because Path.exists() returns False.
+                residuals.add(str(target))
+        except Exception as err:
+            errors.append(f"inspect restored target {target}: {err}")
+            residuals.add(str(target))
+        include_if_present(item["backup"])
+    for root in receipt.get("backup_roots", []):
+        include_if_present(root)
+    receipt["residual_errors"] = errors
+    return sorted(residuals)
+
+
 
 
 def _validate_processing_versions(
@@ -2796,14 +2984,31 @@ def _processing_cleanup_receipt(runtime: _ProcessingRuntime) -> dict[str, Any]:
         runtime.cleanup_residual_paths
         or runtime.cleanup_residual_layer_ids
         or runtime.cleanup_errors
+        or runtime.cleanup_file_errors
+        or runtime.output_stages
+        or runtime.output_promotion_receipt is not None
+        or runtime.file_task is not None
+        or runtime.scheduling_algorithm
     )
     return {
         "complete": complete,
         "residual_paths": list(runtime.cleanup_residual_paths),
         "residual_layer_ids": list(runtime.cleanup_residual_layer_ids),
-        "errors": list(runtime.cleanup_errors),
+        "errors": list(dict.fromkeys(runtime.cleanup_errors + runtime.cleanup_file_errors)),
         "retry_recommended": not complete,
     }
+
+
+def _processing_runtime_requires_retention(runtime: Any) -> bool:
+    """Keep complete recovery ownership until all tasks and cleanup finish."""
+    return isinstance(runtime, _ProcessingRuntime) and bool(
+        runtime.task is not None
+        or runtime.file_task is not None
+        or runtime.file_callbacks
+        or runtime.pending_callbacks
+        or runtime.scheduling_algorithm
+        or not _processing_cleanup_receipt(runtime)["complete"]
+    )
 
 
 def _processing_project_layer_ids() -> set[str]:
@@ -2965,6 +3170,10 @@ def _job_summary(snapshot: dict[str, Any]) -> dict[str, Any]:
         "category",
         "client_request_id",
         "state",
+        "operation",
+        "phase",
+        "phase_progress",
+        "algorithm_executed",
         "execution_mode",
         "cancellable",
         "algorithm",
@@ -3046,3 +3255,194 @@ def _call_boolean(owner: Any, name: str) -> bool:
         return bool(getattr(owner, name)())
     except Exception:
         return False
+
+
+def _processing_raster_band_counts(templates):
+    counts = {}
+    for item in templates:
+        if not item.get("_pending_file"):
+            continue
+        path = Path(item["path"])
+        if path.suffix.lower() not in {".tif", ".tiff", ".vrt"} or not path.is_file():
+            continue
+        # Constructing a layer also creates a default renderer, which can
+        # calculate statistics and write PAM caches before the input snapshot.
+        # A provider-only metadata read has no renderer or project ownership.
+        from qgis.core import QgsDataProvider, QgsProviderRegistry
+        provider = QgsProviderRegistry.instance().createProvider(
+            "gdal", str(path), QgsDataProvider.ProviderOptions())
+        if provider is not None and provider.isValid():
+            counts[_path_identity(path)] = int(provider.bandCount())
+    return counts
+
+
+def _processing_input_file_version(path, band_counts):
+    version = _processing_file_version(path)
+    if str(path).lower().endswith(".aux.xml"):
+        primary = Path(str(path)[:-8])
+        cache = capture_input_cache(path, band_count=band_counts.get(_path_identity(primary)))
+        if cache is not None:
+            # A second read must describe the exact version just fingerprinted.
+            same = not version.get("exists") and not cache.get("exists")
+            if version.get("exists") and cache.get("exists"):
+                signature = cache.get("file_signature") or {}
+                same = (cache.get("file_sha256") == version.get("sha256")
+                        and signature.get("size") == version.get("size")
+                        and signature.get("modified_ns") == version.get("modified_ns"))
+            if same:
+                version["input_cache"] = cache
+    return version
+
+
+def _processing_exact_file_version(version):
+    return {key: value for key, value in version.items() if key != "input_cache"}
+
+
+def _processing_known_recovery_paths(runtime):
+    """Conservative paths requiring verification, without doing I/O or hashing."""
+    paths = list(runtime.cleanup_residual_paths)
+    paths.extend(str(stage["staging_root"]) for stage in runtime.output_stages)
+    receipt = runtime.output_promotion_receipt or {}
+    paths.extend(str(path) for path in receipt.get("published", []))
+    paths.extend(str(path) for path in receipt.get("backup_roots", []))
+    for item in receipt.get("backups", []):
+        paths.extend((str(item["backup"]), str(item["target"])))
+    return sorted(set(paths))
+
+
+def _processing_file_preflight(runtime):
+    inputs = [
+        _processing_input_file_version(Path(item["path"]), runtime.band_counts)
+        if item.get("_pending_file") else copy.deepcopy(item)
+        for item in runtime.input_templates
+    ]
+    input_paths = {_path_identity(Path(v["path"])) for v in inputs if v.get("kind", "file") == "file"}
+    output_paths = set()
+    outputs = []
+    for plan in runtime.output_plans:
+        for path in plan["family_paths"]:
+            identity = _path_identity(path)
+            if identity in input_paths:
+                raise RuntimeError(f"Processing input and output paths must be different: {path}")
+            if identity in output_paths:
+                raise RuntimeError(f"Processing output parameters resolve to the same file family: {path}")
+            output_paths.add(identity)
+            outputs.append({"parameter": plan["parameter"], **_processing_file_version(path)})
+    collisions = [v for v in outputs if v["exists"]]
+    approval = {"inputs": inputs, "outputs": outputs}
+    if collisions and any(v.get("kind") == "project_layer" and not v.get("immutable_file_snapshot", False) for v in inputs):
+        raise RuntimeError("Confirmed Processing overwrites require immutable local file snapshots for every QGIS project layer input")
+    if runtime.operation == "preview":
+        return {"input_versions": inputs, "collisions": collisions, "approval_snapshot": approval}
+    if runtime.approved_snapshot is not None:
+        if approval != runtime.approved_snapshot:
+            raise RuntimeError("Processing inputs or overwrite targets changed after preview. Request a new confirmation token.")
+    elif collisions:
+        raise FileExistsError("Processing output destination already exists. Request an exact overwrite preview before approving these targets: " + ", ".join(v["path"] for v in collisions))
+    parameters = dict(runtime.parameters)
+    stages = runtime.output_stages
+    for plan in runtime.output_plans:
+        check_file_cancelled()
+        target = plan["target"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        root = Path(tempfile.mkdtemp(prefix=f".{target.stem}.qcopilots-stage-", dir=str(target.parent)))
+        stage = {**plan, "staging_root": root, "staged_target": root / target.name,
+                 "authorized_versions": [{k: v for k, v in item.items() if k != "parameter"}
+                                         for item in outputs if item["parameter"] == plan["parameter"]]}
+        stages.append(stage)
+        parameters[plan["parameter"]] = _replace_processing_output_path(parameters[plan["parameter"]], stage["staged_target"])
+    return {"input_versions": inputs, "collisions": collisions, "parameters": parameters, "stages": stages}
+
+
+def _processing_verify_input_files(runtime):
+    expected_files = [v for v in runtime.authorized_input_versions if v.get("kind", "file") == "file"]
+    current_files = {_path_identity(Path(v["path"])): _processing_input_file_version(Path(v["path"]), runtime.band_counts) for v in expected_files}
+    expected_by_path = {_path_identity(Path(v["path"])): v for v in expected_files}
+    changed = []
+    for expected in expected_files:
+        path = Path(expected["path"])
+        current = current_files[_path_identity(path)]
+        if _processing_exact_file_version(current) == _processing_exact_file_version(expected):
+            continue
+        accepted = None
+        if str(path).lower().endswith(".aux.xml"):
+            primary_key = _path_identity(Path(str(path)[:-8]))
+            before_primary = expected_by_path.get(primary_key)
+            now_primary = current_files.get(primary_key)
+            if before_primary is not None and now_primary == before_primary:
+                accepted = compare_input_cache(expected.get("input_cache"), current.get("input_cache"))
+        if accepted is None:
+            changed.append(str(path))
+        else:
+            runtime.cache_changes.extend(accepted)
+    if changed:
+        raise RuntimeError("Processing input changed while the job was running: " + ", ".join(changed))
+
+
+def _processing_verify_and_publish(runtime):
+    _processing_verify_input_files(runtime)
+    _validate_processing_stage_targets(runtime.output_stages)
+    check_file_cancelled()
+    if runtime.output_stages:
+        runtime.phase = "publish"
+        _promote_processing_outputs(runtime.output_stages, overwrite=runtime.overwrite_outputs,
+                                    receipt=runtime.output_promotion_receipt)
+        runtime.output_promotion_state = "promoted"
+
+
+def _new_processing_output_promotion_receipt() -> dict[str, Any]:
+    """Create the receipt before the first mutation of a public output."""
+
+    return {
+        "published": [],
+        "published_versions": [],
+        "backups": [],
+        "backup_roots": [],
+        "rollback_complete": None,
+        "rollback_errors": [],
+        "residual_errors": [],
+        "residual_paths": [],
+    }
+
+
+
+
+def _cleanup_processing_runtime_file_outputs(
+    runtime: _ProcessingRuntime,
+    *,
+    terminal_state: str | None = None,
+) -> None:
+    """File-only recovery, called after project-layer cleanup on its owner thread."""
+
+    cleanup_residuals = []
+    file_errors = []
+    if runtime.output_promotion_receipt is not None:
+        successful_publication = (
+            runtime.output_promotion_state == "published_success"
+            or terminal_state == "succeeded"
+        )
+        if successful_publication:
+            runtime.output_promotion_state = "published_success"
+            cleanup_residuals.extend(_commit_processing_output_promotion(runtime.output_promotion_receipt))
+            file_errors.extend(runtime.output_promotion_receipt.get("commit_errors", []))
+            if not cleanup_residuals and not file_errors:
+                runtime.output_promotion_receipt = None
+                runtime.output_promotion_state = "none"
+        else:
+            rollback = _rollback_processing_output_promotion(runtime.output_promotion_receipt)
+            cleanup_residuals.extend(rollback["residual_paths"])
+            file_errors.extend(rollback["errors"])
+            if rollback["complete"]:
+                runtime.output_promotion_receipt = None
+                runtime.output_promotion_state = "none"
+    residuals = _cleanup_processing_stages(runtime.output_stages)
+    cleanup_residuals.extend(residuals)
+    if not residuals:
+        runtime.output_stages.clear()
+    else:
+        file_errors.extend(f"remove Processing staging directory {path}: cleanup incomplete" for path in residuals)
+    previous_file_errors = set(getattr(runtime, "cleanup_file_errors", []))
+    runtime.cleanup_errors = [error for error in runtime.cleanup_errors if error not in previous_file_errors]
+    runtime.cleanup_file_errors = list(file_errors)
+    runtime.cleanup_errors.extend(file_errors)
+    runtime.cleanup_residual_paths = sorted(set(cleanup_residuals))

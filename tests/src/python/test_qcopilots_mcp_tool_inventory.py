@@ -37,7 +37,6 @@ EXPECTED_TOOLS = {
         "exec_shell_command",
         "write_file",
         "edit_file",
-        "get_datetime",
     ],
     "qcopilots_mcp_server_skills": [
         "list_skills",
@@ -127,7 +126,7 @@ EXPECTED_TOOLS = {
 }
 
 EXPECTED_COUNTS = {
-    "qcopilots_mcp_server_builtin_tools": 9,
+    "qcopilots_mcp_server_builtin_tools": 8,
     "qcopilots_mcp_server_skills": 5,
     "qcopilots_mcp_server_interactive_tools": 33,
     "qcopilots_mcp_server_processing_vector": 6,
@@ -304,7 +303,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                 ),
             }
 
-    def test_manifests_define_the_exact_82_tool_surface(self):
+    def test_manifests_define_the_exact_tool_surface(self):
         with tempfile.TemporaryDirectory(prefix="qcopilots-inventory-") as workspace:
             surfaces = self._build_surfaces(Path(workspace))
 
@@ -334,7 +333,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         self.assertEqual(descriptor["inputSchema"]["type"], "object")
                     all_names.extend(actual_names)
 
-            self.assertEqual(len(all_names), 82)
+            self.assertEqual(len(all_names), 81)
             self.assertEqual(len(all_names), len(set(all_names)))
 
     def test_minimal_arguments_supports_any_of_array_items(self):
@@ -383,7 +382,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
         self.assertEqual(arguments["updates"][0]["feature_id"], 0)
         self.assertTrue(arguments["updates"][0]["attributes"])
 
-    def test_all_82_descriptors_preserve_parameters_and_canonical_schemas(self):
+    def test_all_descriptors_preserve_parameters_and_canonical_schemas(self):
         """The advertised schema must not hide parameters or alter validation."""
         with tempfile.TemporaryDirectory(prefix="qcopilots-schema-inventory-") as workspace:
             surfaces = self._build_surfaces(Path(workspace))
@@ -422,7 +421,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
 
             self.assertEqual(normalized_names, NORMALIZED_SCHEMA_TOOLS)
 
-    def test_all_82_tool_contracts_complete_http_lifecycle_list_and_call(self):
+    def test_all_tool_contracts_complete_http_lifecycle_list_and_call(self):
         """Exercise every public wrapper over HTTP with a recording QGIS bridge.
 
         Functional QGIS state and subprocess behavior is covered by the focused
@@ -766,7 +765,6 @@ def _builtin_call_arguments(workspace):
             "replace": "updated",
             "expected_sha256": written_sha256,
         },
-        "get_datetime": {"timezone": "UTC"},
     }
 
 

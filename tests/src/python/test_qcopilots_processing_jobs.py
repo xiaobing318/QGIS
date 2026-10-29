@@ -122,6 +122,9 @@ class FakeFeedback:
     def isCanceled(self):
         return self.cancelled
 
+    def cancel(self):
+        self.cancelled = True
+
 
 class FakeTask:
     def __init__(self, *, cancellable=True):
@@ -271,6 +274,19 @@ class FakeProcessingEnvironment:
         self.initialized = 0
 
     def dependencies(self):
+        def file_runner(function, completed, cancel_event, progress):
+            # Deterministic unit scheduler. Production runs the same file-only
+            # function in a QgsTask and invokes completion on the main thread.
+            from qcopilots_common.processing_file_worker import file_work_context
+
+            try:
+                with file_work_context(cancel_event, progress):
+                    value = function()
+            except Exception as error:
+                completed(error, None)
+            else:
+                completed(None, value)
+
         def feedback_factory():
             feedback = FakeFeedback()
             self.feedback.append(feedback)
@@ -295,6 +311,8 @@ class FakeProcessingEnvironment:
             return True
 
         return {
+            "file_runner": file_runner,
+            "continuation_scheduler": lambda callback: callback(),
             "ensure_initialized": self._initialize,
             "registry": self.registry,
             "context_factory": lambda feedback: {"feedback": feedback},
@@ -967,9 +985,9 @@ class TestProcessingJobManager(unittest.TestCase):
             original = processing_jobs._processing_input_versions
             calls = []
 
-            def counted(parameters, parameter_definitions):
+            def counted(parameters, parameter_definitions, **kwargs):
                 calls.append(1)
-                return original(parameters, parameter_definitions)
+                return original(parameters, parameter_definitions, **kwargs)
 
             with mock.patch.object(
                 processing_jobs,
@@ -1031,7 +1049,9 @@ class TestProcessingJobManager(unittest.TestCase):
     def test_shutdown_retries_terminal_success_and_failure_cleanup(self):
         import qcopilots_common.processing_jobs as processing_jobs
 
-        manager = ProcessingJobManager()
+        manager = ProcessingJobManager(
+            dependencies=FakeProcessingEnvironment([]).dependencies()
+        )
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             stages = []
@@ -1122,7 +1142,7 @@ class TestProcessingJobManager(unittest.TestCase):
         )
         self.assertIsNone(removal_failure.postprocess_initial_layer_ids)
 
-    def test_evicted_processing_runtime_drops_heavy_objects_after_cleanup_failure(self):
+    def test_incomplete_processing_runtime_retains_full_recovery_ownership(self):
         import qcopilots_common.processing_jobs as processing_jobs
 
         runtime = processing_jobs._ProcessingRuntime(
@@ -1134,26 +1154,25 @@ class TestProcessingJobManager(unittest.TestCase):
             generation=0,
             postprocess_initial_layer_ids={"initial"},
             task=object(),
+            cleanup_residual_layer_ids=["added"],
+            cleanup_errors=["project removal failed"],
         )
-
-        def incomplete_cleanup(candidate, **_kwargs):
-            candidate.cleanup_residual_layer_ids = ["added"]
-            candidate.cleanup_errors = ["project removal failed"]
 
         with mock.patch.object(
             processing_jobs,
             "_cleanup_processing_runtime_outputs",
-            side_effect=incomplete_cleanup,
-        ):
+        ) as cleanup:
             receipt = ProcessingJobManager._cleanup_evicted_runtime("job", runtime)
 
+        cleanup.assert_not_called()
         self.assertFalse(receipt["complete"])
+        self.assertTrue(receipt["defer_eviction"])
         self.assertEqual(receipt["residual_layer_ids"], ["added"])
-        self.assertIsNone(runtime.algorithm)
-        self.assertEqual(runtime.parameters, {})
-        self.assertIsNone(runtime.context)
-        self.assertIsNone(runtime.feedback)
-        self.assertIsNone(runtime.task)
+        self.assertIsNotNone(runtime.algorithm)
+        self.assertIn("payload", runtime.parameters)
+        self.assertIsNotNone(runtime.context)
+        self.assertIsNotNone(runtime.feedback)
+        self.assertIsNotNone(runtime.task)
 
     def test_general_category_rejects_unsafe_policy_before_job_creation(self):
         destination = FakeProcessingDefinition(
@@ -1202,7 +1221,8 @@ class TestProcessingJobManager(unittest.TestCase):
             }
         )
         self.assertEqual(started["category"], "general")
-        self.assertEqual(started["state"], "queued")
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "execute")
         environment.tasks[0].taskTerminated.emit()
 
     def test_general_database_package_starts_but_external_database_write_is_rejected(self):
@@ -1258,7 +1278,8 @@ class TestProcessingJobManager(unittest.TestCase):
             }
         )
         self.assertEqual(started["category"], "general")
-        self.assertEqual(started["state"], "queued")
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "execute")
         environment.tasks[0].taskTerminated.emit()
 
     def test_successful_publication_cleanup_retry_never_rolls_back_output(self):
@@ -1287,18 +1308,18 @@ class TestProcessingJobManager(unittest.TestCase):
                 output_promotion_receipt=receipt,
                 output_promotion_state="published_success",
             )
-            real_rmtree = processing_jobs.shutil.rmtree
-            backup_roots = {Path(path) for path in receipt["backup_roots"]}
+            real_unlink = Path.unlink
+            backup_paths = {Path(item["backup"]) for item in receipt["backups"]}
 
             def lock_backup_once(path, *arguments, **kwargs):
-                if Path(path) in backup_roots:
+                if Path(path) in backup_paths:
                     raise PermissionError("backup cleanup locked")
-                return real_rmtree(path, *arguments, **kwargs)
+                return real_unlink(path, *arguments, **kwargs)
 
             with mock.patch.object(
-                processing_jobs.shutil,
-                "rmtree",
-                side_effect=lock_backup_once,
+                Path,
+                "unlink",
+                new=lock_backup_once,
             ):
                 processing_jobs._cleanup_processing_runtime_outputs(
                     runtime,
@@ -1312,10 +1333,17 @@ class TestProcessingJobManager(unittest.TestCase):
             job_id = str(uuid.uuid4())
             store.create(
                 "vector",
-                {"job_id": job_id, "state": "succeeded", "cleanup": {}},
+                {
+                    "job_id": job_id,
+                    "state": "succeeded",
+                    "cleanup": processing_jobs._processing_cleanup_receipt(runtime),
+                },
                 runtime=runtime,
             )
-            manager = ProcessingJobManager(store=store)
+            manager = ProcessingJobManager(
+                store=store,
+                dependencies=FakeProcessingEnvironment([]).dependencies(),
+            )
             manager._release_finished_runtime(job_id, "vector", runtime)
 
             self.assertEqual(target.read_bytes(), b"published")
@@ -2524,13 +2552,14 @@ class TestProcessingJobManager(unittest.TestCase):
         }
 
         started = manager.start(request)
-        self.assertEqual(started["state"], "queued")
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "execute")
         self.assertEqual(started["execution_mode"], "qgs_task")
         self.assertTrue(started["cancellable"])
         self.assertFalse(started["overwrite_outputs"])
         self.assertEqual(started["algorithm"]["id"], "vector:buffer")
         self.assertEqual(started["algorithm"]["provider"], "vector")
-        self.assertIsNone(started["started_at"])
+        self.assertIsNotNone(started["started_at"])
         self.assertIsNone(started["finished_at"])
         self.assertIsNone(started["error"])
         self.assertNotIn("result", started)
@@ -3044,6 +3073,8 @@ class TestProcessingJobManager(unittest.TestCase):
             cancelled = manager.get(started["job_id"])
             self.assertEqual(cancelled["state"], "cancelled")
             self.assertFalse(stage_root.exists())
+            self.assertIs(runtime.task, task)
+            task.destroyed.emit()
             self.assertIsNone(runtime.task)
 
     def test_task_destruction_retains_and_retries_locked_recovery_state(self):
@@ -3074,6 +3105,17 @@ class TestProcessingJobManager(unittest.TestCase):
                     "authorized_versions": [],
                 }
             ]
+            manager.store.patch_cleanup_receipt(
+                started["job_id"],
+                {
+                    "complete": False,
+                    "residual_paths": [str(stage_root)],
+                    "residual_layer_ids": [],
+                    "errors": [],
+                    "retry_recommended": True,
+                },
+                "vector",
+            )
             real_rmtree = processing_jobs.shutil.rmtree
 
             def locked_cleanup(path, *arguments, **kwargs):
@@ -3086,9 +3128,7 @@ class TestProcessingJobManager(unittest.TestCase):
                 "rmtree",
                 side_effect=locked_cleanup,
             ) as rmtree_mock:
-                manager._release_finished_runtime(
-                    started["job_id"], "vector", runtime
-                )
+                environment.tasks[0].destroyed.emit()
                 self.assertTrue(rmtree_mock.called)
                 self.assertEqual(runtime.cleanup_residual_paths, [str(stage_root)])
                 self.assertTrue(runtime.output_stages)
@@ -3109,9 +3149,17 @@ class TestProcessingJobManager(unittest.TestCase):
 
     def test_shutdown_and_cancel_cannot_race_task_registration(self):
         for operation in ("shutdown", "cancel"):
-            with self.subTest(operation=operation):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as tmp:
+                output = Path(tmp) / "output.geojson"
                 environment = FakeProcessingEnvironment(
-                    [FakeAlgorithm("vector:slow")]
+                    [
+                        FakeAlgorithm(
+                            "vector:slow",
+                            parameter_definitions=[
+                                FakeProcessingDefinition("OUTPUT", destination=True)
+                            ],
+                        )
+                    ]
                 )
                 dependencies = environment.dependencies()
                 factory_entered = threading.Event()
@@ -3134,6 +3182,7 @@ class TestProcessingJobManager(unittest.TestCase):
                             {
                                 "category": "vector",
                                 "algorithm_id": "vector:slow",
+                                "parameters": {"OUTPUT": str(output)},
                             }
                         )
                     except Exception as error:
@@ -3143,11 +3192,16 @@ class TestProcessingJobManager(unittest.TestCase):
                 thread.start()
                 self.assertTrue(factory_entered.wait(2))
                 active = manager.store.list("vector", limit=1)[0]
+                runtime = manager.store.get_runtime(active["job_id"], "vector")
+                stage_root = runtime.output_stages[0]["staging_root"]
+                self.assertTrue(stage_root.is_dir())
                 if operation == "shutdown":
                     manager.shutdown(timeout_seconds=0)
                 else:
                     cancelling = manager.cancel(active["job_id"])
                     self.assertEqual(cancelling["state"], "cancelling")
+                self.assertTrue(stage_root.is_dir())
+                self.assertIsNotNone(runtime.context)
                 release_factory.set()
                 thread.join(2)
                 self.assertFalse(thread.is_alive())
@@ -3156,6 +3210,8 @@ class TestProcessingJobManager(unittest.TestCase):
                 self.assertTrue(outcome["snapshot"]["cancel_requested"])
                 self.assertEqual(environment.task_manager.tasks, [])
                 self.assertEqual(task.cancel_calls, 0)
+                self.assertFalse(stage_root.exists())
+                self.assertFalse(output.exists())
                 if manager.accepting:
                     manager.shutdown(timeout_seconds=0)
 
@@ -3238,11 +3294,13 @@ class TestProcessingJobManager(unittest.TestCase):
         third_task = environment.tasks[2]
         third_task.begun.emit()
         manager.cancel(third["job_id"])
-        # Completion can win the cancellation race and must remain terminal.
+        # An algorithm result is not publication. A cancellation recorded before
+        # output verification wins, and later task signals cannot reopen it.
         third_task.executed.emit(True, {"OUTPUT": "memory:complete"})
         raced = manager.get(third["job_id"])
-        self.assertEqual(raced["state"], "succeeded")
+        self.assertEqual(raced["state"], "cancelled")
         self.assertTrue(raced["cancel_requested"])
+        self.assertNotIn("result", raced)
         third_task.taskTerminated.emit()
         self.assertEqual(manager.get(third["job_id"]), raced)
 
@@ -3255,7 +3313,8 @@ class TestProcessingJobManager(unittest.TestCase):
         started = manager.start(
             {"category": "vector", "algorithm_id": "vector:main"}
         )
-        self.assertEqual(started["state"], "queued")
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "execute")
         self.assertEqual(started["execution_mode"], "main_thread")
         self.assertFalse(started["cancellable"])
         self.assertEqual(environment.main_thread_calls, [])
@@ -3399,7 +3458,10 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
         )
         self.assertEqual(with_outputs["execution_mode"], "qgs_task")
         self.assertTrue(with_outputs["cancellable"])
-        self.assertTrue(QCopilotsProgressAlgorithm.progress_ready.wait(5))
+        self._wait_for(
+            with_outputs["job_id"],
+            lambda snapshot: QCopilotsProgressAlgorithm.progress_ready.is_set(),
+        )
         running = self._wait_for(
             with_outputs["job_id"],
             lambda snapshot: snapshot["state"] == "running"
@@ -3428,11 +3490,15 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
                 "add_outputs_to_project": False,
             }
         )
+        self._wait_for(
+            without_outputs["job_id"],
+            lambda snapshot: QCopilotsProgressAlgorithm.progress_ready.is_set(),
+        )
         runtime = self.manager.store.get_runtime(
             without_outputs["job_id"], "vector"
         )
         retained_context = runtime.context
-        self.assertTrue(QCopilotsProgressAlgorithm.progress_ready.wait(5))
+        self.assertIsNotNone(retained_context)
         QCopilotsProgressAlgorithm.release.set()
         retained = self._wait_for_terminal(without_outputs["job_id"])
         self.assertEqual(retained["state"], "succeeded")
@@ -3450,9 +3516,11 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
         started = self.manager.start(
             {"category": "vector", "algorithm_id": algorithm_id}
         )
-        self.assertEqual(started["state"], "queued")
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "preflight")
         self.assertEqual(started["execution_mode"], "main_thread")
-        self.assertFalse(started["cancellable"])
+        self.assertTrue(started["cancellable"])
+        self.assertFalse(started["algorithm_executed"])
         self.assertEqual(QCopilotsMainThreadAlgorithm.executions, 0)
 
         succeeded = self._wait_for_terminal(started["job_id"])
@@ -3477,7 +3545,10 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
                 "add_outputs_to_project": False,
             }
         )
-        self.assertTrue(QCopilotsProgressAlgorithm.progress_ready.wait(5))
+        self._wait_for(
+            started["job_id"],
+            lambda snapshot: QCopilotsProgressAlgorithm.progress_ready.is_set(),
+        )
         cancelling = self.manager.cancel(
             {"job_id": started["job_id"], "category": "vector"}
         )

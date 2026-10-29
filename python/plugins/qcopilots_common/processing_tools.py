@@ -260,8 +260,9 @@ def build_processing_tools(category: str) -> list[McpTool]:
         McpTool(
             f"get_{category}_processing_algorithm_details",
             (
-                f"Inspect the parameters, outputs and availability of one {category} "
-                "QGIS Processing algorithm without starting a job."
+                f"Inspect the parameters, outputs and execution policy of one {category} "
+                "QGIS Processing algorithm without starting a job. Policy support "
+                "does not guarantee that optional provider dependencies are installed."
             ),
             _processing_algorithm_id_schema(),
             algorithm_details,
@@ -269,31 +270,49 @@ def build_processing_tools(category: str) -> list[McpTool]:
         McpTool(
             f"start_{category}_processing_algorithm",
             (
-                f"Start an asynchronous QGIS Processing job for {category} data and "
-                "return its initial snapshot for polling or cancellation. Successful "
-                "outputs are added to the current project by default. Existing output "
-                "destinations are never overwritten without an explicit overwrite "
-                "request and the exact one-use confirmation token returned by its "
-                "preview."
+                f"Start an asynchronous QGIS Processing operation for {category} data "
+                "and return a job_id for polling or cancellation. With "
+                "overwrite_outputs=true and no confirmation token, only preview "
+                "the inputs and overwrite targets, even when no target exists. "
+                "Poll get_job until the preview completes. A succeeded preview "
+                "has not executed the algorithm. If confirmation is required, "
+                "submit its one-use confirmation token with overwrite_outputs=true. "
+                "Otherwise submit overwrite_outputs=false without a token to execute. "
+                "Successful execution outputs are added to the current project by "
+                "default."
             ),
             _start_processing_algorithm_schema(),
             start_algorithm,
         ),
         McpTool(
             f"get_{category}_processing_job",
-            f"Get the complete snapshot for a {category} Processing job.",
+            (
+                f"Get the complete snapshot for a {category} Processing job, "
+                "including operation, phase, file verification progress and "
+                "algorithm_executed. A succeeded preview only supplies confirmation "
+                "information. Algorithm progress reaching 100 percent does not mean "
+                "output verification, publication or cleanup has finished."
+            ),
             _processing_job_schema(),
             get_job,
         ),
         McpTool(
             f"list_{category}_processing_jobs",
-            f"List recent {category} Processing job summaries.",
+            (
+                f"List recent {category} Processing job summaries, including "
+                "whether each job is a preview or execution and its current phase."
+            ),
             _list_processing_jobs_schema(),
             list_jobs,
         ),
         McpTool(
             f"cancel_{category}_processing_job",
-            f"Request cancellation of a {category} Processing job.",
+            (
+                f"Request cancellation of a {category} Processing job when its "
+                "current phase is cancellable. Cancellation during publication "
+                "requires recovery. Poll the job and inspect its cleanup receipt "
+                "before treating its output files as removed or restored."
+            ),
             _processing_job_schema(),
             cancel_job,
         ),
@@ -381,20 +400,34 @@ def _start_processing_algorithm_schema() -> dict[str, Any]:
             "overwrite_outputs": {
                 "type": "boolean",
                 "default": False,
-                "description": "Explicitly allow existing file or folder destinations to be overwritten.",
+                "description": (
+                    "False without a token starts execution without overwriting. "
+                    "True without a token starts an asynchronous preview only. "
+                    "True with the preview token starts a confirmed execution. "
+                    "False with a token is invalid. Folder outputs remain unsupported."
+                ),
             },
             "overwrite_confirmation_token": {
                 "type": "string",
                 "minLength": 16,
                 "description": (
-                    "One-use token from an overwrite preview, bound to the "
-                    "algorithm, parameters, input versions and output targets."
+                    "One-use token obtained by polling a completed overwrite preview. "
+                    "Requires overwrite_outputs=true and is bound to the category, "
+                    "algorithm, parameters, project-loading option, input versions "
+                    "and output targets. Submit before its expiry. Once claimed, "
+                    "background verification does not restart the expiry check."
                 ),
             },
             "client_request_id": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 128,
+                "description": (
+                    "Optional idempotency key. Preview and execution have separate "
+                    "namespaces, so the same key can be used for both steps. Replaying "
+                    "a preview returns its original result and token. Use a new key "
+                    "to obtain a new preview after the token expires."
+                ),
             },
         },
         "required": ["algorithm_id"],

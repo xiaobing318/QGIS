@@ -182,16 +182,6 @@
           "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {
-          "name": "get_datetime",
-          "description": "读取当前时间，用于计划修订和证据时间戳。",
-          "status": "allowed",
-          "risk_level": "R0",
-          "requires_qgis_bridge": false,
-          "requires_gui": false,
-          "requires_explicit_confirmation": false,
-          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
-        },
-        {
           "name": "write_file",
           "description": "以同目录原子替换创建或覆盖文本文件。默认 overwrite=false，覆盖现有文件时应同时提供匹配的 expected_sha256。",
           "status": "restricted",
@@ -665,7 +655,7 @@
       "tools": [
         {
           "name": "list_vector_processing_algorithms",
-          "description": "按参数、输出和数据类型元数据分页列举由矢量服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
+          "description": "按参数、输出和数据类型元数据分页列举由矢量服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。目录收录和策略支持不保证可选 provider 依赖已经安装。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -675,7 +665,7 @@
         },
         {
           "name": "get_vector_processing_algorithm_details",
-          "description": "读取矢量算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。",
+          "description": "读取矢量算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。执行策略支持不等于可选 provider 依赖齐全。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -685,7 +675,7 @@
         },
         {
           "name": "start_vector_processing_algorithm",
-          "description": "按 exact algorithm_id 启动异步矢量 Processing 作业。泛化工具授权不能代替 algorithm_id 和参数级 allowlist。",
+          "description": "按 exact algorithm_id 启动异步矢量 Processing 操作并返回 job_id。overwrite_outputs=true 且无确认令牌时只预览，必须轮询 get_job 获取确认信息，预览成功不表示算法已执行。需要确认时以 true 和该一次性令牌发起执行，无覆盖目标时以 false 且不带令牌另行执行。false 与令牌组合无效。泛化工具授权不能代替 algorithm_id 和参数级 allowlist。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -696,7 +686,7 @@
         },
         {
           "name": "get_vector_processing_job",
-          "description": "按 job_id 读取矢量 Processing 作业完整快照。",
+          "description": "按 job_id 读取矢量 Processing 作业完整快照，包括 operation、phase、phase_progress 和 algorithm_executed。succeeded 的 preview 只代表预览完成。算法进度达到 100% 后仍须等待输出复核、发布及清理完成。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -706,7 +696,7 @@
         },
         {
           "name": "list_vector_processing_jobs",
-          "description": "列出当前 QGIS 进程保留的矢量 Processing 作业摘要。",
+          "description": "列出当前 QGIS 进程保留的矢量 Processing 作业摘要，使用 operation 区分预览与执行，使用 phase 判断当前阶段。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -716,7 +706,7 @@
         },
         {
           "name": "cancel_vector_processing_job",
-          "description": "请求取消指定矢量 Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "description": "请求取消当前阶段允许取消的矢量 Processing 作业。发布中的取消需要恢复，轮询终态并检查 cleanup 后才能判断输出已删除或恢复。取消竞态可能以成功、失败或已取消终态结束。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -736,7 +726,7 @@
       "tools": [
         {
           "name": "list_raster_processing_algorithms",
-          "description": "按参数、输出和数据类型元数据分页列举由栅格服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
+          "description": "按参数、输出和数据类型元数据分页列举由栅格服务单独拥有的算法。稳定 group ID 只作为兜底，算法不会同时出现在多个 Processing 服务。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。目录收录和策略支持不保证可选 provider 依赖已经安装。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -746,7 +736,7 @@
         },
         {
           "name": "get_raster_processing_algorithm_details",
-          "description": "读取栅格算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。",
+          "description": "读取栅格算法的参数、输出、默认值、枚举、范围、flags、帮助和 domain evidence。执行策略支持不等于可选 provider 依赖齐全。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -756,7 +746,7 @@
         },
         {
           "name": "start_raster_processing_algorithm",
-          "description": "按 exact algorithm_id 启动异步栅格 Processing 作业。必须限制输入、输出、NoData、分辨率、重采样和覆盖。",
+          "description": "按 exact algorithm_id 启动异步栅格 Processing 操作并返回 job_id。overwrite_outputs=true 且无确认令牌时只预览，必须轮询 get_job 获取确认信息，预览成功不表示算法已执行。需要确认时以 true 和该一次性令牌发起执行，无覆盖目标时以 false 且不带令牌另行执行。false 与令牌组合无效。必须限制输入、输出、NoData、分辨率、重采样和覆盖。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -767,7 +757,7 @@
         },
         {
           "name": "get_raster_processing_job",
-          "description": "按 job_id 读取栅格 Processing 作业完整快照。",
+          "description": "按 job_id 读取栅格 Processing 作业完整快照，包括 operation、phase、phase_progress 和 algorithm_executed。succeeded 的 preview 只代表预览完成。算法进度达到 100% 后仍须等待输出复核、发布及清理完成。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -777,7 +767,7 @@
         },
         {
           "name": "list_raster_processing_jobs",
-          "description": "列出当前 QGIS 进程保留的栅格 Processing 作业摘要。",
+          "description": "列出当前 QGIS 进程保留的栅格 Processing 作业摘要，使用 operation 区分预览与执行，使用 phase 判断当前阶段。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -787,7 +777,7 @@
         },
         {
           "name": "cancel_raster_processing_job",
-          "description": "请求取消指定栅格 Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "description": "请求取消当前阶段允许取消的栅格 Processing 作业。发布中的取消需要恢复，轮询终态并检查 cleanup 后才能判断输出已删除或恢复。取消竞态可能以成功、失败或已取消终态结束。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -807,7 +797,7 @@
       "tools": [
         {
           "name": "list_general_processing_algorithms",
-          "description": "分页列举由 General 服务单独拥有且 start_policy.supported 为 true 的算法。网络、任意 SQL、外部数据库写入、目录、多文件容器或原地容器输出、原地修改和副作用不确定的算法不会列出。新建且可原子发布的单文件数据库包可列出。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。",
+          "description": "分页列举由 General 服务单独拥有且 start_policy.supported 为 true 的算法。网络、任意 SQL、外部数据库写入、目录、多文件容器或原地容器输出、原地修改和副作用不确定的算法不会列出。新建且可原子发布的单文件数据库包可列出。首次调用的 max_results 默认为 50，最大 2000，单页固定最多 50。存在 next_cursor 时续页只传 cursor。truncated=true 时不得将结果视为完整清单。start_policy.supported 仅表示执行策略支持，不保证可选 provider 依赖已经安装。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -817,7 +807,7 @@
         },
         {
           "name": "get_general_processing_algorithm_details",
-          "description": "读取 General 算法参数、输出、范围、ownership evidence 和 start_policy。显式查询危险 General 算法时返回 supported=false 及稳定拒绝原因。",
+          "description": "读取 General 算法参数、输出、范围、ownership evidence 和 start_policy。显式查询危险 General 算法时返回 supported=false 及稳定拒绝原因。supported=true 仅表示执行策略支持，不等于可选 provider 依赖齐全。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -827,7 +817,7 @@
         },
         {
           "name": "start_general_processing_algorithm",
-          "description": "按 exact algorithm_id 启动安全的异步 General Processing 作业。启动前再次核验独占 ownership、start_policy、输入版本、独立文件输出与覆盖授权。",
+          "description": "按 exact algorithm_id 启动异步 General Processing 操作并返回 job_id。overwrite_outputs=true 且无确认令牌时只预览，必须轮询 get_job 获取确认信息，预览成功不表示算法已执行。需要确认时以 true 和该一次性令牌发起执行，无覆盖目标时以 false 且不带令牌另行执行。false 与令牌组合无效。启动前再次核验独占 ownership、start_policy、输入版本、独立文件输出与覆盖授权。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -838,7 +828,7 @@
         },
         {
           "name": "get_general_processing_job",
-          "description": "按 job_id 读取 General Processing 作业完整快照。",
+          "description": "按 job_id 读取 General Processing 作业完整快照，包括 operation、phase、phase_progress 和 algorithm_executed。succeeded 的 preview 只代表预览完成。算法进度达到 100% 后仍须等待输出复核、发布及清理完成。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -848,7 +838,7 @@
         },
         {
           "name": "list_general_processing_jobs",
-          "description": "列出当前 QGIS 进程保留的 General Processing 作业摘要。",
+          "description": "列出当前 QGIS 进程保留的 General Processing 作业摘要，使用 operation 区分预览与执行，使用 phase 判断当前阶段。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -858,7 +848,7 @@
         },
         {
           "name": "cancel_general_processing_job",
-          "description": "请求取消指定 General Processing 作业。取消竞态可能以成功、失败或已取消终态结束。",
+          "description": "请求取消当前阶段允许取消的 General Processing 作业。发布中的取消需要恢复，轮询终态并检查 cleanup 后才能判断输出已删除或恢复。取消竞态可能以成功、失败或已取消终态结束。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,

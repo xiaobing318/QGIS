@@ -305,6 +305,11 @@ class QgisBridgeController:
         self._filesystem_policy = policy
 
     def start(self) -> None:
+        if self._stopping.is_set() and self._processing_job_manager is not None:
+            raise RuntimeError(
+                "QCopilots Processing recovery is still pending. "
+                "Retry bridge stop until cleanup completes before starting again."
+            )
         if not self._auth_token or not self._auth_token.strip():
             raise ValueError("QCopilots QGIS bridge requires a non-empty auth token")
         if self._httpd:
@@ -499,12 +504,25 @@ class QgisBridgeController:
         processing_job_manager = self._processing_job_manager
         if processing_job_manager is not None:
             try:
-                processing_job_manager.shutdown(
+                shutdown_result = processing_job_manager.shutdown(
                     timeout_seconds=max(0.0, deadline - time.monotonic())
                 )
+                if isinstance(shutdown_result, dict) and (
+                    shutdown_result.get("complete") is not True
+                    or shutdown_result.get("pending_job_ids")
+                ):
+                    pending_job_ids = shutdown_result.get("pending_job_ids") or []
+                    details = ", ".join(str(job_id) for job_id in pending_job_ids)
+                    raise RuntimeError(
+                        "Processing shutdown is incomplete, task completion or "
+                        "recovery is still pending"
+                        + (f" for jobs: {details}" if details else "")
+                    )
             except Exception as err:
+                # Recovery callbacks still own the manager's runtime objects.
+                # Keep that owner available for a subsequent bounded stop.
                 manager_shutdown_errors.append(err)
-            finally:
+            else:
                 with self._processing_job_manager_lock:
                     if self._processing_job_manager is processing_job_manager:
                         self._processing_job_manager = None
@@ -1751,13 +1769,14 @@ class QgisBridgeTools:
                 math.isfinite(float(value)) for value in extent_values
             ):
                 raise RuntimeError("map_extent must describe a finite non-empty extent")
-            map_item.setExtent(extent)
+            map_item.zoomToExtent(extent)
         elif self.iface is not None and self.iface.mapCanvas() is not None:
             canvas_extent = self.iface.mapCanvas().extent()
             if not canvas_extent.isEmpty():
-                map_item.setExtent(canvas_extent)
+                map_item.zoomToExtent(canvas_extent)
         layout.addLayoutItem(map_item)
 
+        legend = None
         if include_legend:
             legend = QgsLayoutItemLegend(layout)
             legend.setTitle("Legend")
@@ -1768,6 +1787,7 @@ class QgisBridgeTools:
             legend.attemptResize(QgsLayoutSize(legend_width - 3.0, map_height))
             layout.addLayoutItem(legend)
 
+        scale_bar = None
         if include_scale_bar:
             scale_bar = QgsLayoutItemScaleBar(layout)
             scale_bar.setStyle("Numeric")
@@ -1778,7 +1798,27 @@ class QgisBridgeTools:
             scale_bar.attemptResize(QgsLayoutSize(min(map_width, 80.0), 8.0))
             layout.addLayoutItem(scale_bar)
 
+        try:
+            if legend is not None:
+                _fit_constrained_layout_legend(
+                    layout,
+                    map_item,
+                    legend,
+                    scale_bar,
+                    page_width=page_width,
+                    margin=margin,
+                    content_top=content_top,
+                    map_height=map_height,
+                )
+            _validate_constrained_layout_bounds(
+                layout, page_width, page_height, margin
+            )
+        except Exception:
+            # The layout manager must never own a partially fitted layout.
+            layout.deleteLater()
+            raise
         if not manager.addLayout(layout):
+            layout.deleteLater()
             raise RuntimeError(f"Could not add print layout: {name}")
         return {
             "created": True,
@@ -4428,6 +4468,127 @@ def _layout_page_dimensions(page_size: str, orientation: str) -> tuple[float, fl
     if normalized_orientation == "landscape":
         width, height = height, width
     return width, height
+
+
+def _fit_constrained_layout_legend(
+    layout: Any,
+    map_item: Any,
+    legend: Any,
+    scale_bar: Any,
+    *,
+    page_width: float,
+    margin: float,
+    content_top: float,
+    map_height: float,
+) -> None:
+    """Fit a legend using rendered sizes without hiding overflowing content."""
+
+    from qgis.PyQt.QtCore import QRectF
+    from qgis.core import QgsLayoutExporter, QgsLayoutPoint, QgsLayoutSize
+
+    gap = 3.0
+    minimum_map_width = 40.0
+    content_width = page_width - 2 * margin
+    maximum_legend_width = content_width - gap - minimum_map_width
+    legend_width = min(42.0, maximum_legend_width)
+    tolerance = 0.1
+    exporter = QgsLayoutExporter(layout)
+    dpi = float(layout.renderContext().dpi())
+    legend.setResizeToContents(True)
+    measured_width = measured_height = 0.0
+
+    for _attempt in range(8):
+        map_width = content_width - gap - legend_width
+        map_item.attemptResize(QgsLayoutSize(map_width, map_height))
+        legend.attemptMove(QgsLayoutPoint(margin + map_width + gap, content_top))
+        # Wrapping applies to the text, not to its symbol or the surrounding
+        # legend padding. Unbreakable words can still require a wider column.
+        text_width = max(
+            1.0,
+            legend_width - 2 * legend.boxSpace() - legend.symbolWidth() - 4.0,
+        )
+        legend.setAutoWrapLinesAfter(text_width)
+        legend.attemptResize(QgsLayoutSize(1.0, 1.0))
+
+        # The first paint initializes the actual map scale and DPI used for
+        # map-unit symbols. adjustBoxSize() alone is ineffective before that.
+        # A narrow strip intersects the item and measures its complete legend,
+        # without allocating an entire A0 page at the layout's export DPI.
+        region = QRectF(
+            margin + map_width + gap,
+            content_top,
+            legend_width,
+            min(8.0, map_height),
+        )
+        for _pass in range(2):
+            image = exporter.renderRegionToImage(region, dpi=dpi)
+            if image.isNull():
+                raise RuntimeError("Could not render the print layout legend")
+            legend.adjustBoxSize()
+        bounds = legend.sceneBoundingRect()
+        measured_width = float(bounds.width())
+        measured_height = float(bounds.height())
+        if not all(
+            math.isfinite(value) for value in (measured_width, measured_height)
+        ):
+            raise RuntimeError("Print layout legend produced invalid dimensions")
+        if (
+            measured_width <= legend_width + tolerance
+            and measured_height <= map_height + tolerance
+        ):
+            if scale_bar is not None:
+                scale_bar.attemptResize(QgsLayoutSize(min(map_width, 80.0), 8.0))
+            return
+        if legend_width >= maximum_legend_width - tolerance:
+            break
+        legend_width = min(
+            maximum_legend_width,
+            max(legend_width * 1.5, measured_width + 1.0),
+        )
+
+    raise RuntimeError(
+        "Print layout legend cannot fit without clipping: "
+        f"rendered {measured_width:.2f} x {measured_height:.2f} mm, "
+        f"available {maximum_legend_width:.2f} x {map_height:.2f} mm "
+        "while retaining a 40 mm map. Choose a larger page or disable the legend."
+    )
+
+
+def _validate_constrained_layout_bounds(
+    layout: Any,
+    page_width: float,
+    page_height: float,
+    margin: float,
+) -> None:
+    """Validate only a newly created MCP layout, never arbitrary user layouts."""
+
+    from qgis.core import QgsLayoutItem, QgsLayoutItemPage
+
+    tolerance = 0.1
+    for item in layout.items():
+        if (
+            not isinstance(item, QgsLayoutItem)
+            or isinstance(item, QgsLayoutItemPage)
+            or not item.isVisible()
+        ):
+            continue
+        bounds = item.sceneBoundingRect()
+        coordinates = (bounds.left(), bounds.top(), bounds.right(), bounds.bottom())
+        if (
+            not all(math.isfinite(float(value)) for value in coordinates)
+            or bounds.left() < margin - tolerance
+            or bounds.top() < margin - tolerance
+            or bounds.right() > page_width - margin + tolerance
+            or bounds.bottom() > page_height - margin + tolerance
+        ):
+            raise RuntimeError(
+                "Print layout item exceeds the available page area: "
+                f"{type(item).__name__}, bounds "
+                f"({bounds.left():.2f}, {bounds.top():.2f}) to "
+                f"({bounds.right():.2f}, {bounds.bottom():.2f}) mm, "
+                f"available ({margin:.2f}, {margin:.2f}) to "
+                f"({page_width - margin:.2f}, {page_height - margin:.2f}) mm"
+            )
 
 
 def _layout_export_target(

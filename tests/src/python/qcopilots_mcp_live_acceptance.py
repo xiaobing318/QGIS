@@ -123,7 +123,6 @@ EXPECTED_TOOLS = {
         "exec_shell_command",
         "write_file",
         "edit_file",
-        "get_datetime",
     ),
     "qcopilots_mcp_server_skills": (
         "list_skills",
@@ -230,9 +229,9 @@ def validate_expected_inventory() -> None:
     if set(EXPECTED_TOOLS) != {service.key for service in SERVICES}:
         raise AcceptanceFailure("Expected tool inventory does not match service inventory")
     names = [name for tools in EXPECTED_TOOLS.values() for name in tools]
-    if len(names) != 82 or len(set(names)) != 82:
+    if len(names) != 81 or len(set(names)) != 81:
         raise AcceptanceFailure(
-            "Expected tool inventory must contain exactly 82 unique tool names"
+            "Expected tool inventory must contain exactly 81 unique tool names"
         )
 
 
@@ -339,8 +338,8 @@ class CoverageLedger:
     def assert_all_complete(self) -> None:
         for service_key in EXPECTED_TOOLS:
             self.assert_service_complete(service_key)
-        if sum(len(calls) for calls in self._calls.values()) != 82:
-            raise AcceptanceFailure("Live tool coverage did not reach exactly 82 tools")
+        if sum(len(calls) for calls in self._calls.values()) != 81:
+            raise AcceptanceFailure("Live tool coverage did not reach exactly 81 tools")
 
 
 class McpSession:
@@ -716,6 +715,7 @@ class JobRegistration:
     list_tool: str
     client_request_id: str
     job_id: str = ""
+    operation: str = ""
 
 
 class CleanupRegistry:
@@ -1011,7 +1011,7 @@ class AcceptanceRunner:
             messages.extend(_redacted_message(item, self._token) for item in cleanup_errors)
             raise AcceptanceFailure(". ".join(message for message in messages if message))
         self.output(
-            "PASS: all 82 QCopilots MCP tool contracts completed live acceptance "
+            "PASS: all 81 QCopilots MCP tool contracts completed live acceptance "
             "(SSH transfers require the separate file transfer live acceptance runner), "
             f"requires_process_exit={bool(self.cleanup.requires_process_exit)}, "
             "process_exit_resource_count="
@@ -1243,13 +1243,6 @@ class AcceptanceRunner:
         require_cleanup_complete(raster_write, "write_file raster fixture")
         if not raster.is_file():
             raise AcceptanceFailure("write_file did not create the raster fixture")
-        current_time = self._success(
-            session,
-            "get_datetime",
-            {"timezone": "UTC"},
-        )
-        if current_time.get("timezone") != "UTC" or not current_time.get("iso"):
-            raise AcceptanceFailure("get_datetime did not return a UTC timestamp")
 
     def _exercise_skills(self, session: McpSession) -> None:
         selector = {"slug": "qgis-skills-creator"}
@@ -1662,10 +1655,6 @@ class AcceptanceRunner:
             raise AcceptanceFailure(f"Unsupported Processing category: {category}")
         list_tool = f"list_{category}_processing_algorithms"
         details_tool = f"get_{category}_processing_algorithm_details"
-        start_tool = f"start_{category}_processing_algorithm"
-        get_tool = f"get_{category}_processing_job"
-        list_jobs_tool = f"list_{category}_processing_jobs"
-        cancel_tool = f"cancel_{category}_processing_job"
         algorithm_id, parameters, output_path = self._processing_scenario(category)
 
         algorithm_ids: set[str] = set()
@@ -1696,28 +1685,83 @@ class AcceptanceRunner:
             raise AcceptanceFailure(f"{details_tool} returned a different algorithm")
 
         client_request_id = f"live-{category}-{uuid.uuid4().hex}"
+        arguments = {
+            "algorithm_id": algorithm_id,
+            "parameters": parameters,
+            "add_outputs_to_project": False,
+            "client_request_id": client_request_id,
+        }
+        preview = self._run_processing_operation(
+            session, category, {**arguments, "overwrite_outputs": True}, "preview"
+        )
+        if preview.get("confirmation_required") is not False or output_path.exists():
+            raise AcceptanceFailure(
+                "Processing preview must not execute or publish a new destination"
+            )
+        self._run_processing_operation(
+            session, category, {**arguments, "overwrite_outputs": False}, "execute"
+        )
+        if not output_path.is_file() or output_path.stat().st_size <= 0:
+            raise AcceptanceFailure(
+                f"{algorithm_id} did not publish its registered output"
+            )
+
+        # Exercise the confirmed path against only this run's registered output.
+        # Preview and execute intentionally share a request id in separate namespaces.
+        arguments["client_request_id"] = f"live-overwrite-{category}-{uuid.uuid4().hex}"
+        original_digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
+        preview = self._run_processing_operation(
+            session, category, {**arguments, "overwrite_outputs": True}, "preview"
+        )
+        token = str(preview.get("overwrite_confirmation_token") or "")
+        if preview.get("confirmation_required") is not True or len(token) < 16:
+            raise AcceptanceFailure("Processing overwrite preview returned no approval")
+        if hashlib.sha256(output_path.read_bytes()).hexdigest() != original_digest:
+            raise AcceptanceFailure("Processing overwrite preview modified its target")
+        self._run_processing_operation(
+            session,
+            category,
+            {
+                **arguments,
+                "overwrite_outputs": True,
+                "overwrite_confirmation_token": token,
+            },
+            "execute",
+        )
+        if not output_path.is_file() or output_path.stat().st_size <= 0:
+            raise AcceptanceFailure("Confirmed Processing execution lost its output")
+
+    def _run_processing_operation(
+        self,
+        session: McpSession,
+        category: str,
+        arguments: dict[str, Any],
+        operation: str,
+    ) -> dict[str, Any]:
+        start_tool = f"start_{category}_processing_algorithm"
+        get_tool = f"get_{category}_processing_job"
+        list_jobs_tool = f"list_{category}_processing_jobs"
+        cancel_tool = f"cancel_{category}_processing_job"
         registration = JobRegistration(
             service=session.service,
             get_tool=get_tool,
             cancel_tool=cancel_tool,
             list_tool=list_jobs_tool,
-            client_request_id=client_request_id,
+            client_request_id=arguments["client_request_id"],
+            operation=operation,
         )
         self.cleanup.register_job(registration)
         started = self._success(
             session,
             start_tool,
-            {
-                "algorithm_id": algorithm_id,
-                "parameters": parameters,
-                "add_outputs_to_project": False,
-                "client_request_id": client_request_id,
-            },
+            arguments,
         )
         job_id = str(started.get("job_id") or "")
         if not job_id:
             raise AcceptanceFailure(f"{start_tool} returned no job_id")
         registration.job_id = job_id
+        if started.get("operation") != operation:
+            raise AcceptanceFailure(f"{start_tool} returned the wrong operation")
 
         self._success(session, get_tool, {"job_id": job_id})
         listed_jobs = self._success(session, list_jobs_tool, {"limit": 200})
@@ -1731,17 +1775,20 @@ class AcceptanceRunner:
         terminal = self._wait_for_job(session, get_tool, job_id)
         if terminal.get("state") != "succeeded":
             raise AcceptanceFailure(
-                f"{algorithm_id} ended in state {terminal.get('state')}: "
+                f"{arguments['algorithm_id']} ended in state {terminal.get('state')}: "
                 f"{terminal.get('error')}"
             )
-        if not output_path.is_file() or output_path.stat().st_size <= 0:
+        if terminal.get("operation") != operation or terminal.get(
+            "algorithm_executed"
+        ) is not (operation == "execute"):
             raise AcceptanceFailure(
-                f"{algorithm_id} did not publish its registered output"
+                "Processing terminal snapshot confused preview with execution"
             )
         cancelled = self._success(session, cancel_tool, {"job_id": job_id})
         if cancelled.get("state") not in TERMINAL_JOB_STATES:
             raise AcceptanceFailure(f"{cancel_tool} returned a non-terminal job")
         self.cleanup.unregister_job(registration)
+        return terminal
 
     def _processing_scenario(
         self,
@@ -2199,6 +2246,10 @@ class AcceptanceRunner:
             if isinstance(item, dict)
             and item.get("job_id")
             and item.get("client_request_id") == registration.client_request_id
+            and (
+                not registration.operation
+                or item.get("operation") == registration.operation
+            )
         ]
         if len(matches) > 1:
             raise AcceptanceFailure("Pending job request matched more than one job")
