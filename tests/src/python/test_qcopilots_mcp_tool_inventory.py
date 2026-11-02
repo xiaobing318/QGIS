@@ -60,6 +60,7 @@ EXPECTED_TOOLS = {
         "save_project",
         "refresh_canvas",
         "export_map_image",
+        "capture_qgis_screenshot",
         "describe_layer_sources",
         "list_map_layers",
         "load_map_layer",
@@ -129,7 +130,7 @@ EXPECTED_TOOLS = {
 EXPECTED_COUNTS = {
     "qcopilots_mcp_server_builtin_tools": 8,
     "qcopilots_mcp_server_skills": 5,
-    "qcopilots_mcp_server_interactive_tools": 34,
+    "qcopilots_mcp_server_interactive_tools": 35,
     "qcopilots_mcp_server_processing_vector": 6,
     "qcopilots_mcp_server_processing_raster": 6,
     "qcopilots_mcp_server_processing_general": 17,
@@ -334,7 +335,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         self.assertEqual(descriptor["inputSchema"]["type"], "object")
                     all_names.extend(actual_names)
 
-            self.assertEqual(len(all_names), 82)
+            self.assertEqual(len(all_names), 83)
             self.assertEqual(len(all_names), len(set(all_names)))
 
     def test_minimal_arguments_supports_any_of_array_items(self):
@@ -441,7 +442,15 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         reject_conflicting_arguments=True,
                     )
 
-        self.assertEqual(len(_RecordingBridge.calls), 58)
+        self.assertEqual(len(_RecordingBridge.calls), 59)
+        recorded_operations = [operation for operation, _ in _RecordingBridge.calls]
+        self.assertEqual(
+            recorded_operations.count("interactive_capture_screenshot"), 1
+        )
+        self.assertEqual(
+            recorded_operations.index("interactive_capture_screenshot"),
+            recorded_operations.index("export_map_image") + 1,
+        )
         self.assertEqual(
             [operation for operation, _ in self.file_transfer_manager.calls],
             EXPECTED_TOOLS["qcopilots_mcp_server_processing_general"][6:],

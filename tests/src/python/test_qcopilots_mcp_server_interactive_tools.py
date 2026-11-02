@@ -58,7 +58,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
         try:
             tools = processing_tools.build_interactive_tools()
             tool_names = [tool.name for tool in tools]
-            self.assertEqual(len(tool_names), 34)
+            self.assertEqual(len(tool_names), 35)
             self.assertEqual(
                 tool_names,
                 [
@@ -76,6 +76,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                     "save_project",
                     "refresh_canvas",
                     "export_map_image",
+                    "capture_qgis_screenshot",
                     "describe_layer_sources",
                     "list_map_layers",
                     "load_map_layer",
@@ -279,7 +280,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             ],
         )
 
-    def test_all_34_interactive_tools_route_to_the_declared_bridge_operations(self):
+    def test_all_35_interactive_tools_route_to_the_declared_bridge_operations(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools
         import qcopilots_common.processing_tools as processing_tools
 
@@ -308,6 +309,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             "save_project",
             "refresh_canvas",
             "export_map_image",
+            "interactive_capture_screenshot",
             "interactive_layer_describe_sources",
             "interactive_layer_list_layers",
             "interactive_layer_load_layer",
@@ -339,7 +341,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             for tool in tools:
                 tool.handler({})
 
-        self.assertEqual(len(tools), 34)
+        self.assertEqual(len(tools), 35)
         self.assertEqual([operation for operation, _arguments in calls], expected_operations)
         self.assertTrue(all(arguments == {} for _operation, arguments in calls))
 

@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from qcopilots_common import screenshot
 from qcopilots_common.bridge import BridgeClient
 from qcopilots_common.constants import (
     BRIDGE_URL_ENV,
@@ -177,6 +178,7 @@ def build_interactive_tools() -> list[McpTool]:
             "export_map_image",
             bridge,
         ),
+        _capture_qgis_screenshot_tool(bridge),
     ] + build_interactive_layer_tools() + [
         _custom_bridge_tool(
             "create_vector_layer",
@@ -359,6 +361,38 @@ def _custom_bridge_tool(
         return bridge.call(bridge_tool_name, arguments)
 
     return McpTool(name, description, input_schema, handler)
+
+
+def _capture_qgis_screenshot_tool(bridge: BridgeClient) -> McpTool:
+    def handler(arguments: dict[str, Any]) -> Any:
+        return screenshot.capture_screenshot_via_bridge(bridge.call, arguments)
+
+    return McpTool(
+        screenshot.TOOL_NAME,
+        (
+            "Take a screenshot of QGIS and return it as an image you can see, "
+            "with a plain-text summary of the view. Use it to look at the map, "
+            "check styling, labels, layer order, print layouts and open dialogs "
+            "before and after changes, then describe what you saw. Targets: "
+            "map_canvas (default, only the map), main_window (the whole QGIS "
+            "window with panels and toolbars), active_window (the focused dialog "
+            "or window, falls back to the main window) and layout_designer (an "
+            "open print layout designer window, requires layout_name). The "
+            "QCopilots chat panel is included by default. Set "
+            "include_qcopilots_panel=false to cover it. capture_method widget "
+            "(default) draws QGIS itself and never shows other applications, but "
+            "3D views can appear blank. capture_method screen copies screen "
+            "pixels, so it can show 3D views, popup menus and title bars, but "
+            "also any other application window that overlaps QGIS. Use screen "
+            "only when the user explicitly asks for it. region crops "
+            "[x, y, width, height] in logical pixels of the target, and the "
+            "image is downscaled so its long edge is at most max_dimension. The "
+            "tool waits up to wait_for_render_ms for the map canvas to finish "
+            "rendering."
+        ),
+        _capture_qgis_screenshot_schema(),
+        handler,
+    )
 
 
 def _bridge_client() -> BridgeClient:
@@ -668,6 +702,93 @@ def _export_map_image_schema() -> dict[str, Any]:
             },
         },
         "required": ["path"],
+        "additionalProperties": False,
+    }
+
+
+def _capture_qgis_screenshot_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "target": {
+                "type": "string",
+                "enum": list(screenshot.TARGETS),
+                "default": screenshot.DEFAULT_TARGET,
+                "description": (
+                    "What to capture: map_canvas (only the map), main_window, "
+                    "active_window or layout_designer."
+                ),
+            },
+            "layout_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Print layout name. Required when target is layout_designer, "
+                    "and that layout must be open in a layout designer window."
+                ),
+            },
+            "region": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0},
+                "minItems": 4,
+                "maxItems": 4,
+                "description": (
+                    "Optional crop [x, y, width, height] in logical pixels "
+                    "relative to the captured target. It must lie inside the "
+                    "target's logical_size."
+                ),
+            },
+            "include_qcopilots_panel": {
+                "type": "boolean",
+                "default": screenshot.DEFAULT_INCLUDE_QCOPILOTS_PANEL,
+                "description": (
+                    "Include the docked QCopilots chat panel. False covers it "
+                    "with a solid block."
+                ),
+            },
+            "capture_method": {
+                "type": "string",
+                "enum": list(screenshot.CAPTURE_METHODS),
+                "default": screenshot.DEFAULT_CAPTURE_METHOD,
+                "description": (
+                    "widget draws QGIS itself. screen copies screen pixels and "
+                    "can include other applications overlapping QGIS, so use it "
+                    "only when the user explicitly asks."
+                ),
+            },
+            "max_dimension": {
+                "type": "integer",
+                "minimum": screenshot.MIN_MAX_DIMENSION,
+                "maximum": screenshot.MAX_MAX_DIMENSION,
+                "default": screenshot.DEFAULT_MAX_DIMENSION,
+                "description": "Longest image edge in pixels after downscaling.",
+            },
+            "format": {
+                "type": "string",
+                "enum": list(screenshot.IMAGE_FORMATS),
+                "default": screenshot.DEFAULT_IMAGE_FORMAT,
+                "description": (
+                    "auto uses PNG and switches to JPEG when the PNG is larger "
+                    "than 1 MiB."
+                ),
+            },
+            "jpeg_quality": {
+                "type": "integer",
+                "minimum": screenshot.MIN_JPEG_QUALITY,
+                "maximum": screenshot.MAX_JPEG_QUALITY,
+                "default": screenshot.DEFAULT_JPEG_QUALITY,
+            },
+            "wait_for_render_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": screenshot.MAX_WAIT_FOR_RENDER_MS,
+                "default": screenshot.DEFAULT_WAIT_FOR_RENDER_MS,
+                "description": (
+                    "How long to wait for the map canvas to finish rendering "
+                    "before capturing it anyway."
+                ),
+            },
+        },
         "additionalProperties": False,
     }
 

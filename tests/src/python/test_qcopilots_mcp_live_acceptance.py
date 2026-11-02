@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import shutil
 import tempfile
@@ -331,12 +332,114 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for service in live.SERVICES
             for name in live.EXPECTED_TOOLS[service.key]
         ]
-        self.assertEqual(len(names), 82)
-        self.assertEqual(len(set(names)), 82)
+        self.assertEqual(len(names), 83)
+        self.assertEqual(len(set(names)), 83)
         self.assertEqual(
             [len(live.EXPECTED_TOOLS[service.key]) for service in live.SERVICES],
-            [8, 5, 34, 6, 6, 6, 17],
+            [8, 5, 35, 6, 6, 6, 17],
         )
+
+    def test_screenshot_result_requires_matching_image_and_clean_text(self):
+        png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        data = base64.b64encode(png_bytes).decode("ascii")
+
+        def result(**overrides):
+            payload = {
+                "content": [
+                    {"type": "text", "text": "Map canvas, 512 x 256 PNG."},
+                    {"type": "image", "data": data, "mimeType": "image/png"},
+                ],
+                "structuredContent": {
+                    "target": "map_canvas",
+                    "image_size": {"width": 512, "height": 256},
+                    "format": "png",
+                    "bytes": len(png_bytes),
+                    "warnings": [],
+                    "canvas": {"crs": "EPSG:4326"},
+                },
+                "isError": False,
+            }
+            payload.update(overrides)
+            return payload
+
+        def check(value, max_dimension=512):
+            return live.require_screenshot_result(
+                value,
+                "capture_qgis_screenshot",
+                expected_target="map_canvas",
+                max_dimension=max_dimension,
+            )
+
+        self.assertEqual(check(result())["image_size"]["width"], 512)
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 16).decode("ascii")
+        jpeg_result = result(
+            content=[
+                {"type": "text", "text": "Map canvas JPEG."},
+                {"type": "image", "data": jpeg, "mimeType": "image/jpeg"},
+            ],
+        )
+        jpeg_result["structuredContent"]["bytes"] = 20
+        check(jpeg_result)
+
+        invalid_results = {
+            "error": result(isError=True),
+            "no image": result(content=[{"type": "text", "text": "summary"}]),
+            "mime mismatch": result(
+                content=[
+                    {"type": "text", "text": "summary"},
+                    {"type": "image", "data": data, "mimeType": "image/jpeg"},
+                ]
+            ),
+            "bad base64": result(
+                content=[
+                    {"type": "text", "text": "summary"},
+                    {"type": "image", "data": "not base64!", "mimeType": "image/png"},
+                ]
+            ),
+            "payload in text": result(
+                content=[
+                    {"type": "text", "text": f"summary {data}"},
+                    {"type": "image", "data": data, "mimeType": "image/png"},
+                ]
+            ),
+            "no text": result(
+                content=[{"type": "image", "data": data, "mimeType": "image/png"}]
+            ),
+            "no metadata": result(structuredContent=None),
+            "payload in metadata": result(
+                structuredContent={
+                    "target": "map_canvas",
+                    "image_size": [512, 256],
+                    "image_base64": data,
+                    "canvas": {},
+                }
+            ),
+            "no image size": result(
+                structuredContent={"target": "map_canvas", "canvas": {}}
+            ),
+            "wrong target": result(
+                structuredContent={
+                    "target": "main_window",
+                    "image_size": [512, 256],
+                }
+            ),
+            "no canvas": result(
+                structuredContent={"target": "map_canvas", "image_size": [512, 256]}
+            ),
+            "wrong bytes": result(
+                structuredContent={
+                    "target": "map_canvas",
+                    "image_size": [512, 256],
+                    "bytes": 1,
+                    "canvas": {},
+                }
+            ),
+        }
+        for label, value in invalid_results.items():
+            with self.subTest(case=label), self.assertRaises(live.AcceptanceFailure):
+                check(value)
+        with self.assertRaises(live.AcceptanceFailure):
+            check(result(), max_dimension=256)
 
     def test_manager_config_path_and_token_loading_are_secret_safe(self):
         with tempfile.TemporaryDirectory() as temporary:

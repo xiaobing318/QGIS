@@ -418,6 +418,16 @@
           "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true}
         },
         {
+          "name": "capture_qgis_screenshot",
+          "description": "截取 QGIS 当前画面，让模型直接看到界面。默认目标是地图画布 map_canvas，也可选 main_window 主窗口、active_window 当前活动窗口或 layout_designer 打印布局设计器（需传 layout_name），并可用 region 只截取局部区域。默认包含 QCopilots 聊天面板，传 include_qcopilots_panel=false 可遮盖该面板。capture_method 默认 widget，只渲染 QGIS 自身控件。screen 直接读取屏幕像素，能显示三维视图、弹出菜单和标题栏，但也会截到叠在 QGIS 上方的其他应用窗口，可能暴露无关的隐私内容，只在确有需要时使用。返回一个 image 内容项和一段纯文本摘要，截地图画布时还附带 CRS、范围、比例尺和旋转角。只读，不写文件，不改变 QGIS 状态。截图只反映调用那一刻，画面变化后需再次调用以获取最新视图。",
+          "status": "allowed",
+          "risk_level": "R0",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": false,
+          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
           "name": "describe_layer_sources",
           "description": "描述可加载的本地、OGC、ArcGIS、瓦片、网格、点云和三维图层来源。",
           "status": "allowed",

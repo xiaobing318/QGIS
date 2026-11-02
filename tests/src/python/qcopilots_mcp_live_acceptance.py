@@ -21,6 +21,8 @@ runner-owned cleanup is itself an acceptance failure.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -146,6 +148,7 @@ EXPECTED_TOOLS = {
         "save_project",
         "refresh_canvas",
         "export_map_image",
+        "capture_qgis_screenshot",
         "describe_layer_sources",
         "list_map_layers",
         "load_map_layer",
@@ -230,9 +233,9 @@ def validate_expected_inventory() -> None:
     if set(EXPECTED_TOOLS) != {service.key for service in SERVICES}:
         raise AcceptanceFailure("Expected tool inventory does not match service inventory")
     names = [name for tools in EXPECTED_TOOLS.values() for name in tools]
-    if len(names) != 82 or len(set(names)) != 82:
+    if len(names) != 83 or len(set(names)) != 83:
         raise AcceptanceFailure(
-            "Expected tool inventory must contain exactly 82 unique tool names"
+            "Expected tool inventory must contain exactly 83 unique tool names"
         )
 
 
@@ -339,8 +342,8 @@ class CoverageLedger:
     def assert_all_complete(self) -> None:
         for service_key in EXPECTED_TOOLS:
             self.assert_service_complete(service_key)
-        if sum(len(calls) for calls in self._calls.values()) != 82:
-            raise AcceptanceFailure("Live tool coverage did not reach exactly 82 tools")
+        if sum(len(calls) for calls in self._calls.values()) != 83:
+            raise AcceptanceFailure("Live tool coverage did not reach exactly 83 tools")
 
 
 class McpSession:
@@ -708,6 +711,116 @@ def require_cleanup_complete(payload: dict[str, Any], label: str) -> None:
         raise AcceptanceFailure(f"{label} reported incomplete cleanup")
 
 
+SCREENSHOT_SIGNATURES = {
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/jpeg": b"\xff\xd8",
+}
+
+
+def _screenshot_image_size(value: Any) -> tuple[int, int] | None:
+    if isinstance(value, dict):
+        value = (value.get("width"), value.get("height"))
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    width, height = value
+    if type(width) is not int or type(height) is not int:
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return width, height
+
+
+def require_screenshot_result(
+    result: dict[str, Any],
+    label: str,
+    *,
+    expected_target: str,
+    max_dimension: int,
+) -> dict[str, Any]:
+    """Check the raw MCP result of capture_qgis_screenshot.
+
+    The model must receive exactly one decodable image item whose bytes match
+    its declared MIME type, a plain-text summary that does not repeat the
+    base64 payload, and structured metadata without the payload.
+    """
+
+    is_error = result.get("isError", False)
+    if not isinstance(is_error, bool):
+        raise AcceptanceFailure(f"{label} returned a non-boolean isError")
+    if is_error:
+        raise AcceptanceFailure(f"{label} unexpectedly returned isError=true")
+    content = result.get("content")
+    if not isinstance(content, list):
+        raise AcceptanceFailure(f"{label} returned no content list")
+    images = [
+        item
+        for item in content
+        if isinstance(item, dict) and item.get("type") == "image"
+    ]
+    texts = [
+        item
+        for item in content
+        if isinstance(item, dict) and item.get("type") == "text"
+    ]
+    if len(images) != 1:
+        raise AcceptanceFailure(f"{label} must return exactly one image content item")
+    image = images[0]
+    mime_type = image.get("mimeType")
+    signature = SCREENSHOT_SIGNATURES.get(mime_type)
+    if signature is None:
+        raise AcceptanceFailure(f"{label} returned an unsupported image mimeType")
+    data = image.get("data")
+    if not isinstance(data, str) or not data:
+        raise AcceptanceFailure(f"{label} returned no base64 image data")
+    try:
+        image_bytes = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError) as err:
+        raise AcceptanceFailure(f"{label} returned invalid base64 image data") from err
+    if not image_bytes.startswith(signature):
+        raise AcceptanceFailure(
+            f"{label} image bytes do not match mimeType {mime_type}"
+        )
+
+    payload_probe = data[:64]
+    if not texts or not all(
+        isinstance(item.get("text"), str) and item["text"].strip() for item in texts
+    ):
+        raise AcceptanceFailure(f"{label} returned no plain-text summary")
+    if any(payload_probe in item["text"] for item in texts):
+        raise AcceptanceFailure(f"{label} repeated the image payload in its text")
+
+    structured = result.get("structuredContent")
+    if not isinstance(structured, dict):
+        raise AcceptanceFailure(f"{label} returned no structuredContent metadata")
+    if "image_base64" in structured or payload_probe in json.dumps(
+        structured, ensure_ascii=False
+    ):
+        raise AcceptanceFailure(
+            f"{label} repeated the image payload in structuredContent"
+        )
+    if structured.get("target") != expected_target:
+        raise AcceptanceFailure(
+            f"{label} did not report the requested target {expected_target}"
+        )
+    image_size = _screenshot_image_size(structured.get("image_size"))
+    if image_size is None:
+        raise AcceptanceFailure(f"{label} returned no valid image_size")
+    if max(image_size) > max_dimension:
+        raise AcceptanceFailure(
+            f"{label} exceeded max_dimension {max_dimension}: {image_size}"
+        )
+    reported_bytes = structured.get("bytes")
+    if type(reported_bytes) is int and reported_bytes != len(image_bytes):
+        raise AcceptanceFailure(
+            f"{label} reported {reported_bytes} bytes but returned {len(image_bytes)}"
+        )
+    if expected_target == "map_canvas" and not isinstance(
+        structured.get("canvas"), dict
+    ):
+        raise AcceptanceFailure(f"{label} returned no map canvas metadata")
+    return structured
+
+
 @dataclass
 class JobRegistration:
     service: ServiceSpec
@@ -1012,7 +1125,7 @@ class AcceptanceRunner:
             messages.extend(_redacted_message(item, self._token) for item in cleanup_errors)
             raise AcceptanceFailure(". ".join(message for message in messages if message))
         self.output(
-            "PASS: all 82 QCopilots MCP tool contracts completed live acceptance "
+            "PASS: all 83 QCopilots MCP tool contracts completed live acceptance "
             "(SSH transfers require the separate file transfer live acceptance runner), "
             f"requires_process_exit={bool(self.cleanup.requires_process_exit)}, "
             "process_exit_resource_count="
@@ -1533,6 +1646,16 @@ class AcceptanceRunner:
             or world_path.stat().st_size <= 0
         ):
             raise AcceptanceFailure("export_map_image did not publish its image family")
+        # Read the raw MCP result so the image content item itself is checked.
+        require_screenshot_result(
+            session.call_tool(
+                "capture_qgis_screenshot",
+                {"target": "map_canvas", "max_dimension": 512},
+            ),
+            f"{session.service.service_id}.capture_qgis_screenshot",
+            expected_target="map_canvas",
+            max_dimension=512,
+        )
         self._success(session, "refresh_canvas", {})
 
         self._remove_layers(session, {vector_layer_id, raster_layer_id})

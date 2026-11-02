@@ -791,6 +791,7 @@ class QgisBridgeTools:
             "save_project": self.save_project,
             "refresh_canvas": self.refresh_canvas,
             "export_map_image": self.export_map_image,
+            "interactive_capture_screenshot": self.interactive_capture_screenshot,
             "interactive_layer_describe_sources": self.interactive_layer_describe_sources,
             "interactive_layer_list_layers": self.interactive_layer_list_layers,
             "interactive_layer_load_layer": self.interactive_layer_load_layer,
@@ -1384,6 +1385,15 @@ class QgisBridgeTools:
                 "retry_recommended": bool(cleanup_residuals),
             },
         }
+
+    def interactive_capture_screenshot(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        from qcopilots_common.screenshot import capture_qgis_screenshot
+
+        if self.iface is None:
+            raise RuntimeError(
+                "QGIS interface is not available, so no screenshot can be taken"
+            )
+        return capture_qgis_screenshot(self.iface, arguments)
 
     def interactive_layer_describe_sources(self, arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments

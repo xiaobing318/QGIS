@@ -3639,6 +3639,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "save_project",
                         "refresh_canvas",
                         "export_map_image",
+                        "capture_qgis_screenshot",
                         "describe_layer_sources",
                         "list_map_layers",
                         "load_map_layer",
