@@ -1786,6 +1786,365 @@ class TestProcessingJobManager(unittest.TestCase):
         self.assertEqual(environment.tasks, [])
         self.assertEqual(manager.list({"category": "vector"})["jobs"], [])
 
+    def test_bare_memory_destination_is_mapped_to_memory_layer(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import (
+            FORMAL_RESTRICTED_MODE,
+            FilesystemPolicy,
+        )
+
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        input_definition = FakeProcessingDefinition(
+            "INPUT",
+            destination=False,
+            definition_type="vector",
+        )
+        restricted = FilesystemPolicy(
+            mode=FORMAL_RESTRICTED_MODE,
+            shell_enabled=False,
+            network_enabled=False,
+        )
+        for policy in (FilesystemPolicy(), restricted):
+            for spelling in ("memory", "MEMORY", " Memory "):
+                with self.subTest(mode=policy.mode, spelling=spelling):
+                    self.assertEqual(
+                        processing_jobs._apply_processing_filesystem_policy(
+                            {"OUTPUT": spelling},
+                            [output_definition],
+                            policy,
+                        )["OUTPUT"],
+                        "memory:",
+                    )
+        # Read parameters keep their value because "memory" may be a layer name.
+        self.assertEqual(
+            processing_jobs._apply_processing_filesystem_policy(
+                {"INPUT": "memory"},
+                [input_definition],
+                FilesystemPolicy(),
+            )["INPUT"],
+            "memory",
+        )
+
+        algorithm = FakeAlgorithm(
+            "vector:bare-memory-output",
+            parameter_definitions=[output_definition],
+        )
+        environment = FakeProcessingEnvironment([algorithm])
+        dependencies = environment.dependencies()
+        sanitizer_calls = []
+
+        def sanitizer(parameters, parameter_definitions):
+            del parameter_definitions
+            sanitizer_calls.append(dict(parameters))
+            return dict(parameters)
+
+        dependencies["parameter_sanitizer"] = sanitizer
+        manager = ProcessingJobManager(dependencies=dependencies)
+        started = manager.start(
+            {
+                "category": "vector",
+                "algorithm_id": algorithm.id(),
+                "parameters": {"OUTPUT": "memory"},
+            }
+        )
+        self.assertEqual(sanitizer_calls, [{"OUTPUT": "memory:"}])
+        self.assertEqual(started["state"], "running")
+        self.assertEqual(started["phase"], "execute")
+        runtime = manager.store.get_runtime(started["job_id"], "vector")
+        self.assertEqual(runtime.parameters["OUTPUT"], "memory:")
+        self.assertEqual(runtime.output_plans, [])
+        environment.tasks[0].taskTerminated.emit()
+
+    def test_relative_processing_destinations_are_rejected_before_start(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import (
+            FORMAL_RESTRICTED_MODE,
+            FilesystemPolicy,
+        )
+
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        algorithm = FakeAlgorithm(
+            "vector:relative-output",
+            parameter_definitions=[output_definition],
+        )
+        restricted = FilesystemPolicy(
+            mode=FORMAL_RESTRICTED_MODE,
+            shell_enabled=False,
+            network_enabled=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            program_folder = root / "program"
+            program_folder.mkdir()
+            previous_directory = Path.cwd()
+            try:
+                # Stand in for the QGIS program folder, which is the working
+                # folder of the QGIS GUI process.
+                os.chdir(program_folder)
+                for relative in (
+                    "germany.gpkg",
+                    "data/germany.gpkg",
+                    "..\\x.gpkg",
+                    "./germany.gpkg",
+                    "file:germany.gpkg",
+                    "germany.gpkg|layername=roads",
+                ):
+                    environment = FakeProcessingEnvironment([algorithm])
+                    dependencies = environment.dependencies()
+                    sanitizer_calls = []
+                    dependencies["parameter_sanitizer"] = (
+                        lambda parameters, _definitions, calls=sanitizer_calls: (
+                            calls.append(parameters) or dict(parameters)
+                        )
+                    )
+                    manager = ProcessingJobManager(dependencies=dependencies)
+                    with self.subTest(relative=relative):
+                        with self.assertRaises(ValueError) as caught:
+                            manager.start(
+                                {
+                                    "category": "vector",
+                                    "algorithm_id": algorithm.id(),
+                                    "parameters": {"OUTPUT": relative},
+                                }
+                            )
+                        message = str(caught.exception)
+                        self.assertIn(
+                            "Processing destination OUTPUT must be an absolute "
+                            'file path, "memory:" or "TEMPORARY_OUTPUT" '
+                            f"(got '{relative}')",
+                            message,
+                        )
+                        self.assertIn(
+                            f"QGIS program folder {Path.cwd()}",
+                            message,
+                        )
+                        self.assertEqual(sanitizer_calls, [])
+                        self.assertEqual(environment.tasks, [])
+                        self.assertEqual(
+                            manager.list({"category": "vector"})["jobs"], []
+                        )
+
+                for relative in ("germany.gpkg", "data/germany.gpkg", "..\\x.gpkg"):
+                    with self.subTest(mode=restricted.mode, relative=relative):
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "must be an absolute file path",
+                        ):
+                            processing_jobs._apply_processing_filesystem_policy(
+                                {"OUTPUT": relative},
+                                [output_definition],
+                                restricted,
+                            )
+                # Existing policy rejections keep their own message.
+                with self.assertRaisesRegex(PermissionError, "drive-relative"):
+                    processing_jobs._apply_processing_filesystem_policy(
+                        {"OUTPUT": "C:germany.gpkg"},
+                        [output_definition],
+                        FilesystemPolicy(),
+                    )
+            finally:
+                os.chdir(previous_directory)
+            self.assertEqual(list(program_folder.iterdir()), [])
+            self.assertEqual(list(root.iterdir()), [program_folder])
+
+    def test_absolute_and_non_file_processing_destinations_are_unchanged(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import (
+            FORMAL_RESTRICTED_MODE,
+            FilesystemPolicy,
+        )
+
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        restricted = FilesystemPolicy(
+            mode=FORMAL_RESTRICTED_MODE,
+            shell_enabled=False,
+            network_enabled=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            target = (Path(tmp) / "germany.gpkg").resolve()
+            for policy in (FilesystemPolicy(), restricted):
+                with self.subTest(mode=policy.mode):
+                    normalized = processing_jobs._apply_processing_filesystem_policy(
+                        {"OUTPUT": str(target)},
+                        [output_definition],
+                        policy,
+                    )
+                    self.assertEqual(normalized["OUTPUT"], str(target))
+                    plans = processing_jobs._processing_output_plans(
+                        normalized,
+                        [output_definition],
+                    )
+                    self.assertEqual([plan["target"] for plan in plans], [target])
+                    for unchanged in ("TEMPORARY_OUTPUT", "memory:", "memory:roads"):
+                        normalized = (
+                            processing_jobs._apply_processing_filesystem_policy(
+                                {"OUTPUT": unchanged},
+                                [output_definition],
+                                policy,
+                            )
+                        )
+                        self.assertEqual(normalized["OUTPUT"], unchanged)
+                        self.assertEqual(
+                            processing_jobs._processing_output_plans(
+                                normalized,
+                                [output_definition],
+                            ),
+                            [],
+                        )
+
+            algorithm = FakeAlgorithm(
+                "vector:absolute-output",
+                parameter_definitions=[output_definition],
+            )
+            environment = FakeProcessingEnvironment([algorithm])
+            dependencies = environment.dependencies()
+            sanitizer_calls = []
+
+            def sanitizer(parameters, parameter_definitions):
+                del parameter_definitions
+                sanitizer_calls.append(dict(parameters))
+                return dict(parameters)
+
+            dependencies["parameter_sanitizer"] = sanitizer
+            manager = ProcessingJobManager(dependencies=dependencies)
+            started = manager.start(
+                {
+                    "category": "vector",
+                    "algorithm_id": algorithm.id(),
+                    "parameters": {"OUTPUT": str(target)},
+                }
+            )
+            self.assertEqual(sanitizer_calls, [{"OUTPUT": str(target)}])
+            self.assertEqual(started["state"], "running")
+            runtime = manager.store.get_runtime(started["job_id"], "vector")
+            self.assertEqual(
+                [plan["target"] for plan in runtime.output_plans],
+                [target],
+            )
+            environment.tasks[0].taskTerminated.emit()
+
+    def test_gdal_virtual_processing_destinations_are_rejected_before_start(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import (
+            FORMAL_RESTRICTED_MODE,
+            FilesystemPolicy,
+        )
+
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        style_definition = FakeProcessingDefinition(
+            "STYLE",
+            destination=False,
+            definition_type="file",
+        )
+        algorithm = FakeAlgorithm(
+            "vector:virtual-output",
+            parameter_definitions=[output_definition],
+        )
+        restricted = FilesystemPolicy(
+            mode=FORMAL_RESTRICTED_MODE,
+            shell_enabled=False,
+            network_enabled=False,
+        )
+        virtual_destinations = (
+            "/vsimem/x.gpkg",
+            "/VSIMEM/x.gpkg",
+            " /vsimem/x.gpkg ",
+            "/vsimem\\x.gpkg",
+            "/vsimem/x.gpkg|layername=roads",
+            "/vsizip/C:/data/out.zip/x.shp",
+            "/vsis3/bucket/x.gpkg",
+            "/vsistdout/",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp).resolve()
+            previous_directory = Path.cwd()
+            try:
+                os.chdir(scratch)
+                for value in virtual_destinations:
+                    raw = value.strip()
+                    environment = FakeProcessingEnvironment([algorithm])
+                    dependencies = environment.dependencies()
+                    sanitizer_calls = []
+                    dependencies["parameter_sanitizer"] = (
+                        lambda parameters, _definitions, calls=sanitizer_calls: (
+                            calls.append(parameters) or dict(parameters)
+                        )
+                    )
+                    manager = ProcessingJobManager(dependencies=dependencies)
+                    with self.subTest(value=value):
+                        with self.assertRaises(ValueError) as caught:
+                            manager.start(
+                                {
+                                    "category": "vector",
+                                    "algorithm_id": algorithm.id(),
+                                    "parameters": {"OUTPUT": value},
+                                }
+                            )
+                        message = str(caught.exception)
+                        self.assertIn(
+                            "Processing destination OUTPUT cannot be a GDAL "
+                            f"virtual file system path (got '{raw}')",
+                            message,
+                        )
+                        self.assertIn(
+                            'Use an absolute file path, "memory:" or '
+                            '"TEMPORARY_OUTPUT"',
+                            message,
+                        )
+                        self.assertEqual(sanitizer_calls, [])
+                        self.assertEqual(environment.tasks, [])
+                        self.assertEqual(
+                            manager.list({"category": "vector"})["jobs"], []
+                        )
+                        # Callers that bypass the policy never get a drive
+                        # root target such as C:\vsimem\x.gpkg either.
+                        self.assertIsNone(
+                            processing_jobs._processing_file_destination(value)
+                        )
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "cannot be a GDAL virtual file system path",
+                        ):
+                            processing_jobs._processing_output_plans(
+                                {"OUTPUT": value},
+                                [output_definition],
+                            )
+                    with self.subTest(mode=restricted.mode, value=value):
+                        with self.assertRaisesRegex(
+                            PermissionError,
+                            "virtual filesystem",
+                        ):
+                            processing_jobs._apply_processing_filesystem_policy(
+                                {"OUTPUT": value},
+                                [output_definition],
+                                restricted,
+                            )
+
+                # Reads from GDAL virtual paths keep working in compatible mode
+                # and are not fingerprinted as local input files.
+                for source in (
+                    "/vsimem/source.qml",
+                    "/vsizip/C:/data/styles.zip/source.qml",
+                    "/vsicurl/http://example.test/source.qml",
+                ):
+                    with self.subTest(source=source):
+                        normalized = processing_jobs._apply_processing_filesystem_policy(
+                            {"STYLE": source},
+                            [style_definition],
+                            FilesystemPolicy(),
+                        )
+                        self.assertEqual(normalized["STYLE"], source)
+                        self.assertEqual(
+                            processing_jobs._processing_input_versions(
+                                normalized,
+                                [style_definition],
+                            ),
+                            [],
+                        )
+            finally:
+                os.chdir(previous_directory)
+            self.assertEqual(list(scratch.iterdir()), [])
+
     def test_non_path_processing_strings_are_not_input_versions(self):
         import qcopilots_common.processing_jobs as processing_jobs
 
@@ -3508,6 +3867,46 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
         )
         self.assertIs(retained_runtime.context, retained_context)
         self.assertGreaterEqual(retained_context.temporaryLayerStore().count(), 1)
+
+    def test_real_native_algorithm_rejects_gdal_virtual_destination(self):
+        algorithm = self.registry.createAlgorithmById("native:extractbyattribute")
+        self.assertIsNotNone(algorithm)
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp).resolve()
+            previous_directory = Path.cwd()
+            try:
+                os.chdir(scratch)
+                for destination in (
+                    "/vsimem/qcopilots-extract.gpkg",
+                    "/vsizip/" + (scratch / "out.zip").as_posix() + "/x.shp",
+                ):
+                    with self.subTest(destination=destination):
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "Processing destination OUTPUT cannot be a GDAL "
+                            "virtual file system path",
+                        ):
+                            self.manager.start(
+                                {
+                                    "category": "vector",
+                                    "algorithm_id": "native:extractbyattribute",
+                                    "parameters": {
+                                        "INPUT": str(scratch / "source.gpkg"),
+                                        "FIELD": "id",
+                                        "OPERATOR": 0,
+                                        "VALUE": "1",
+                                        "OUTPUT": destination,
+                                    },
+                                    "add_outputs_to_project": False,
+                                }
+                            )
+                        self.assertEqual(
+                            self.manager.list({"category": "vector"})["jobs"], []
+                        )
+                        self.assertFalse(QgsApplication.taskManager().activeTasks())
+            finally:
+                os.chdir(previous_directory)
+            self.assertEqual(list(scratch.iterdir()), [])
 
     def test_real_flag_no_threading_is_deferred_to_qt_main_thread(self):
         algorithm_id = (

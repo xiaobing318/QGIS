@@ -100,14 +100,24 @@ def build_interactive_tools() -> list[McpTool]:
         ),
         _bridge_tool(
             "zoom_to_layer",
-            "Zoom the map canvas to a layer.",
+            (
+                "Zoom the map canvas to a layer. The layer extent is transformed from "
+                "the layer CRS to the canvas CRS. Returns canvas_crs and canvas_extent "
+                "[xmin, ymin, xmax, ymax] in the canvas CRS."
+            ),
             {"layer_id": "string"},
             bridge,
             ["layer_id"],
         ),
         _custom_bridge_tool(
             "zoom_to_extent",
-            "Zoom the map canvas to an extent [xmin, ymin, xmax, ymax].",
+            (
+                "Zoom the map canvas to an extent [xmin, ymin, xmax, ymax]. Without crs "
+                "the numbers are in the canvas (project) CRS. With crs, for example "
+                "EPSG:3035, they are transformed from that CRS to the canvas CRS. "
+                "Projected values such as metres on a geographic canvas are rejected "
+                "unless crs is given. Returns canvas_crs and canvas_extent."
+            ),
             {
                 "type": "object",
                 "properties": {
@@ -116,7 +126,13 @@ def build_interactive_tools() -> list[McpTool]:
                         "items": {"type": "number"},
                         "minItems": 4,
                         "maxItems": 4,
-                    }
+                        "description": "xmin, ymin, xmax, ymax in crs, or in the canvas CRS when crs is omitted.",
+                    },
+                    "crs": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Optional CRS of extent as an authority id, for example EPSG:3035 or EPSG:4326.",
+                    },
                 },
                 "required": ["extent"],
                 "additionalProperties": False,
@@ -387,7 +403,15 @@ def _start_processing_algorithm_schema() -> dict[str, Any]:
             "parameters": {
                 "type": "object",
                 "default": {},
-                "description": "Algorithm parameter values keyed by parameter ID.",
+                "description": (
+                    "Algorithm parameter values keyed by parameter ID. Destination "
+                    "parameters (outputs and feature sinks) accept an absolute file "
+                    'path, "memory:" or "TEMPORARY_OUTPUT". Relative paths are '
+                    "rejected because they would be written into the QGIS program "
+                    "folder. GDAL virtual paths such as /vsimem/ or /vsizip/ are "
+                    "rejected as destinations because QCopilots cannot stage, "
+                    "publish or reopen them."
+                ),
             },
             "add_outputs_to_project": {
                 "type": "boolean",
@@ -500,7 +524,10 @@ def _create_vector_layer_schema() -> dict[str, Any]:
             "path": {
                 "type": "string",
                 "minLength": 1,
-                "description": "Optional output path. Suffix chooses GPKG, Shapefile or GeoJSON when possible.",
+                "description": (
+                    "Optional absolute output path. Relative paths are rejected. "
+                    "Suffix chooses GPKG, Shapefile or GeoJSON when possible."
+                ),
             },
             "driver_name": {
                 "type": "string",
@@ -607,7 +634,8 @@ def _save_project_schema() -> dict[str, Any]:
                 "minLength": 1,
                 "pattern": ".*\\.[qQ][gG][zZ]$",
                 "description": (
-                    "Optional .qgz project destination. Plain .qgs projects are "
+                    "Optional absolute .qgz project destination. Relative paths are "
+                    "rejected. Plain .qgs projects are "
                     "unsupported because their auxiliary file family cannot be "
                     "published atomically as one output."
                 ),
@@ -627,7 +655,11 @@ def _export_map_image_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "minLength": 1},
+            "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Absolute output image path. Relative paths are rejected.",
+            },
             "overwrite": {"type": "boolean", "default": False},
             "overwrite_confirmation_token": {
                 "type": "string",

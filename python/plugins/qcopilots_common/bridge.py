@@ -803,6 +803,7 @@ class QgisBridgeTools:
             "interactive_project_set_crs": self.interactive_project_set_crs,
             "interactive_raster_statistics": self.interactive_raster_statistics,
             "interactive_layer_apply_style": self.interactive_layer_apply_style,
+            "interactive_layer_set_renderer": self.interactive_layer_set_renderer,
             "interactive_layer_configure_labels": self.interactive_layer_configure_labels,
             "interactive_layout_create": self.interactive_layout_create,
             "interactive_layout_list": self.interactive_layout_list,
@@ -879,27 +880,140 @@ class QgisBridgeTools:
         return {"layer_id": arguments["layer_id"], "visible": node.itemVisibilityChecked()}
 
     def zoom_to_layer(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsProject
+        from qgis.core import QgsProject, QgsVectorLayer
 
         layer = QgsProject.instance().mapLayer(arguments["layer_id"])
         if not layer:
             raise RuntimeError("Layer not found")
-        self.iface.mapCanvas().setExtent(layer.extent())
-        self.iface.mapCanvas().refresh()
-        return {"layer_id": layer.id()}
+        if not layer.isSpatial():
+            raise RuntimeError("Layer has no geometry, so there is no extent to zoom to")
+        layer_extent = layer.extent()
+        if isinstance(layer, QgsVectorLayer) and layer_extent.isEmpty():
+            layer.updateExtents()
+            layer_extent = layer.extent()
+        if layer_extent.isNull() or not layer_extent.isFinite():
+            raise RuntimeError("Layer has no features or no valid extent to zoom to")
+
+        canvas = self.iface.mapCanvas()
+        # The layer extent is in the layer CRS: transform it to the canvas CRS
+        # and keep the 5% margin of the QGIS "Zoom to Layer" action.
+        target = self._zoom_extent_to_canvas_crs(
+            canvas, layer_extent, layer.crs(), "layer extent"
+        )
+        target.scale(1.05)
+        canvas.setExtent(target, True)
+        canvas.refresh()
+        return {
+            "layer_id": layer.id(),
+            "layer_crs": layer.crs().authid(),
+            **self._zoom_canvas_state(canvas),
+        }
 
     def zoom_to_extent(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsRectangle
+        from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle
 
         extent = arguments["extent"]
-        if not isinstance(extent, list) or len(extent) != 4:
+        if (
+            not isinstance(extent, list)
+            or len(extent) != 4
+            or not all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                for value in extent
+            )
+        ):
             raise RuntimeError(
                 "extent must contain exactly four numbers: xmin, ymin, xmax, ymax"
             )
+        canvas = self.iface.mapCanvas()
+        canvas_crs = canvas.mapSettings().destinationCrs()
         rectangle = QgsRectangle(extent[0], extent[1], extent[2], extent[3])
-        self.iface.mapCanvas().setExtent(rectangle)
-        self.iface.mapCanvas().refresh()
-        return {"extent": extent}
+        crs_id = arguments.get("crs")
+        if crs_id:
+            extent_crs = QgsCoordinateReferenceSystem(str(crs_id))
+            if not extent_crs.isValid():
+                raise RuntimeError(
+                    f"Unknown crs {crs_id!r}: use an authority id such as EPSG:3035"
+                )
+            rectangle = self._zoom_extent_to_canvas_crs(
+                canvas, rectangle, extent_crs, "extent"
+            )
+        else:
+            # Without crs the numbers are in the canvas (project) CRS. Metre values
+            # on a geographic canvas would zoom far outside the world, so refuse them.
+            extent_crs = canvas_crs
+            if (
+                canvas_crs.isValid()
+                and canvas_crs.isGeographic()
+                and not (
+                    -180 <= rectangle.xMinimum() <= rectangle.xMaximum() <= 180
+                    and -90 <= rectangle.yMinimum() <= rectangle.yMaximum() <= 90
+                )
+            ):
+                raise RuntimeError(
+                    f"The canvas CRS {canvas_crs.authid()} uses degrees, but extent "
+                    f"{extent} is outside longitude -180..180 and latitude -90..90. "
+                    "If these are projected coordinates such as metres, pass crs with "
+                    "their CRS, for example crs=\"EPSG:3035\"."
+                )
+        canvas.setExtent(rectangle)
+        canvas.refresh()
+        return {
+            "extent": extent,
+            "crs": extent_crs.authid(),
+            **self._zoom_canvas_state(canvas),
+        }
+
+    def _zoom_extent_to_canvas_crs(
+        self, canvas: Any, extent: Any, source_crs: Any, label: str
+    ) -> Any:
+        from qgis.core import (
+            QgsCoordinateTransform,
+            QgsCsException,
+            QgsProject,
+            QgsRectangle,
+        )
+
+        canvas_crs = canvas.mapSettings().destinationCrs()
+        if (
+            not source_crs.isValid()
+            or not canvas_crs.isValid()
+            or source_crs == canvas_crs
+        ):
+            return QgsRectangle(extent)
+        transform = QgsCoordinateTransform(
+            source_crs, canvas_crs, QgsProject.instance()
+        )
+        transform.setBallparkTransformsAreAppropriate(True)
+        try:
+            transformed = transform.transformBoundingBox(extent)
+        except QgsCsException as exc:
+            raise RuntimeError(
+                f"Cannot transform the {label} from {source_crs.authid()} to the "
+                f"canvas CRS {canvas_crs.authid()}: {exc}"
+            ) from exc
+        if transformed.isNull() or not transformed.isFinite():
+            raise RuntimeError(
+                f"Cannot transform the {label} from {source_crs.authid()} to the "
+                f"canvas CRS {canvas_crs.authid()}"
+            )
+        return transformed
+
+    def _zoom_canvas_state(self, canvas: Any) -> dict[str, Any]:
+        extent = canvas.extent()
+        values = [
+            float(extent.xMinimum()),
+            float(extent.yMinimum()),
+            float(extent.xMaximum()),
+            float(extent.yMaximum()),
+        ]
+        return {
+            "canvas_crs": canvas.mapSettings().destinationCrs().authid(),
+            "canvas_extent": (
+                values if all(math.isfinite(value) for value in values) else None
+            ),
+        }
 
     def zoom_in(self, arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments
@@ -966,6 +1080,7 @@ class QgisBridgeTools:
         extent_before = extent_values(canvas.extent())
         scale_before = float(canvas.scale())
         magnification_before = float(canvas.magnificationFactor())
+        map_units_per_pixel_before = float(canvas.mapUnitsPerPixel())
         canvas.zoomToSelected(layer)
         extent_after_native = extent_values(canvas.extent())
         scale_after_native = float(canvas.scale())
@@ -1006,6 +1121,7 @@ class QgisBridgeTools:
         extent_after = extent_values(canvas.extent())
         scale_after = float(canvas.scale())
         magnification_after = float(canvas.magnificationFactor())
+        map_units_per_pixel_after = float(canvas.mapUnitsPerPixel())
         extent_changed = values_changed(extent_before, extent_after)
         scale_changed = not math.isclose(
             scale_before,
@@ -1019,11 +1135,24 @@ class QgisBridgeTools:
             rel_tol=1e-9,
             abs_tol=1e-9,
         )
+        # A geographic canvas computes its scale at the latitude of the view,
+        # so a recentre at the same zoom can still change the scale. The map
+        # units per pixel only change when the zoom itself changes.
+        map_units_per_pixel_changed = not math.isclose(
+            map_units_per_pixel_before,
+            map_units_per_pixel_after,
+            rel_tol=1e-9,
+            abs_tol=1e-12,
+        )
         if single_point_fallback:
             zoom_mode = "single_point_zoom_in_fallback"
         elif not selection_extent_available:
             zoom_mode = "selection_extent_unavailable"
-        elif extent_changed and not scale_changed and not magnification_changed:
+        elif (
+            extent_changed
+            and not map_units_per_pixel_changed
+            and not magnification_changed
+        ):
             zoom_mode = "native_selection_recenter"
         elif extent_changed or scale_changed or magnification_changed:
             zoom_mode = "native_selection_extent"
@@ -1042,7 +1171,11 @@ class QgisBridgeTools:
             "magnification_before": magnification_before,
             "magnification_after": magnification_after,
             "magnification_changed": magnification_changed,
+            "map_units_per_pixel_before": map_units_per_pixel_before,
+            "map_units_per_pixel_after": map_units_per_pixel_after,
+            "map_units_per_pixel_changed": map_units_per_pixel_changed,
             "scale_locked": bool(canvas.scaleLocked()),
+            "canvas_crs": canvas.mapSettings().destinationCrs().authid(),
             "extent_before": extent_before,
             "extent_after": extent_after,
             "extent_changed": extent_changed,
@@ -1615,26 +1748,622 @@ class QgisBridgeTools:
         }
 
     def interactive_layer_apply_style(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        from qgis.core import QgsMapLayer, QgsVectorLayer
+
         layer = _map_layer_from_id(arguments["layer_id"])
         style_path = Path(
             self._safe_workspace_path(arguments["style_path"], access="read")
         )
         if not style_path.is_file():
             raise FileNotFoundError(f"Layer style file not found: {style_path}")
-        if style_path.suffix.lower() not in {".qml", ".sld"}:
+        style_format = style_path.suffix.lower().lstrip(".")
+        if style_format not in {"qml", "sld"}:
             raise RuntimeError("Layer style_path must use a .qml or .sld suffix")
-        message, loaded = layer.loadNamedStyle(str(style_path))
+        is_vector = isinstance(layer, QgsVectorLayer)
+        declared_renderer = None
+        if style_format == "qml":
+            declared_renderer = self._validate_qml_style(
+                style_path, is_vector and layer.isSpatial()
+            )
+        declares_labeling = self._style_file_declares_labeling(style_path, style_format)
+        previous = self._vector_style_snapshot(layer) if is_vector else None
+        if style_format == "sld":
+            message, loaded = layer.loadSldStyle(str(style_path))
+        else:
+            # loadFromLocalDb=True reads this file instead of a default style
+            # stored in the data source (GeoPackage, PostGIS). Only symbology,
+            # plus labeling when the file has labels, is imported so fields,
+            # forms, actions and the current labels survive.
+            categories = QgsMapLayer.StyleCategory.Symbology
+            if declares_labeling:
+                categories |= QgsMapLayer.StyleCategory.Labeling
+            message, loaded = layer.loadNamedStyle(str(style_path), True, categories)
+        problems = []
         if not loaded:
-            raise RuntimeError(f"Could not load layer style: {message}")
+            problems.append(f"Could not load layer style: {message}")
+        elif str(message).strip() == "Loaded from Provider":
+            problems.append(
+                "QGIS applied the style stored in the data source instead of "
+                "the style file."
+            )
+        elif previous is not None:
+            problems.extend(
+                self._vector_style_load_problems(layer, previous, declared_renderer)
+            )
+        if problems:
+            if previous is not None:
+                self._restore_vector_style(layer, previous)
+                problems.append("The previous renderer and labeling were restored.")
+            raise RuntimeError(" ".join(problems))
+        if previous is not None and not declares_labeling:
+            self._restore_vector_labeling(layer, previous)
+        layer.triggerRepaint()
+        if self.iface:
+            self.iface.mapCanvas().refresh()
+        result = {
+            "layer": _layer_summary(layer),
+            "style_path": str(style_path),
+            "style_format": style_format,
+            "loaded": True,
+            "message": str(message),
+        }
+        if style_format == "qml":
+            result["style_categories"] = (
+                ["symbology", "labeling"] if declares_labeling else ["symbology"]
+            )
+        if is_vector:
+            result["renderer"] = self._vector_renderer_summary(layer)
+            result["labeling"] = {
+                **self._vector_labeling_summary(layer),
+                "source": "style_file" if declares_labeling else "kept_previous",
+            }
+        return result
+
+    def interactive_layer_set_renderer(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        from qgis.core import (
+            Qgis,
+            QgsSingleSymbolRenderer,
+            QgsStyle,
+            QgsSymbol,
+        )
+
+        layer = _vector_layer_from_id(arguments["layer_id"])
+        if not layer.isSpatial():
+            raise RuntimeError("Renderers apply only to vector layers with geometry")
+        mode = str(arguments.get("mode") or "").strip()
+        mode_options = {
+            "single": {"color", "outline_color", "opacity"},
+            "categorized": {
+                "field",
+                "color_ramp",
+                "invert_ramp",
+                "outline_color",
+                "opacity",
+            },
+            "graduated": {
+                "field",
+                "method",
+                "classes",
+                "breaks",
+                "color_ramp",
+                "invert_ramp",
+                "outline_color",
+                "opacity",
+            },
+        }
+        if mode not in mode_options:
+            raise RuntimeError("mode must be single, categorized or graduated")
+        given = {
+            name for name, value in arguments.items() if value is not None
+        } - {"layer_id", "mode"}
+        unexpected = sorted(given - mode_options[mode])
+        if unexpected:
+            raise RuntimeError(
+                f"{', '.join(unexpected)} cannot be used with mode {mode}. "
+                f"Allowed options: {', '.join(sorted(mode_options[mode]))}"
+            )
+
+        symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+        if symbol is None:
+            raise RuntimeError("Could not create a default symbol for this layer")
+        if "opacity" in given:
+            opacity = arguments["opacity"]
+            if (
+                isinstance(opacity, bool)
+                or not isinstance(opacity, (int, float))
+                or not 0 <= float(opacity) <= 1
+            ):
+                raise RuntimeError("opacity must be a number from 0 to 1")
+            symbol.setOpacity(float(opacity))
+        if "outline_color" in given:
+            if layer.geometryType() == Qgis.GeometryType.Line:
+                raise RuntimeError(
+                    "outline_color applies to point and polygon layers only"
+                )
+            outline = self._renderer_color(arguments["outline_color"], "outline_color")
+            for symbol_layer in symbol.symbolLayers():
+                symbol_layer.setStrokeColor(outline)
+
+        extra: dict[str, Any] = {}
+        if mode == "single":
+            if "color" in given:
+                symbol.setColor(self._renderer_color(arguments["color"], "color"))
+            renderer = QgsSingleSymbolRenderer(symbol)
+        else:
+            field, is_field = self._renderer_field(layer, arguments.get("field"))
+            ramp_name = str(
+                arguments.get("color_ramp")
+                or ("Viridis" if mode == "graduated" else "Spectral")
+            ).strip()
+            style = QgsStyle.defaultStyle()
+            ramp = style.colorRamp(ramp_name)
+            if ramp is None:
+                raise RuntimeError(
+                    f"Unknown color_ramp: {ramp_name}. Available ramps: "
+                    + ", ".join(sorted(style.colorRampNames()))
+                )
+            if bool(arguments.get("invert_ramp", False)):
+                ramp.invert()
+            extra["color_ramp"] = ramp_name
+            extra["invert_ramp"] = bool(arguments.get("invert_ramp", False))
+            if mode == "categorized":
+                renderer = self._categorized_renderer(layer, field, symbol, ramp)
+            else:
+                renderer, graduated_extra = self._graduated_renderer(
+                    layer, field, is_field, symbol, ramp, arguments
+                )
+                extra.update(graduated_extra)
+
+        layer.setRenderer(renderer)
         layer.triggerRepaint()
         if self.iface:
             self.iface.mapCanvas().refresh()
         return {
             "layer": _layer_summary(layer),
-            "style_path": str(style_path),
-            "loaded": True,
-            "message": str(message),
+            "mode": mode,
+            **extra,
+            "renderer": self._vector_renderer_summary(layer),
+            "labeling": self._vector_labeling_summary(layer),
         }
+
+    @staticmethod
+    def _renderer_color(value: Any, label: str) -> Any:
+        from qgis.PyQt.QtGui import QColor
+
+        text = str(value or "").strip()
+        color = QColor(text)
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", text) or not color.isValid():
+            raise RuntimeError(f"{label} must be a #RRGGBB color: {value}")
+        return color
+
+    @staticmethod
+    def _renderer_field(layer: Any, value: Any) -> tuple[str, bool]:
+        """Resolve a field name, or validate an expression, for a renderer."""
+        from qgis.core import QgsExpression, QgsFeatureRequest
+
+        text = str(value or "").strip()
+        if not text:
+            raise RuntimeError("field is required for categorized and graduated modes")
+        fields = layer.fields()
+        index = fields.lookupField(text)
+        if index >= 0:
+            return fields.at(index).name(), True
+        available = ", ".join(fields.names()[:50])
+        expression = QgsExpression(text)
+        if expression.hasParserError():
+            raise RuntimeError(
+                f"field is not a layer field or a valid expression: {text}. "
+                f"Available fields: {available}. "
+                f"Expression error: {expression.parserErrorString()}"
+            )
+        unknown = sorted(
+            str(name)
+            for name in expression.referencedColumns()
+            if name != QgsFeatureRequest.ALL_ATTRIBUTES and fields.lookupField(name) < 0
+        )
+        if unknown:
+            raise RuntimeError(
+                f"Unknown vector field: {', '.join(unknown)}. "
+                f"Available fields: {available}"
+            )
+        return text, False
+
+    @staticmethod
+    def _categorized_renderer(layer: Any, field: str, symbol: Any, ramp: Any) -> Any:
+        from qgis.core import QgsCategorizedSymbolRenderer, QgsVectorLayerUtils
+
+        maximum = 256
+        values, ok = QgsVectorLayerUtils.uniqueValues(layer, field, False, maximum + 1)
+        if not ok:
+            raise RuntimeError(f"Could not read values of {field}")
+        if not values:
+            raise RuntimeError(f"{field} has no values to categorize")
+        if len(values) > maximum:
+            raise RuntimeError(
+                f"{field} has more than {maximum} unique values. Use graduated "
+                "mode or an expression that groups the values."
+            )
+        categories = QgsCategorizedSymbolRenderer.createCategories(
+            values, symbol, layer, field
+        )
+        renderer = QgsCategorizedSymbolRenderer(field, categories)
+        renderer.setSourceSymbol(symbol.clone())
+        renderer.updateColorRamp(ramp)
+        return renderer
+
+    @staticmethod
+    def _graduated_renderer(
+        layer: Any,
+        field: str,
+        is_field: bool,
+        symbol: Any,
+        ramp: Any,
+        arguments: dict[str, Any],
+    ) -> tuple[Any, dict[str, Any]]:
+        from qgis.core import (
+            QgsApplication,
+            QgsClassificationCustom,
+            QgsClassificationMethod,
+            QgsGraduatedSymbolRenderer,
+            QgsRendererRange,
+            QgsVectorLayerUtils,
+        )
+
+        methods = {
+            "equal_interval": "EqualInterval",
+            "quantile": "Quantile",
+            "jenks": "Jenks",
+            "pretty": "Pretty",
+            "stddev": "StdDev",
+        }
+        method_name = str(arguments.get("method") or "equal_interval").strip()
+        if method_name not in methods:
+            raise RuntimeError(
+                "method must be equal_interval, quantile, jenks, pretty or stddev"
+            )
+        classes = arguments.get("classes")
+        classes = 5 if classes is None else classes
+        if (
+            isinstance(classes, bool)
+            or not isinstance(classes, int)
+            or not 2 <= classes <= 12
+        ):
+            raise RuntimeError("classes must be an integer from 2 to 12")
+        breaks = arguments.get("breaks")
+        boundaries: list[float] = []
+        if breaks is not None:
+            if (
+                not isinstance(breaks, list)
+                or not 3 <= len(breaks) <= 13
+                or any(
+                    isinstance(item, bool) or not isinstance(item, (int, float))
+                    for item in breaks
+                )
+            ):
+                raise RuntimeError(
+                    "breaks must list 3 to 13 numbers: the lower bound of the first "
+                    "class, the inner boundaries and the upper bound of the last class"
+                )
+            boundaries = [float(item) for item in breaks]
+            if not all(math.isfinite(item) for item in boundaries) or any(
+                upper <= lower for lower, upper in zip(boundaries, boundaries[1:])
+            ):
+                raise RuntimeError("breaks must be finite and strictly ascending")
+
+        fields = layer.fields()
+        if is_field:
+            index = fields.lookupField(field)
+            qgs_field = fields.at(index)
+            if not qgs_field.isNumeric():
+                raise RuntimeError(
+                    f"Field {field} has type {qgs_field.typeName()} and is not "
+                    "numeric. Graduated mode needs a numeric field or an "
+                    f'expression such as to_real("{field}").'
+                )
+            minimum, maximum = layer.minimumAndMaximumValue(index)
+            value_range = [_finite_number(minimum), _finite_number(maximum)]
+        else:
+            values, ok, _null_count = QgsVectorLayerUtils.getDoubleValues(layer, field)
+            if not ok:
+                raise RuntimeError(f"Could not evaluate expression: {field}")
+            value_range = [min(values), max(values)] if values else [None, None]
+        if value_range[0] is None or value_range[1] is None:
+            raise RuntimeError(
+                f"{field} has no numeric values to classify. Graduated mode needs "
+                "a numeric field or an expression that returns numbers."
+            )
+
+        renderer = QgsGraduatedSymbolRenderer(field)
+        renderer.setSourceSymbol(symbol.clone())
+        extra: dict[str, Any] = {"value_range": value_range}
+        if boundaries:
+            renderer.setClassificationMethod(QgsClassificationCustom())
+            method = renderer.classificationMethod()
+            last = len(boundaries) - 2
+            for index, (lower, upper) in enumerate(zip(boundaries, boundaries[1:])):
+                if index == 0:
+                    position = QgsClassificationMethod.ClassPosition.LowerBound
+                elif index == last:
+                    position = QgsClassificationMethod.ClassPosition.UpperBound
+                else:
+                    position = QgsClassificationMethod.ClassPosition.Inner
+                renderer.addClassRange(
+                    QgsRendererRange(
+                        lower,
+                        upper,
+                        symbol.clone(),
+                        method.labelForRange(lower, upper, position),
+                    )
+                )
+            extra["method"] = "breaks"
+            if value_range[0] < boundaries[0] or value_range[1] > boundaries[-1]:
+                extra["warnings"] = [
+                    f"Values range from {value_range[0]} to {value_range[1]} but "
+                    f"breaks cover {boundaries[0]} to {boundaries[-1]}. Features "
+                    "outside the breaks are not drawn."
+                ]
+        else:
+            classification = QgsApplication.classificationMethodRegistry().method(
+                methods[method_name]
+            )
+            if classification is None:
+                raise RuntimeError(
+                    f"Classification method is not available: {method_name}"
+                )
+            renderer.setClassificationMethod(classification)
+            error = renderer.updateClasses(layer, classes)
+            if error:
+                raise RuntimeError(f"Could not classify {field}: {error}")
+            extra["method"] = method_name
+            extra["requested_classes"] = classes
+        if not renderer.ranges():
+            raise RuntimeError(f"Classification of {field} produced no classes")
+        renderer.updateColorRamp(ramp)
+        return renderer, extra
+
+    @staticmethod
+    def _validate_qml_style(style_path: Path, check_renderer: bool) -> str | None:
+        """Check a QML file before QGIS loads it and return its renderer type."""
+        import xml.etree.ElementTree as ElementTree
+
+        from qgis.core import QgsApplication
+
+        try:
+            root = ElementTree.parse(str(style_path)).getroot()
+        except (ElementTree.ParseError, OSError) as exc:
+            raise RuntimeError(f"QML style file is not well-formed XML: {exc}") from exc
+        if root.tag != "qgis":
+            raise RuntimeError(
+                f"QML style file must have a <qgis> root element, found <{root.tag}>. "
+                "Use a .sld suffix for SLD documents."
+            )
+        if not check_renderer:
+            return None
+        renderer = root.find("renderer-v2")
+        if renderer is None:
+            if root.find("renderer") is not None:
+                raise RuntimeError(
+                    "QML vector renderers must be declared as "
+                    '<renderer-v2 type="...">, not <renderer>.'
+                )
+            return None
+        renderer_type = str(renderer.get("type") or "")
+        registered = list(QgsApplication.rendererRegistry().renderersList())
+        if renderer_type not in registered:
+            raise RuntimeError(
+                f'Unknown renderer type in <renderer-v2 type="{renderer_type}">. '
+                f"Registered renderer types: {', '.join(registered)}"
+            )
+        item_tags = {
+            "categorizedSymbol": ("categories", "category"),
+            "graduatedSymbol": ("ranges", "range"),
+        }
+        if renderer_type not in item_tags:
+            return renderer_type
+        container_tag, item_tag = item_tags[renderer_type]
+        items = renderer.findall(f"{container_tag}/{item_tag}")
+        if not items:
+            raise RuntimeError(
+                f'<renderer-v2 type="{renderer_type}"> has no '
+                f"<{container_tag}><{item_tag}> elements."
+            )
+        symbol_names = {
+            str(symbol.get("name")) for symbol in renderer.findall("symbols/symbol")
+        }
+        for number, item in enumerate(items, start=1):
+            symbol_name = item.get("symbol")
+            if symbol_name is None:
+                raise RuntimeError(
+                    f"<{item_tag}> {number} of {len(items)} has no symbol attribute "
+                    f"(found attributes: {', '.join(sorted(item.attrib)) or 'none'}). "
+                    f'Each <{item_tag} symbol="0"> must match a <symbol name="0"> '
+                    "inside <renderer-v2><symbols>."
+                )
+            if symbol_name not in symbol_names:
+                raise RuntimeError(
+                    f'<{item_tag}> {number} of {len(items)} references '
+                    f'symbol="{symbol_name}" but <renderer-v2><symbols> has no '
+                    f'<symbol name="{symbol_name}">. Each <{item_tag} symbol="0"> '
+                    'must match a <symbol name="0"> inside <renderer-v2><symbols>.'
+                )
+        return renderer_type
+
+    @staticmethod
+    def _vector_style_snapshot(layer: Any) -> dict[str, Any]:
+        from qgis.PyQt import sip
+
+        renderer = layer.renderer()
+        labeling = layer.labeling()
+        return {
+            "renderer": renderer.clone() if renderer is not None else None,
+            "renderer_address": (
+                sip.unwrapinstance(renderer) if renderer is not None else None
+            ),
+            "labeling": labeling.clone() if labeling is not None else None,
+            "labels_enabled": layer.labelsEnabled(),
+        }
+
+    @classmethod
+    def _restore_vector_style(cls, layer: Any, snapshot: dict[str, Any]) -> None:
+        if snapshot["renderer"] is not None:
+            layer.setRenderer(snapshot["renderer"].clone())
+        cls._restore_vector_labeling(layer, snapshot)
+        layer.triggerRepaint()
+
+    @staticmethod
+    def _restore_vector_labeling(layer: Any, snapshot: dict[str, Any]) -> None:
+        layer.setLabeling(
+            snapshot["labeling"].clone() if snapshot["labeling"] is not None else None
+        )
+        layer.setLabelsEnabled(snapshot["labels_enabled"])
+
+    @staticmethod
+    def _style_file_declares_labeling(style_path: Path, style_format: str) -> bool:
+        """Tell whether a style file carries labels of its own.
+
+        Styles without labels must keep the layer's current labels: QGIS replaces
+        labeling on every SLD import, even when the SLD has no TextSymbolizer.
+        """
+        import xml.etree.ElementTree as ElementTree
+
+        try:
+            root = ElementTree.parse(str(style_path)).getroot()
+        except (ElementTree.ParseError, OSError):
+            return False
+        if style_format == "sld":
+            return any(
+                element.tag.rsplit("}", 1)[-1] == "TextSymbolizer" for element in root.iter()
+            )
+        return "labelsEnabled" in root.attrib or root.find("labeling") is not None
+
+    @staticmethod
+    def _vector_labeling_summary(layer: Any) -> dict[str, Any]:
+        labeling = layer.labeling()
+        summary: dict[str, Any] = {
+            "enabled": bool(layer.labelsEnabled() and labeling is not None),
+            "type": labeling.type() if labeling is not None else None,
+        }
+        if labeling is not None and labeling.type() == "simple":
+            settings = labeling.settings()
+            summary["field_or_expression"] = settings.fieldName
+            summary["is_expression"] = bool(settings.isExpression)
+        return summary
+
+    @classmethod
+    def _vector_style_load_problems(
+        cls,
+        layer: Any,
+        snapshot: dict[str, Any],
+        declared_renderer: str | None,
+    ) -> list[str]:
+        from qgis.PyQt import sip
+
+        renderer = layer.renderer()
+        replaced = renderer is not None and (
+            sip.unwrapinstance(renderer) != snapshot["renderer_address"]
+        )
+        if declared_renderer and (
+            not replaced or renderer.type() != declared_renderer
+        ):
+            return [
+                "QGIS did not apply the declared "
+                f'<renderer-v2 type="{declared_renderer}"> (layer renderer: '
+                f"{renderer.type() if renderer is not None else 'none'})."
+            ]
+        if not replaced:
+            return []
+        return cls._vector_renderer_problems(renderer)
+
+    @staticmethod
+    def _vector_renderer_problems(renderer: Any) -> list[str]:
+        from qgis.core import QgsCategorizedSymbolRenderer, QgsGraduatedSymbolRenderer
+
+        if isinstance(renderer, QgsCategorizedSymbolRenderer):
+            items, kind = renderer.categories(), "categories"
+        elif isinstance(renderer, QgsGraduatedSymbolRenderer):
+            items, kind = renderer.ranges(), "ranges"
+        elif renderer.type() == "RuleRenderer":
+            if not renderer.rootRule().children():
+                return ["The rule-based renderer has no rules."]
+            return []
+        else:
+            return []
+        if not items:
+            return [
+                f"The {renderer.type()} renderer has no {kind}. Check that every "
+                "class references an existing symbol."
+            ]
+        missing = sum(1 for item in items if item.symbol() is None)
+        if missing:
+            return [f"{missing} of {len(items)} {kind} have no symbol."]
+        return []
+
+    @staticmethod
+    def _vector_renderer_summary(layer: Any) -> dict[str, Any]:
+        """Describe the active vector renderer so callers can verify a style."""
+        from qgis.core import (
+            QgsCategorizedSymbolRenderer,
+            QgsGraduatedSymbolRenderer,
+            QgsSingleSymbolRenderer,
+        )
+        from qcopilots_common.processing_jobs import json_safe_value
+
+        limit = 50
+
+        def color(symbol: Any) -> str | None:
+            return symbol.color().name() if symbol is not None else None
+
+        renderer = layer.renderer()
+        if renderer is None:
+            return {"type": None, "class_count": 0}
+        summary: dict[str, Any] = {"type": renderer.type()}
+        if isinstance(renderer, QgsCategorizedSymbolRenderer):
+            categories = renderer.categories()
+            summary["field"] = renderer.classAttribute()
+            summary["class_count"] = len(categories)
+            summary["categories"] = [
+                {
+                    "value": json_safe_value(category.value()),
+                    "label": category.label(),
+                    "color": color(category.symbol()),
+                }
+                for category in categories[:limit]
+            ]
+            summary["categories_truncated"] = len(categories) > limit
+        elif isinstance(renderer, QgsGraduatedSymbolRenderer):
+            ranges = renderer.ranges()
+            method = renderer.classificationMethod()
+            summary["field"] = renderer.classAttribute()
+            summary["classification_method"] = (
+                method.id() if method is not None else None
+            )
+            summary["class_count"] = len(ranges)
+            summary["ranges"] = [
+                {
+                    "lower": _finite_number(item.lowerValue()),
+                    "upper": _finite_number(item.upperValue()),
+                    "label": item.label(),
+                    "color": color(item.symbol()),
+                }
+                for item in ranges[:limit]
+            ]
+            summary["ranges_truncated"] = len(ranges) > limit
+        elif renderer.type() == "RuleRenderer":
+            rules = renderer.rootRule().children()
+            summary["class_count"] = len(rules)
+            summary["rules"] = [
+                {
+                    "label": rule.label(),
+                    "filter": rule.filterExpression(),
+                    "color": color(rule.symbol()),
+                }
+                for rule in rules[:limit]
+            ]
+            summary["rules_truncated"] = len(rules) > limit
+        elif isinstance(renderer, QgsSingleSymbolRenderer):
+            summary["class_count"] = 1
+            summary["color"] = color(renderer.symbol())
+        return summary
 
     def interactive_layer_configure_labels(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.PyQt.QtGui import QColor
@@ -2391,9 +3120,17 @@ class QgisBridgeTools:
         *,
         access: str = "read",
     ) -> str:
-        return str(
-            self._filesystem_policy.resolve_path(value, access=access)
-        )
+        resolved = self._filesystem_policy.resolve_path(value, access=access)
+        raw = str(value).strip()
+        if access == "write" and not Path(raw).expanduser().is_absolute():
+            # The shared policy resolves relative paths against the process
+            # working folder, which is the QGIS program folder for the GUI.
+            raise ValueError(
+                f"Output path must be an absolute file path (got '{raw}'). "
+                "Relative paths would be written into the QGIS program folder "
+                f"{Path.cwd()}."
+            )
+        return str(resolved)
 
     def _validate_layer_source_path(
         self,

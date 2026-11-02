@@ -297,7 +297,7 @@
         },
         {
           "name": "zoom_to_layer",
-          "description": "把地图画布缩放到指定图层。",
+          "description": "把地图画布缩放到指定图层。图层范围会从图层 CRS 转换到画布 CRS，并保留 5% 边距。返回 canvas_crs 和 canvas_extent（画布 CRS 下的 xmin、ymin、xmax、ymax），可用来核对缩放结果。",
           "status": "restricted",
           "risk_level": "R1",
           "requires_qgis_bridge": true,
@@ -307,7 +307,7 @@
         },
         {
           "name": "zoom_to_extent",
-          "description": "把地图画布缩放到 xmin、ymin、xmax、ymax 范围，调用前必须校验恰好四个有限数值。",
+          "description": "把地图画布缩放到 xmin、ymin、xmax、ymax 范围，调用前必须校验恰好四个有限数值。不传 crs 时数值按画布（工程）CRS 解释。数值属于其他 CRS 时传 crs（如 EPSG:3035），会先转换到画布 CRS。画布为地理坐标系、数值超出经度 -180..180 或纬度 -90..90 且未传 crs 时会报错。返回 canvas_crs 和 canvas_extent。",
           "status": "restricted",
           "risk_level": "R1",
           "requires_qgis_bridge": true,
@@ -559,13 +559,24 @@
         },
         {
           "name": "apply_layer_style",
-          "description": "读取现有本地 QML 或 SLD 文件并应用到指定图层，不写回样式文件。",
+          "description": "读取现有本地 QML 或 SLD 文件并应用到指定图层，不写回样式文件。SLD 使用 QGIS SLD 读取器加载。QML 只从文件本身加载，不使用数据源（如 GeoPackage）中保存的默认样式，并且只导入符号和标注，不改动字段、表单或动作。样式文件本身不含标注（SLD 没有 TextSymbolizer、QML 没有 <labeling>）时保留图层现有标注。加载前检查 QML：根元素必须为 <qgis>，<renderer-v2> 的 type 必须是已注册的渲染器类型，分类和分级渲染器中每个 <category> 或 <range> 的 symbol 属性必须对应 <symbols> 中的 <symbol name>。加载后若渲染器未生效、没有类别或区间、类别缺少符号或规则渲染器没有规则，则恢复原渲染器和标注并报错。成功时返回渲染器类型、字段、类别数、分级区间以及标注状态（是否启用、标注字段、来自文件还是保留原标注）供核对。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
           "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["layer_id", "style_path"], "required_any_argument_groups": [], "required_target_arguments": ["layer_id", "style_path"], "command_shape": "schema-defined"},
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+        },
+        {
+          "name": "set_vector_renderer",
+          "description": "不依赖样式文件，直接为矢量图层设置单一符号、分类或分级渲染器。分类按字段或表达式的唯一值着色。分级要求数值字段或返回数值的表达式，支持 equal_interval、quantile、jenks、pretty、stddev 方法和 2 到 12 类，也可用严格升序的 breaks 给出全部类别边界。颜色取自 QGIS 默认样式色带（如 Greens、Blues、Viridis、Spectral）。字段或表达式无效、分级字段非数值、色带名称或类别数无效时报错且不修改图层。成功时返回渲染器类型、字段、类别数和分级区间供核对。",
+          "status": "restricted",
+          "risk_level": "R1",
+          "requires_qgis_bridge": true,
+          "requires_gui": true,
+          "requires_explicit_confirmation": true,
+          "invocation_policy": {"require_all_schema_properties_explicit": false, "required_arguments": ["layer_id", "mode"], "required_any_argument_groups": [], "required_target_arguments": ["layer_id"], "command_shape": "schema-defined"},
           "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
         },
         {

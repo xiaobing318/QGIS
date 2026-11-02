@@ -72,6 +72,7 @@ EXPECTED_TOOLS = {
         "set_project_crs",
         "get_raster_statistics",
         "apply_layer_style",
+        "set_vector_renderer",
         "configure_vector_labels",
         "create_print_layout",
         "list_print_layouts",
@@ -128,7 +129,7 @@ EXPECTED_TOOLS = {
 EXPECTED_COUNTS = {
     "qcopilots_mcp_server_builtin_tools": 8,
     "qcopilots_mcp_server_skills": 5,
-    "qcopilots_mcp_server_interactive_tools": 33,
+    "qcopilots_mcp_server_interactive_tools": 34,
     "qcopilots_mcp_server_processing_vector": 6,
     "qcopilots_mcp_server_processing_raster": 6,
     "qcopilots_mcp_server_processing_general": 17,
@@ -333,7 +334,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         self.assertEqual(descriptor["inputSchema"]["type"], "object")
                     all_names.extend(actual_names)
 
-            self.assertEqual(len(all_names), 81)
+            self.assertEqual(len(all_names), 82)
             self.assertEqual(len(all_names), len(set(all_names)))
 
     def test_minimal_arguments_supports_any_of_array_items(self):
@@ -440,7 +441,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         reject_conflicting_arguments=True,
                     )
 
-        self.assertEqual(len(_RecordingBridge.calls), 57)
+        self.assertEqual(len(_RecordingBridge.calls), 58)
         self.assertEqual(
             [operation for operation, _ in self.file_transfer_manager.calls],
             EXPECTED_TOOLS["qcopilots_mcp_server_processing_general"][6:],

@@ -158,6 +158,7 @@ EXPECTED_TOOLS = {
         "set_project_crs",
         "get_raster_statistics",
         "apply_layer_style",
+        "set_vector_renderer",
         "configure_vector_labels",
         "create_print_layout",
         "list_print_layouts",
@@ -229,9 +230,9 @@ def validate_expected_inventory() -> None:
     if set(EXPECTED_TOOLS) != {service.key for service in SERVICES}:
         raise AcceptanceFailure("Expected tool inventory does not match service inventory")
     names = [name for tools in EXPECTED_TOOLS.values() for name in tools]
-    if len(names) != 81 or len(set(names)) != 81:
+    if len(names) != 82 or len(set(names)) != 82:
         raise AcceptanceFailure(
-            "Expected tool inventory must contain exactly 81 unique tool names"
+            "Expected tool inventory must contain exactly 82 unique tool names"
         )
 
 
@@ -338,8 +339,8 @@ class CoverageLedger:
     def assert_all_complete(self) -> None:
         for service_key in EXPECTED_TOOLS:
             self.assert_service_complete(service_key)
-        if sum(len(calls) for calls in self._calls.values()) != 81:
-            raise AcceptanceFailure("Live tool coverage did not reach exactly 81 tools")
+        if sum(len(calls) for calls in self._calls.values()) != 82:
+            raise AcceptanceFailure("Live tool coverage did not reach exactly 82 tools")
 
 
 class McpSession:
@@ -1011,7 +1012,7 @@ class AcceptanceRunner:
             messages.extend(_redacted_message(item, self._token) for item in cleanup_errors)
             raise AcceptanceFailure(". ".join(message for message in messages if message))
         self.output(
-            "PASS: all 81 QCopilots MCP tool contracts completed live acceptance "
+            "PASS: all 82 QCopilots MCP tool contracts completed live acceptance "
             "(SSH transfers require the separate file transfer live acceptance runner), "
             f"requires_process_exit={bool(self.cleanup.requires_process_exit)}, "
             "process_exit_resource_count="
@@ -1450,6 +1451,18 @@ class AcceptanceRunner:
         )
         if styled.get("loaded") is not True:
             raise AcceptanceFailure("apply_layer_style did not load the QML fixture")
+        rendered = self._success(
+            session,
+            "set_vector_renderer",
+            {
+                "layer_id": vector_layer_id,
+                "mode": "graduated",
+                "field": "value",
+                "classes": 2,
+            },
+        )
+        if (rendered.get("renderer") or {}).get("type") != "graduatedSymbol":
+            raise AcceptanceFailure("set_vector_renderer did not apply a graduated renderer")
 
         self.cleanup.register_pending_layer_name(raster_layer_name)
         loaded = self._success(

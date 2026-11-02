@@ -1666,6 +1666,8 @@ def _processing_output_plans(
         ):
             continue
         value = parameters[name]
+        if _processing_is_gdal_virtual_path(value):
+            raise _processing_virtual_destination_error(name, str(value).strip())
         path = _processing_file_destination(value)
         if path is None:
             raw = str(value).strip()
@@ -1797,6 +1799,10 @@ def _normalize_processing_policy_path_value(
         return value
 
     raw = str(value).strip()
+    if access == "write" and raw.casefold() == "memory":
+        # Without the colon QGIS treats "memory" as a relative file name, so
+        # the output would be written into the QGIS program folder.
+        return "memory:"
     if not raw or raw.upper() == "TEMPORARY_OUTPUT" or raw.lower().startswith(
         "memory:"
     ):
@@ -1806,6 +1812,10 @@ def _normalize_processing_policy_path_value(
             raise PermissionError(
                 "Formal restricted mode does not permit GDAL virtual filesystem paths"
             )
+        if access == "write":
+            # Reads from /vsi paths stay allowed. As a destination the output
+            # plan would map the path onto a real drive root file instead.
+            raise _processing_virtual_destination_error(definition.name(), raw)
         return value
 
     path_part, separator, options = raw.partition("|")
@@ -1860,6 +1870,15 @@ def _normalize_processing_policy_path_value(
             return value
         looks_like_path = True
     resolved = policy.resolve_path(path_part, access=access)
+    if access == "write" and not Path(path_part).expanduser().is_absolute():
+        # The shared policy resolves relative paths against the process
+        # working folder, which is the QGIS program folder for the GUI.
+        raise ValueError(
+            f"Processing destination {definition.name()} must be an absolute "
+            'file path, "memory:" or "TEMPORARY_OUTPUT" '
+            f"(got '{raw}'). Relative paths would be written into the QGIS "
+            f"program folder {Path.cwd()}."
+        )
     if policy.restricted and access == "read" and not resolved.exists():
         raise FileNotFoundError(
             f"Formal restricted Processing input does not exist: {resolved}"
@@ -3088,11 +3107,33 @@ def _processing_definition_is_folder_destination(definition: Any) -> bool:
     return "folderdestination" in definition_type
 
 
+def _processing_is_gdal_virtual_path(value: Any) -> bool:
+    """Return whether a string value names a GDAL /vsi virtual file."""
+
+    return isinstance(value, (str, Path)) and str(value).strip().lower().startswith(
+        "/vsi"
+    )
+
+
+def _processing_virtual_destination_error(name: Any, raw: str) -> ValueError:
+    return ValueError(
+        f"Processing destination {name} cannot be a GDAL virtual file system "
+        f"path (got '{raw}'). /vsi destinations such as /vsimem/ are files in "
+        "QGIS process memory, archive members or remote objects that cannot be "
+        "staged, published or reopened after the job. Use an absolute file "
+        'path, "memory:" or "TEMPORARY_OUTPUT".'
+    )
+
+
 def _processing_file_destination(value: Any) -> Path | None:
     if not isinstance(value, (str, Path)):
         return None
     raw = str(value).strip()
     if not raw or raw.upper() == "TEMPORARY_OUTPUT" or raw.lower().startswith("memory:"):
+        return None
+    if _processing_is_gdal_virtual_path(raw):
+        # GDAL virtual files are not local paths. Resolving "/vsimem/x.gpkg"
+        # would otherwise yield a real file at the drive root.
         return None
     raw = raw.split("|", 1)[0]
     if raw.lower().startswith("file://"):

@@ -137,9 +137,38 @@ def build_interactive_layer_tools() -> list[McpTool]:
         ),
         _bridge_tool(
             "apply_layer_style",
-            "Apply an existing local QML or SLD style file to a QGIS layer.",
+            (
+                "Apply an existing local QML or SLD style file to a QGIS layer. "
+                "SLD files use the QGIS SLD reader. QML files are read from the "
+                "file itself, never from a style stored in the data source, and "
+                "only symbology and labeling are imported. A style file without "
+                "labels (no SLD TextSymbolizer, no QML <labeling>) keeps the "
+                "layer's current labels. A QML <renderer-v2> "
+                "must use a registered renderer type and every <category> or "
+                "<range> symbol attribute must match a <symbol name> in "
+                "<symbols>. Invalid or empty renderers return an error and keep "
+                "the previous renderer. The result reports the applied renderer "
+                "type, field, class count and graduated ranges, and the labeling "
+                "state (enabled, field and whether it came from the file)."
+            ),
             _apply_layer_style_schema(),
             "interactive_layer_apply_style",
+            bridge,
+        ),
+        _bridge_tool(
+            "set_vector_renderer",
+            (
+                "Set a single symbol, categorized or graduated renderer on a "
+                "vector layer without a style file. Categorized mode uses the "
+                "unique values of a field or expression. Graduated mode "
+                "classifies a numeric field or expression with equal_interval, "
+                "quantile, jenks, pretty or stddev into 2 to 12 classes, or with "
+                "explicit ascending breaks. Colors come from a QGIS default "
+                "color ramp. The result reports the renderer type, field, class "
+                "count and graduated ranges."
+            ),
+            _set_vector_renderer_schema(),
+            "interactive_layer_set_renderer",
             bridge,
         ),
         _bridge_tool(
@@ -493,6 +522,97 @@ def _apply_layer_style_schema() -> dict[str, Any]:
     }
 
 
+def _set_vector_renderer_schema() -> dict[str, Any]:
+    color_pattern = "^#[0-9a-fA-F]{6}$"
+    return {
+        "type": "object",
+        "properties": {
+            "layer_id": {"type": "string", "minLength": 1},
+            "mode": {
+                "type": "string",
+                "enum": ["single", "categorized", "graduated"],
+                "description": (
+                    "single draws every feature with one symbol, categorized "
+                    "gives each unique value its own color and graduated "
+                    "classifies numeric values into ranges."
+                ),
+            },
+            "field": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Field name or QGIS expression to classify. Required for "
+                    "categorized and graduated modes. Graduated mode needs a "
+                    "numeric field or an expression that returns numbers."
+                ),
+            },
+            "method": {
+                "type": "string",
+                "enum": ["equal_interval", "quantile", "jenks", "pretty", "stddev"],
+                "default": "equal_interval",
+                "description": (
+                    "Graduated classification method. Ignored when breaks is given."
+                ),
+            },
+            "classes": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "default": 5,
+                "description": (
+                    "Requested graduated class count. quantile, jenks, pretty "
+                    "and stddev may return a different count, check "
+                    "renderer.class_count in the result."
+                ),
+            },
+            "breaks": {
+                "type": "array",
+                "items": {"type": "number"},
+                "minItems": 3,
+                "maxItems": 13,
+                "description": (
+                    "Explicit strictly ascending graduated class boundaries, "
+                    "including the lower bound of the first class and the upper "
+                    "bound of the last class, so N+1 numbers make N classes. "
+                    "Overrides method and classes. Features outside the first "
+                    "and last boundary are not drawn."
+                ),
+            },
+            "color_ramp": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Color ramp name from the QGIS default style, for example "
+                    "Greens, Blues, Reds, YlOrRd, Viridis, Magma, Spectral or "
+                    "RdYlGn. Defaults to Viridis for graduated and Spectral for "
+                    "categorized mode."
+                ),
+            },
+            "invert_ramp": {"type": "boolean", "default": False},
+            "color": {
+                "type": "string",
+                "pattern": color_pattern,
+                "description": "Symbol color for single mode, as #RRGGBB.",
+            },
+            "outline_color": {
+                "type": "string",
+                "pattern": color_pattern,
+                "description": (
+                    "Stroke color for point and polygon symbols, as #RRGGBB."
+                ),
+            },
+            "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Symbol opacity from 0 (transparent) to 1 (opaque).",
+            },
+        },
+        "required": ["layer_id", "mode"],
+        "additionalProperties": False,
+    }
+
+
 def _configure_vector_labels_schema() -> dict[str, Any]:
     schema = {
         "type": "object",
@@ -535,7 +655,11 @@ def _export_print_layout_schema() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "layout_name": {"type": "string", "minLength": 1},
-            "path": {"type": "string", "minLength": 1},
+            "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Absolute output file path. Relative paths are rejected.",
+            },
             "format": {"type": "string", "enum": ["pdf", "png", "jpeg", "jpg", "svg"]},
             "dpi": {"type": "number", "minimum": 72, "maximum": 1200, "default": 300},
             "overwrite": {"type": "boolean", "default": False},

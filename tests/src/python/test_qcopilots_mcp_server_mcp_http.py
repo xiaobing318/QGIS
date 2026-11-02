@@ -3651,6 +3651,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "set_project_crs",
                         "get_raster_statistics",
                         "apply_layer_style",
+                        "set_vector_renderer",
                         "configure_vector_labels",
                         "create_print_layout",
                         "list_print_layouts",

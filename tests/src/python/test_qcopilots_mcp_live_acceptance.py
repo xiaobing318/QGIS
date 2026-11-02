@@ -331,11 +331,11 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for service in live.SERVICES
             for name in live.EXPECTED_TOOLS[service.key]
         ]
-        self.assertEqual(len(names), 81)
-        self.assertEqual(len(set(names)), 81)
+        self.assertEqual(len(names), 82)
+        self.assertEqual(len(set(names)), 82)
         self.assertEqual(
             [len(live.EXPECTED_TOOLS[service.key]) for service in live.SERVICES],
-            [8, 5, 33, 6, 6, 6, 17],
+            [8, 5, 34, 6, 6, 6, 17],
         )
 
     def test_manager_config_path_and_token_loading_are_secret_safe(self):

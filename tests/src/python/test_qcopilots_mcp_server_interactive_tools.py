@@ -58,7 +58,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
         try:
             tools = processing_tools.build_interactive_tools()
             tool_names = [tool.name for tool in tools]
-            self.assertEqual(len(tool_names), 33)
+            self.assertEqual(len(tool_names), 34)
             self.assertEqual(
                 tool_names,
                 [
@@ -88,6 +88,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                     "set_project_crs",
                     "get_raster_statistics",
                     "apply_layer_style",
+                    "set_vector_renderer",
                     "configure_vector_labels",
                     "create_print_layout",
                     "list_print_layouts",
@@ -278,7 +279,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             ],
         )
 
-    def test_all_33_interactive_tools_route_to_the_declared_bridge_operations(self):
+    def test_all_34_interactive_tools_route_to_the_declared_bridge_operations(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools
         import qcopilots_common.processing_tools as processing_tools
 
@@ -319,6 +320,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             "interactive_project_set_crs",
             "interactive_raster_statistics",
             "interactive_layer_apply_style",
+            "interactive_layer_set_renderer",
             "interactive_layer_configure_labels",
             "interactive_layout_create",
             "interactive_layout_list",
@@ -337,7 +339,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             for tool in tools:
                 tool.handler({})
 
-        self.assertEqual(len(tools), 33)
+        self.assertEqual(len(tools), 34)
         self.assertEqual([operation for operation, _arguments in calls], expected_operations)
         self.assertTrue(all(arguments == {} for _operation, arguments in calls))
 
@@ -357,8 +359,11 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 _validate_tool_arguments(arguments, tools[tool_name].input_schema)
 
         assert_valid("zoom_to_extent", {"extent": [0, 1, 2, 3]})
+        assert_valid("zoom_to_extent", {"extent": [0, 1, 2, 3], "crs": "EPSG:3035"})
         assert_invalid("zoom_to_extent", {"extent": [0, 1, 2]})
         assert_invalid("zoom_to_extent", {"extent": [0, 1, 2, 3, 4]})
+        assert_invalid("zoom_to_extent", {"extent": [0, 1, 2, 3], "crs": ""})
+        assert_invalid("zoom_to_extent", {"extent": [0, 1, 2, 3], "crs": 3035})
 
         token = "confirmation-token"
         assert_valid("remove_map_layers", {"layer_id": "layer-a"})
@@ -2296,7 +2301,10 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             self.assertFalse(recentered["single_point_fallback"])
             self.assertEqual(recentered["zoom_mode"], "native_selection_recenter")
             self.assertTrue(recentered["extent_changed"])
-            self.assertFalse(recentered["scale_changed"])
+            # EPSG:4326 scales depend on the view latitude, so only the map
+            # units per pixel prove that the recentre kept the zoom.
+            self.assertFalse(recentered["map_units_per_pixel_changed"])
+            self.assertFalse(recentered["magnification_changed"])
             self.assertEqual(canvas.center().x(), 1.0)
             self.assertEqual(canvas.center().y(), 1.0)
 
@@ -2327,6 +2335,147 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             canvas.setLayers([])
             canvas.deleteLater()
             project.removeMapLayer(layer.id())
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
+    def test_zoom_tools_transform_layer_and_extent_crs_to_canvas_crs(self):
+        from qgis.core import (
+            QgsCoordinateReferenceSystem,
+            QgsFeature,
+            QgsGeometry,
+            QgsPointXY,
+            QgsProject,
+            QgsRectangle,
+            QgsVectorLayer,
+        )
+        from qgis.gui import QgsMapCanvas
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        # A Germany-sized extent in EPSG:3035 metres, about 5..16 E and 47..55 N.
+        metres = [4030297.0, 2684326.0, 4671424.0, 3552221.0]
+
+        def memory_layer(uri, name, wkts):
+            layer = QgsVectorLayer(uri, name, "memory")
+            features = []
+            for wkt in wkts:
+                feature = QgsFeature(layer.fields())
+                feature.setGeometry(QgsGeometry.fromWkt(wkt))
+                features.append(feature)
+            if features:
+                self.assertTrue(layer.dataProvider().addFeatures(features)[0])
+            layer.updateExtents()
+            project.addMapLayer(layer)
+            return layer
+
+        germany = memory_layer(
+            "Polygon?crs=EPSG:3035",
+            "QCopilots zoom CRS polygon",
+            [QgsGeometry.fromRect(QgsRectangle(*metres)).asWkt()],
+        )
+        single_point = memory_layer(
+            "Point?crs=EPSG:3035",
+            "QCopilots zoom CRS point",
+            ["POINT (4321000 3210000)"],
+        )
+        empty = memory_layer("Point?crs=EPSG:3035", "QCopilots zoom CRS empty", [])
+        layers = [germany, single_point, empty]
+        canvas = QgsMapCanvas()
+        canvas.resize(800, 600)
+        canvas.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
+        canvas.setLayers([germany])
+        world = QgsRectangle(-180, -90, 180, 90)
+        canvas.setExtent(world)
+
+        class FakeIface:
+            def mapCanvas(self):
+                return canvas
+
+        def assert_germany_in_degrees(values):
+            xmin, ymin, xmax, ymax = values
+            self.assertTrue(4.5 <= xmin <= 5.3, values)
+            self.assertTrue(15.6 <= xmax <= 16.5, values)
+            self.assertTrue(46.5 <= ymin <= 47.2, values)
+            self.assertTrue(55.0 <= ymax <= 56.0, values)
+
+        def canvas_values():
+            extent = canvas.extent()
+            return [
+                extent.xMinimum(),
+                extent.yMinimum(),
+                extent.xMaximum(),
+                extent.yMaximum(),
+            ]
+
+        try:
+            tools = QgisBridgeTools(FakeIface())
+
+            zoomed_layer = tools.zoom_to_layer({"layer_id": germany.id()})
+            self.assertEqual(zoomed_layer["layer_crs"], "EPSG:3035")
+            self.assertEqual(zoomed_layer["canvas_crs"], "EPSG:4326")
+            assert_germany_in_degrees(zoomed_layer["canvas_extent"])
+            self.assertEqual(zoomed_layer["canvas_extent"], canvas_values())
+
+            canvas.setExtent(world)
+            zoomed_extent = tools.zoom_to_extent({"extent": metres, "crs": "EPSG:3035"})
+            self.assertEqual(zoomed_extent["extent"], metres)
+            self.assertEqual(zoomed_extent["crs"], "EPSG:3035")
+            self.assertEqual(zoomed_extent["canvas_crs"], "EPSG:4326")
+            assert_germany_in_degrees(zoomed_extent["canvas_extent"])
+
+            canvas.setExtent(world)
+            before = canvas_values()
+            with self.assertRaisesRegex(RuntimeError, 'crs="EPSG:3035"'):
+                tools.zoom_to_extent({"extent": metres})
+            self.assertEqual(canvas_values(), before)
+            with self.assertRaisesRegex(RuntimeError, "Unknown crs"):
+                tools.zoom_to_extent({"extent": metres, "crs": "EPSG:999999"})
+            self.assertEqual(canvas_values(), before)
+
+            in_canvas_crs = tools.zoom_to_extent({"extent": [5, 47, 16, 56]})
+            self.assertEqual(in_canvas_crs["crs"], "EPSG:4326")
+            self.assertEqual(in_canvas_crs["canvas_crs"], "EPSG:4326")
+            xmin, ymin, xmax, ymax = in_canvas_crs["canvas_extent"]
+            self.assertLessEqual(xmin, 5)
+            self.assertLessEqual(ymin, 47)
+            self.assertGreaterEqual(xmax, 16)
+            self.assertGreaterEqual(ymax, 56)
+            self.assertAlmostEqual(canvas.center().x(), 10.5)
+            self.assertAlmostEqual(canvas.center().y(), 51.5)
+
+            canvas.setExtent(world)
+            germany.selectAll()
+            zoomed_selection = tools.zoom_to_selection({"layer_id": germany.id()})
+            self.assertEqual(zoomed_selection["canvas_crs"], "EPSG:4326")
+            xmin, ymin, xmax, ymax = zoomed_selection["extent_after"]
+            self.assertTrue(4 <= xmin <= 5.3 and 15.6 <= xmax <= 17, zoomed_selection)
+            self.assertTrue(46 <= ymin <= 47.2 and 55 <= ymax <= 57, zoomed_selection)
+
+            canvas.setExtent(QgsRectangle(0, 40, 4, 43))
+            zoomed_point = tools.zoom_to_layer({"layer_id": single_point.id()})
+            self.assertEqual(zoomed_point["canvas_crs"], "EPSG:4326")
+            center = canvas.center()
+            self.assertAlmostEqual(center.x(), 10.0, places=6)
+            self.assertAlmostEqual(center.y(), 52.0, places=6)
+            self.assertTrue(canvas.extent().contains(QgsPointXY(10, 52)))
+
+            with self.assertRaisesRegex(RuntimeError, "no features"):
+                tools.zoom_to_layer({"layer_id": empty.id()})
+
+            canvas.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:3035"))
+            projected = tools.zoom_to_extent({"extent": metres})
+            self.assertEqual(projected["crs"], "EPSG:3035")
+            self.assertEqual(projected["canvas_crs"], "EPSG:3035")
+            self.assertTrue(
+                canvas.extent().contains(QgsRectangle(*metres)),
+                projected,
+            )
+        finally:
+            germany.removeSelection()
+            canvas.setLayers([])
+            canvas.deleteLater()
+            project.removeMapLayers([layer.id() for layer in layers])
 
     @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are not available")
     def test_real_memory_layer_edit_query_selection_and_confirmed_delete(self):
