@@ -7,6 +7,10 @@ real operating-system operations. Every fixture and access change is restored.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import ctypes
 import hashlib
 import logging

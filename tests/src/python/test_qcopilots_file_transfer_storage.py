@@ -6,6 +6,10 @@ destination is used, including in corruption and interrupted-write scenarios.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import copy
 import hashlib
 import json

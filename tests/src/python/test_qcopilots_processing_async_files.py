@@ -1,5 +1,9 @@
 """Regression tests for the public asynchronous file/approval lifecycle."""
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-28"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import tempfile
 import threading
 import unittest

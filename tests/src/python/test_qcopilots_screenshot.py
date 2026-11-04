@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "QCopilots"
+__author__ = "Ethan.Yang"
 __date__ = "2026-11-02"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -148,7 +148,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
 
         tools = self._tools(FakeBridgeClient)
         names = [tool.name for tool in tools]
-        self.assertEqual(len(names), 35)
+        self.assertEqual(len(names), 34)
         index = names.index("capture_qgis_screenshot")
         self.assertEqual(names[index - 1], "export_map_image")
         self.assertEqual(names[index + 1], "describe_layer_sources")
@@ -187,6 +187,17 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
         self.assertEqual(properties["region"]["items"]["type"], "integer")
         self.assertEqual(properties["region"]["minItems"], 4)
         self.assertEqual(properties["region"]["maxItems"], 4)
+        # The handler needs width and height of at least 1, so does the schema.
+        self.assertEqual(
+            [item["minimum"] for item in properties["region"]["prefixItems"]],
+            [0, 0, 1, 1],
+        )
+        _validate_tool_arguments({"region": [0, 0, 1, 1]}, schema)
+        for region in ([0, 0, 0, 1], [0, 0, 1, 0]):
+            with self.subTest(region=region), self.assertRaisesRegex(
+                ToolError, "Invalid tool arguments"
+            ):
+                _validate_tool_arguments({"region": region}, schema)
         self.assertEqual(
             (
                 properties["max_dimension"]["minimum"],

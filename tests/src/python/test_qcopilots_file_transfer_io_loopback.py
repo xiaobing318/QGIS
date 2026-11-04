@@ -6,6 +6,10 @@ this test. Host keys stay in memory and all server files use TemporaryDirectory.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import errno
 import hashlib
 import logging

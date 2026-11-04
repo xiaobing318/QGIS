@@ -2,7 +2,7 @@
     qcopilots_container_plugin.h
     ----------------------------
     begin                : July 2026
-    copyright            : (C) 2026
+    copyright            : (C) 2026 by Ethan.Yang
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *

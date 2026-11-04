@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-08-02"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -223,11 +223,24 @@ class TestQCopilotsQGISBinaryTools(unittest.TestCase):
         self.assertNotIn("environment", start_properties)
         self.assertNotIn("environment_variables", start_properties)
 
-        self.assertEqual(
-            list_jobs_properties["states"]["items"]["enum"],
-            list(qgis_binary_tools.PUBLIC_JOB_STATES),
-        )
         self.assertEqual(list_jobs_properties["limit"]["maximum"], 200)
+
+        # The public schemas must match what the job manager actually enforces.
+        from qcopilots_common import async_jobs, qgis_binary_jobs
+
+        for properties in (list_properties, list_jobs_properties):
+            self.assertEqual(
+                properties["limit"]["default"],
+                qgis_binary_jobs.QGIS_BINARY_DEFAULT_LIST_LIMIT,
+            )
+            self.assertEqual(
+                properties["limit"]["maximum"],
+                qgis_binary_jobs.QGIS_BINARY_MAX_LIST_LIMIT,
+            )
+        states_enum = list_jobs_properties["states"]["items"]["enum"]
+        # Lifecycle order, as in the file transfer job list.
+        self.assertEqual(states_enum, list(async_jobs.PUBLIC_JOB_STATE_ORDER))
+        self.assertEqual(set(states_enum), set(async_jobs.PUBLIC_JOB_STATES))
 
     def test_manifest_is_discoverable_and_in_default_startup_lists(self):
         plugin_dir = PLUGINS_ROOT / "qcopilots_mcp_server_qgis_binary"

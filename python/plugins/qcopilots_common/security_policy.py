@@ -80,14 +80,14 @@ class FilesystemPolicy:
             raise ValueError("Path must not be empty")
         path_safety_required = access in {"read", "write"} or self.restricted
         if path_safety_required:
-            _reject_restricted_path_syntax(raw)
+            reject_restricted_path_syntax(raw)
 
         candidate = Path(raw).expanduser()
         if not candidate.is_absolute():
             if base is not None:
                 base_raw = str(base).strip()
                 if path_safety_required:
-                    _reject_restricted_path_syntax(base_raw)
+                    reject_restricted_path_syntax(base_raw)
                 base_path = Path(base_raw).expanduser()
                 if self.restricted and not base_path.is_absolute():
                     raise PermissionError(
@@ -104,7 +104,7 @@ class FilesystemPolicy:
         if path_safety_required:
             # Revalidate the canonical spelling because a platform resolver may
             # expose a device or network form which was not visible in the input.
-            _reject_restricted_path_syntax(str(resolved))
+            reject_restricted_path_syntax(str(resolved))
             _reject_remote_windows_drive(resolved)
         if access == "write" or (self.restricted and access == "shell"):
             _reject_multiply_linked_regular_file(resolved)
@@ -126,7 +126,14 @@ class FilesystemPolicy:
             )
         return value
 
-    def resolve_file_uri(self, value: str, *, access: str) -> Path:
+    def resolve_file_uri(
+        self,
+        value: str,
+        *,
+        access: str,
+        require_absolute: bool = False,
+        label: str = "Local layer source",
+    ) -> Path:
         """Resolve a local file URI through the normal filesystem policy."""
 
         parsed = urlsplit(str(value).strip())
@@ -149,7 +156,10 @@ class FilesystemPolicy:
             path = path[1:]
         if not path:
             raise ValueError("A file URI must identify a local path")
-        return self.resolve_path(path, access=access)
+        resolved = self.resolve_path(path, access=access)
+        if require_absolute:
+            reject_relative_local_path(path, raw=str(value).strip(), label=label)
+        return resolved
 
     def validate_provider_local_paths(
         self,
@@ -157,6 +167,8 @@ class FilesystemPolicy:
         *,
         access: str,
         provider: str = "",
+        require_absolute: bool = False,
+        label: str = "Local layer source",
     ) -> None:
         """Validate local path fields embedded in an otherwise opaque provider URI."""
 
@@ -165,10 +177,12 @@ class FilesystemPolicy:
         if datasource_match is not None:
             datasource_path = datasource_match.group(1).strip().strip("\"'")
             if datasource_path and not datasource_path.casefold().startswith("/vsi"):
-                if datasource_path.casefold().startswith("file:"):
-                    self.resolve_file_uri(datasource_path, access=access)
-                else:
-                    self.resolve_path(datasource_path, access=access)
+                self._validate_provider_path_value(
+                    datasource_path,
+                    access=access,
+                    require_absolute=require_absolute,
+                    label=label,
+                )
         matches = list(_PROVIDER_URI_FIELD_RE.finditer(decoded))
         keys = {match.group(1).strip().casefold() for match in matches}
         has_connection_fields = bool(
@@ -186,10 +200,12 @@ class FilesystemPolicy:
                 has_connection_fields=has_connection_fields,
             ):
                 continue
-            if field_value.casefold().startswith("file:"):
-                self.resolve_file_uri(field_value, access=access)
-            else:
-                self.resolve_path(field_value, access=access)
+            self._validate_provider_path_value(
+                field_value,
+                access=access,
+                require_absolute=require_absolute,
+                label=label,
+            )
 
     def validate_provider_options_local_paths(
         self,
@@ -197,6 +213,8 @@ class FilesystemPolicy:
         *,
         access: str,
         provider: str = "",
+        require_absolute: bool = False,
+        label: str = "Local layer source",
     ) -> None:
         """Validate local paths supplied as structured provider URI options."""
 
@@ -222,10 +240,36 @@ class FilesystemPolicy:
                 has_connection_fields=has_connection_fields,
             ):
                 continue
-            if field_value.casefold().startswith("file:"):
-                self.resolve_file_uri(field_value, access=access)
-            else:
-                self.resolve_path(field_value, access=access)
+            self._validate_provider_path_value(
+                field_value,
+                access=access,
+                require_absolute=require_absolute,
+                label=label,
+            )
+
+    def _validate_provider_path_value(
+        self,
+        value: str,
+        *,
+        access: str,
+        require_absolute: bool,
+        label: str,
+    ) -> None:
+        if value.casefold().startswith("file:"):
+            self.resolve_file_uri(
+                value,
+                access=access,
+                require_absolute=require_absolute,
+                label=label,
+            )
+            return
+        self.resolve_path(value, access=access)
+        if require_absolute and not value.casefold().startswith("/vsi"):
+            # The provider value is passed on unchanged and QGIS does not
+            # expand "~", so it counts as relative here.
+            reject_relative_local_path(
+                value, raw=value, label=label, expand_user=False
+            )
 
     def to_config(self) -> dict[str, Any]:
         return {
@@ -361,6 +405,23 @@ def filesystem_policy_from_environment() -> FilesystemPolicy:
     return filesystem_policy_from_config(value)
 
 
+def reject_relative_local_path(
+    path: str, *, raw: str, label: str, expand_user: bool = True
+) -> None:
+    candidate = Path(str(path).strip())
+    if expand_user:
+        candidate = candidate.expanduser()
+    if candidate.is_absolute():
+        return
+    # The QGIS GUI process runs in the QGIS program folder, so a relative
+    # input would silently be read from there instead of the user's data.
+    raise ValueError(
+        f"{label} must be an absolute file path (got '{raw}'). "
+        "Relative paths would be resolved against the QGIS program "
+        f"folder {Path.cwd()}."
+    )
+
+
 def _looks_like_uri(value: str) -> bool:
     if re.match(r"^[A-Za-z]:[\\/]", value):
         return False
@@ -431,7 +492,7 @@ def _provider_field_is_local_path(
     )
 
 
-def _reject_restricted_path_syntax(value: str) -> None:
+def reject_restricted_path_syntax(value: str) -> None:
     """Reject remote or device-like path forms without touching the filesystem."""
 
     if "\0" in value:

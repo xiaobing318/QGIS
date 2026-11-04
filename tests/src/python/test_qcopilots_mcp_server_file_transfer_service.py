@@ -1,5 +1,9 @@
 """General Processing remains usable when transfer state cannot be opened."""
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import sys
 import threading
 import unittest
@@ -58,6 +62,7 @@ class TestFileTransferServiceLifecycle(unittest.TestCase):
         with self.assertRaises(FileTransferError) as error:
             provider.get()
         self.assertEqual(error.exception.code, "service_stopping")
+        self.assertTrue(error.exception.retryable)
 
     def test_shutdown_without_file_transfer_call_does_not_create_storage(self):
         factory = mock.Mock()

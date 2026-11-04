@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-12"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -1218,15 +1218,21 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
             self.assertIsInstance(cursor, str)
 
             replacement = "A" if cursor[0] != "A" else "B"
-            with self.assertRaisesRegex(RuntimeError, "(?i)cursor"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^processing_algorithm_cursor_stale: "
+            ):
                 tools.processing_list_algorithms(
                     {"category": "vector", "cursor": replacement + cursor[1:]}
                 )
-            with self.assertRaisesRegex(RuntimeError, "(?i)cursor"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^processing_algorithm_cursor_stale: "
+            ):
                 tools.processing_list_algorithms(
                     {"category": "raster", "cursor": cursor}
                 )
-            with self.assertRaisesRegex(RuntimeError, "(?i)cursor"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^processing_algorithm_cursor_stale: "
+            ):
                 bridge.QgisBridgeTools(None).processing_list_algorithms(
                     {"category": "vector", "cursor": cursor}
                 )
@@ -1240,7 +1246,9 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     ["vector"],
                 ),
             )
-            with self.assertRaisesRegex(RuntimeError, "(?i)cursor"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^processing_algorithm_cursor_stale: "
+            ):
                 tools.processing_list_algorithms(
                     {"category": "vector", "cursor": cursor}
                 )
@@ -1384,6 +1392,36 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     {"cursor": cursor, "category": "raster"},
                 ),
             )
+
+            from qcopilots_common.mcp_http import ToolError, _validate_tool_arguments
+
+            canonical = tools_by_category["vector"][0].input_schema
+            # A client that fills in the default max_results may still page.
+            _validate_tool_arguments(
+                {
+                    "cursor": cursor,
+                    "max_results": DEFAULT_PROCESSING_ALGORITHM_RESULTS,
+                },
+                canonical,
+            )
+            tools_by_category["vector"][0].handler(
+                {
+                    "cursor": cursor,
+                    "max_results": DEFAULT_PROCESSING_ALGORITHM_RESULTS,
+                }
+            )
+            self.assertEqual(
+                calls[-1],
+                (
+                    "processing_list_algorithms",
+                    {"cursor": cursor, "category": "vector"},
+                ),
+            )
+            with self.assertRaisesRegex(ToolError, "Invalid tool arguments"):
+                _validate_tool_arguments(
+                    {"cursor": cursor, "max_results": 10},
+                    canonical,
+                )
 
     def test_build_processing_tools_uses_service_bridge_payloads(self):
         import qcopilots_common.processing_tools as processing_tools
@@ -1654,7 +1692,6 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     "export_map_image",
                     "capture_qgis_screenshot",
                     "describe_layer_sources",
-                    "list_map_layers",
                     "load_map_layer",
                     "remove_map_layers",
                     "get_layer_metadata",
@@ -1736,7 +1773,6 @@ class TestQCopilotsMcpServerProcessingTools(unittest.TestCase):
                     "export_map_image",
                     "capture_qgis_screenshot",
                     "describe_layer_sources",
-                    "list_map_layers",
                     "load_map_layer",
                     "remove_map_layers",
                     "get_layer_metadata",

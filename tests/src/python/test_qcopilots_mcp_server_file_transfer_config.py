@@ -1,5 +1,9 @@
 """Isolated configuration and MCP contract tests for SSH transfers."""
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import builtins
 import json
 import logging
@@ -117,6 +121,11 @@ class TestFileTransferConfig(unittest.TestCase):
             {"upload_sources": [SENTINEL, None]},
             {"download_sources": [""]},
             {"known_hosts_file": None},
+            {"upload_sources": ["relative-" + SENTINEL]},
+            {"upload_destination": SENTINEL},
+            {"download_sources": [SENTINEL]},
+            {"download_destination": SENTINEL},
+            {"known_hosts_file": SENTINEL},
         ]
         for change in changes:
             with self.subTest(change=list(change)):
@@ -128,6 +137,55 @@ class TestFileTransferConfig(unittest.TestCase):
     def test_empty_known_hosts_uses_default(self):
         self.store.update({"known_hosts_file": ""})
         self.assertEqual(self.store.load()["known_hosts_file"], "~/.ssh/known_hosts")
+
+    def test_saved_default_paths_must_be_absolute(self):
+        local = self.root / "data"
+        valid = {
+            "upload_sources": [str(local / "result.tif"), (local / "vector-output").as_posix()],
+            "upload_destination": "C:/RemoteData/",
+            "download_sources": ["C:/RemoteData/result.tif", "/home/user/data"],
+            "download_destination": str(local / "downloads"),
+            "known_hosts_file": "~/custom_known_hosts",
+        }
+        public = self.store.update(valid)
+        for field, value in valid.items():
+            self.assertEqual(public[field], value)
+        self.store.update({"upload_destination": "", "download_destination": "", "known_hosts_file": str(local / "known_hosts")})
+        before = self.store.path.read_bytes()
+        invalid = (
+            {"upload_sources": ["relative/result.tif"]},
+            {"upload_sources": [str(local / "result.tif"), "//server/share/result.tif"]},
+            {"upload_destination": "RemoteData"},
+            {"upload_destination": "C:RemoteData"},
+            {"upload_destination": "/uploads/../outside"},
+            {"upload_destination": "//server/share"},
+            {"download_sources": ["result.tif"]},
+            {"download_destination": "downloads"},
+            {"download_destination": "\\\\?\\C:\\downloads"},
+            {"known_hosts_file": "known_hosts"},
+            {"known_hosts_file": "config/known_hosts"},
+        )
+        for change in invalid:
+            with self.subTest(change=change):
+                with self.assertRaises(FileTransferError) as error:
+                    self.store.update(change)
+                self.assertEqual(error.exception.code, "invalid_config")
+                self.assertIn(next(iter(change)), str(error.exception))
+                self.assertEqual(self.store.path.read_bytes(), before)
+
+    def test_hand_edited_paths_do_not_block_unrelated_updates(self):
+        self.store.update({"host": "example.test"})
+        config = self.store.load()
+        config.update(upload_sources=["relative/result.tif"], known_hosts_file="known_hosts")
+        self.store.path.write_text(json.dumps(config), encoding="utf-8")
+        self.store.update({"port": 2222})
+        reloaded = self.store.load()
+        self.assertEqual(reloaded["port"], 2222)
+        self.assertEqual(reloaded["upload_sources"], ["relative/result.tif"])
+        self.assertEqual(reloaded["known_hosts_file"], "known_hosts")
+        with self.assertRaises(FileTransferError) as error:
+            self.store.update({"known_hosts_file": "other_known_hosts"})
+        self.assertEqual(error.exception.code, "invalid_config")
 
     def test_connection_validation_matches_backend_and_rejects_hand_edits(self):
         valid = {**DEFAULT_CONFIG, "host": "example.test", "username": "tester", "password": SENTINEL}
@@ -347,6 +405,13 @@ class TestFileTransferToolContract(unittest.TestCase):
                 response = self.call("file_transfer_get_job", {"job_id": "job-1", **changes})
                 self.assertIn("error", response)
         self.manager.get_job.assert_not_called()
+
+    def test_job_list_schema_rejects_empty_or_unknown_states(self):
+        for states in ([], ["paused"]):
+            with self.subTest(states=states):
+                response = self.call("file_transfer_list_jobs", {"states": states})
+                self.assertIn("error", response)
+        self.manager.list_jobs.assert_not_called()
 
     def test_short_password_does_not_damage_job_and_host_control_values(self):
         self.store.update({"password": "a"})

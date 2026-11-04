@@ -26,7 +26,7 @@ from typing import Any
 
 from qcopilots_common.constants import (
     BRIDGE_URL_ENV,
-    MAX_EXEC_OUTPUT_CHARS,
+    MAX_EXEC_OUTPUT_BYTES,
     MAX_EXEC_TIMEOUT_SECONDS,
     MAX_FILE_READ_BYTES,
     MAX_GLOB_RESULTS,
@@ -111,14 +111,15 @@ class BuiltinTools:
                 offset=0,
                 read_limit=MAX_FILE_READ_BYTES + 1,
             )
-            truncated = len(data) > MAX_FILE_READ_BYTES
+            # total_lines is only exact when the whole file was read. Stopping
+            # at end_line leaves later lines unreturned but still counted.
+            bytes_truncated = (
+                len(data) > MAX_FILE_READ_BYTES or file_size > len(data)
+            )
             text = data[:MAX_FILE_READ_BYTES].decode(encoding, errors="replace")
             lines = text.splitlines()
-            if not truncated and file_size > len(data):
-                truncated = True
             selected = lines[start_line - 1:end_line]
-            if end_line < len(lines):
-                truncated = True
+            truncated = bytes_truncated or end_line < len(lines)
             total_lines = len(lines)
             if arguments.get("append_loc"):
                 selected = [
@@ -133,7 +134,7 @@ class BuiltinTools:
                 "start_line": start_line,
                 "end_line": min(end_line, total_lines),
                 "total_lines": total_lines,
-                "total_lines_known": not truncated,
+                "total_lines_known": not bytes_truncated,
                 "truncated": truncated,
             }
 
@@ -235,25 +236,29 @@ class BuiltinTools:
             deadline=deadline,
         )
         matches = []
+        more_results = False
         for path in _iter_files(root, include, traversal_budget):
             try:
                 self._safe_path(path, access="read")
             except PermissionError:
                 continue
-            if len(matches) >= max_results:
-                break
             relative = self._relative(path, root)
-            if not _matches_patterns(
+            if _matches_patterns(
                 path.name,
                 relative,
                 exclude,
             ):
-                matches.append(relative)
+                continue
+            if len(matches) >= max_results:
+                # One more match exists beyond max_results.
+                more_results = True
+                break
+            matches.append(relative)
         return {
             "matches": matches,
             "plain_text_response": "\n".join(matches),
             "truncated": (
-                len(matches) >= max_results
+                more_results
                 or traversal_budget.exhausted
                 or traversal_budget.timed_out
             ),
@@ -317,6 +322,9 @@ class BuiltinTools:
             max(1, int(arguments.get("max_scanned_files", MAX_GREP_SCANNED_FILES))),
             MAX_GREP_SCANNED_FILES,
         )
+        # Collect one match past max_results to tell a full page from a
+        # truncated one. The extra match is dropped before returning.
+        probe_limit = max_results + 1
         matches = []
         scanned_files = 0
         skipped_files = 0
@@ -336,7 +344,7 @@ class BuiltinTools:
                 continue
             if _matches_patterns(path.name, relative, exclude):
                 continue
-            if len(matches) >= max_results:
+            if len(matches) >= probe_limit:
                 break
             if scanned_files >= max_scanned_files:
                 scan_truncated = True
@@ -384,10 +392,12 @@ class BuiltinTools:
                             for context_number in range(start, end + 1)
                         ]
                     matches.append(entry)
-                    if len(matches) >= max_results:
+                    if len(matches) >= probe_limit:
                         break
-            if timed_out:
+            if timed_out or len(matches) >= probe_limit:
                 break
+        more_results = len(matches) > max_results
+        del matches[max_results:]
         if traversal_budget.exhausted:
             scan_truncated = True
         if traversal_budget.timed_out:
@@ -402,7 +412,7 @@ class BuiltinTools:
         return {
             "matches": matches,
             "plain_text_response": plain_text,
-            "truncated": len(matches) >= max_results or scan_truncated or bool(skipped_files or skipped_large_files),
+            "truncated": more_results or scan_truncated or bool(skipped_files or skipped_large_files),
             "timed_out": timed_out,
             "scanned_files": scanned_files,
             "skipped_files": skipped_files,
@@ -420,8 +430,8 @@ class BuiltinTools:
             self.command_timeout_seconds,
         )
         max_output_size = min(
-            max(0, int(arguments.get("max_output_size", MAX_EXEC_OUTPUT_CHARS))),
-            MAX_EXEC_OUTPUT_CHARS,
+            max(0, int(arguments.get("max_output_size", MAX_EXEC_OUTPUT_BYTES))),
+            MAX_EXEC_OUTPUT_BYTES,
         )
         command = arguments["command"]
         command = _validate_shell_command(
@@ -560,7 +570,7 @@ class BuiltinTools:
                     "existing file"
                 )
             previous_sha256 = _sha256_file(path)
-            if expected_sha256 is not None and previous_sha256 != expected_sha256:
+            if previous_sha256 != expected_sha256:
                 raise ValueError(
                     "expected_sha256 does not match the current file: "
                     f"{self._relative(path)}"
@@ -570,10 +580,13 @@ class BuiltinTools:
                 "expected_sha256 requires an existing file: "
                 f"{self._relative(path)}"
             )
+        # A missing target is always created with no-clobber publication, even
+        # when overwrite is true, so a file that appears after the existence
+        # check is never replaced without its expected_sha256.
         cleanup_residuals = _atomic_write_bytes(
             path,
             data,
-            overwrite=overwrite,
+            overwrite=existed,
             expected_current_sha256=previous_sha256,
         )
         return {
@@ -618,7 +631,7 @@ class BuiltinTools:
         expected_sha256 = _expected_sha256(arguments.get("expected_sha256"))
         if expected_sha256 is None:
             raise ValueError("expected_sha256 is required for edit_file")
-        if expected_sha256 is not None and previous_sha256 != expected_sha256:
+        if previous_sha256 != expected_sha256:
             raise ValueError(
                 "expected_sha256 does not match the current file: "
                 f"{self._relative(path)}"
@@ -718,67 +731,173 @@ def build_builtin_tools(
     shell_scope = (
         "any normal local directory because explicit shell full access is enabled"
         if allow_full_access
-        else "the configured shell working-directory roots"
+        else "the configured shell working-directory roots, by default the service "
+        "working directory and its subfolders"
     )
     return [
         McpTool(
             "read_file",
-            "Read a UTF-8 text file. Relative paths resolve from the current base directory; "
-            "absolute paths may address any normal local file permitted by the OS.",
+            "Read a local text file and return its text in content and plain_text_response, "
+            "with truncated set when more text remains. Use it for scripts, logs, "
+            "configuration, CSV or QGIS project XML (.qgs). Do not use it to inspect GIS "
+            "datasets: load them with load_map_layer, then use get_layer_metadata or "
+            "query_vector_features. Use read_skill_resource for files that belong to a "
+            "skill. Byte mode (default) returns up to limit bytes from offset, at most "
+            f"{MAX_FILE_READ_BYTES} per call, so page through larger files with offset. "
+            "Setting start_line, end_line or append_loc switches to line mode, which also "
+            "returns start_line, end_line, total_lines and total_lines_known. Line mode "
+            f"returns {MAX_GREP_RESULTS} lines from start_line by default but only sees the "
+            f"first {MAX_FILE_READ_BYTES} bytes of the file. total_lines_known is false "
+            "only for a file larger than that, and total_lines then counts just the lines "
+            "seen. Bytes that do not decode in "
+            "encoding (default utf-8) are replaced, so binary files come back garbled. "
+            "Relative paths resolve from the service working directory, not the QGIS "
+            "project folder, so pass absolute paths. Any normal local file the OS account "
+            "can read is allowed. Network paths (UNC or mapped drives), device paths, "
+            "alternate data streams and paths through symbolic links or junctions are "
+            "rejected. Read-only.",
             _read_file_schema(),
             _builtin_mcp_handler(tools.read_file),
         ),
         McpTool(
             "get_file_metadata",
-            "Return the byte size, extension, leading file-signature bytes and full "
-            "SHA-256 of a regular file. Relative paths resolve from the current base "
-            "directory; absolute paths may address any normal local file permitted by the OS.",
+            "Return facts about one regular file without reading it as text: bytes "
+            f"(size), extension (lower case), signature_hex (the first {FILE_SIGNATURE_BYTES} "
+            "bytes in hex, which identify formats such as PNG, ZIP or SQLite and "
+            "GeoPackage) and sha256 of the whole file. Works for binary files of any size. "
+            "Use it to check that a file exists and how large it is before read_file, and "
+            "to get the current hash that edit_file, and write_file with overwrite true, "
+            "need as expected_sha256 and copy_file needs as expected_source_sha256. To see a GIS "
+            "dataset's CRS, extent or fields use load_map_layer and get_layer_metadata "
+            "instead. Read-only. Path rules are the same as read_file.",
             _get_file_metadata_schema(),
             _builtin_mcp_handler(tools.get_file_metadata),
         ),
         McpTool(
             "copy_file",
-            "Copy one regular file without overwriting an existing target. The "
-            "source version must be bound by its full SHA-256.",
+            "Copy one regular file byte for byte to a new path, for example to back up a "
+            "project file or a GeoPackage before changing it. Returns source, target, "
+            "bytes_copied, signature_hex and sha256. It never overwrites: the call fails "
+            "if target already exists, so choose a new name. expected_source_sha256 is "
+            "required and must equal the source's current sha256 from get_file_metadata, "
+            "otherwise nothing is copied. Missing target folders are created unless "
+            "create_dirs is false. The copy is verified before it appears at target. It "
+            "copies a single file, so a Shapefile needs one call for each of its .shp, "
+            ".shx, .dbf, .prj and other sidecar files. To convert, reproject or clip data "
+            "use the Processing tools or start_qgis_binary instead. Path rules are the "
+            "same as read_file.",
             _copy_file_schema(),
             _builtin_mcp_handler(tools.copy_file),
         ),
         McpTool(
             "file_glob_search",
-            "Find files using a glob pattern. Relative roots resolve from the current base directory; "
-            "absolute roots may address any normal local directory permitted by the OS.",
+            "Find files by name pattern under one folder. Returns matches (paths relative "
+            "to that folder, also one per line in plain_text_response), truncated, "
+            "timed_out and scanned_entries. Use it to locate data or project files, for "
+            "example include '*.gpkg' or ['*.shp', '*.tif'] under a data folder, before "
+            "loading them with load_map_layer. The search is always recursive and returns "
+            "files only, not folders. It skips symbolic links, junctions and these folder "
+            f"names: {', '.join(sorted(JUNK_DIRECTORY_NAMES))}. A pattern without a slash "
+            "matches the file name at any depth. A pattern with a slash, such as "
+            "'rasters/*.tif', matches the relative path. Matching ignores case on Windows. "
+            f"The search stops at max_results (default and maximum {MAX_GLOB_RESULTS}), "
+            f"max_scanned_entries ({MAX_SEARCH_SCANNED_ENTRIES}) or timeout_seconds "
+            f"({MAX_GREP_SEARCH_SECONDS:g}). When truncated is true the list is incomplete, "
+            "so narrow path or include. To search inside files use grep_search. "
+            "Read-only. Path rules are the same as read_file.",
             _glob_schema(),
             _builtin_mcp_handler(tools.file_glob_search),
         ),
         McpTool(
             "grep_search",
-            "Search text files. Relative roots resolve from the current base directory; "
-            "absolute roots may address any normal local path permitted by the OS.",
+            "Search the text of one file, or of every file under a folder, line by line. "
+            "Each item in matches has path, line_number and line, plus context when "
+            "context_lines is set. Also returns plain_text_response, truncated, timed_out "
+            "and scan counters such as skipped_large_files. Use it to find text in scripts, "
+            "logs, configuration, CSV or .qgs project files, for example which project "
+            "refers to a data file. Folders are searched recursively, skipping the same "
+            "folders as file_glob_search. Narrow the files with include (one glob string) "
+            "and exclude. pattern is a Python regular expression unless literal is true. "
+            "For safety it may contain at most one repetition (*, +, ? or {m,n}) and no "
+            "alternation (|), lookarounds, backreferences or atomic groups, so 'foo.*bar' "
+            "works but '[0-9]+[.][0-9]+' is rejected. Use literal true for plain text and "
+            "separate calls instead of a|b. Matching is case-sensitive unless ignore_case "
+            f"is true or case_sensitive is false. Files over {MAX_FILE_READ_BYTES} bytes "
+            "are skipped. Limits: max_results "
+            f"(default and maximum {MAX_GREP_RESULTS}), max_scanned_files "
+            f"({MAX_GREP_SCANNED_FILES}), max_scanned_entries ({MAX_SEARCH_SCANNED_ENTRIES}) "
+            f"and timeout_seconds ({MAX_GREP_SEARCH_SECONDS:g}). When truncated is true some "
+            "files or matches were not covered. To read attribute values of a GIS layer "
+            "use query_vector_features instead. Read-only. Path rules are the same as "
+            "read_file.",
             _grep_schema(),
             _builtin_mcp_handler(tools.grep_search),
         ),
         McpTool(
             "exec_shell_command",
-            "Run a bounded command from a non-empty argv string array and terminate "
-            "its process tree on timeout. Each array item is one argument and shell "
-            "quoting is not required. "
-            "Relative cwd resolves from the current base directory. "
-            f"Absolute cwd values must remain within {shell_scope}. Formal restricted "
-            "mode validates the executable allowlist and path arguments.",
+            "Run one local program and return exit_code, stdout, stderr and timed_out. "
+            "Use it only for command-line tasks no other tool covers, for example running "
+            "a script from a skill's skill_root. Do not use it for geoprocessing or QGIS "
+            "data: use the Processing tools (for example start_vector_processing_algorithm) "
+            "for algorithms, start_qgis_binary for programs such as gdalinfo, ogr2ogr or "
+            "qgis_process, and load_map_layer, get_layer_metadata or query_vector_features "
+            "to inspect data. "
+            "Use read_file, grep_search or file_glob_search to read or find files. command "
+            "is an argv array: the first item is the program and each further item is one "
+            "argument, without shell quoting. No shell is started, so pipes, redirection, "
+            "wildcards and built-ins such as echo or dir need an explicit shell, for "
+            "example ['cmd', '/c', 'dir'] on Windows. Relative cwd resolves from the "
+            "service working directory and absolute cwd values must stay within "
+            f"{shell_scope}, so prefer absolute paths in the arguments. timeout_seconds "
+            "(alias timeout) defaults to and is capped at "
+            f"{MAX_EXEC_TIMEOUT_SECONDS} seconds, then the whole process tree is killed. The "
+            "security policy can disable this tool or limit command[0] to an executable "
+            "allowlist, and formal restricted mode also validates path-like arguments. "
+            "Commands can change files, so run only what the task needs.",
             _exec_schema(),
             _builtin_mcp_handler(tools.exec_shell_command),
         ),
         McpTool(
             "write_file",
-            "Write a UTF-8 text file. Relative paths resolve from the current base directory; "
-            "absolute paths may address any normal local file permitted by the OS.",
+            "Create a new text file, or replace a whole existing one, with content. "
+            "Returns path, bytes_written, sha256, previous_sha256, overwritten and cleanup. "
+            "Use it for new scripts, CSV, reports, styles (.qml, .sld) or configuration "
+            "files. For a small change to an existing file prefer edit_file. A missing "
+            "file is always created, whatever overwrite says, and expected_sha256 must "
+            "then be omitted. overwrite only matters when the file already exists. With "
+            "overwrite false (the default) the call fails on an existing file. To replace "
+            "an existing file set overwrite true and pass expected_sha256 equal to its "
+            "current sha256 from get_file_metadata or from the last write_file or edit_file "
+            "result. A mismatch means the file changed, so check it again. A file that "
+            "appears between the check and the write is never replaced. Missing parent "
+            "folders are created "
+            "unless create_dirs is false. content is encoded with encoding (default "
+            "utf-8) exactly as given, including line endings, and published atomically. "
+            "Text only, use copy_file to duplicate binary files. To create GIS layers "
+            "prefer create_vector_layer, add_vector_features or the Processing tools. "
+            "Path rules are the same as read_file, and files with multiple hard links "
+            "are refused.",
             _write_schema(),
             _builtin_mcp_handler(tools.write_file),
         ),
         McpTool(
             "edit_file",
-            "Replace text in a UTF-8 file. Relative paths resolve from the current base directory; "
-            "absolute paths may address any normal local file permitted by the OS.",
+            "Change an existing text file by replacing exact text. Returns path, "
+            "replacements, bytes_written, previous_sha256, sha256, changed and cleanup. "
+            "Use it for targeted fixes in scripts, configuration or project text, for "
+            "example one data path inside a .qgs file. expected_sha256 is required: take "
+            "the file's current sha256 from get_file_metadata or from the last write_file "
+            "or edit_file result. If the file changed since, the edit is refused. Give "
+            "exactly one edit mode: old_text with new_text, search with replace (the same "
+            "thing under other names), or edits, an array of such pairs applied together. "
+            "Each old text must occur exactly once in the file, including case, spaces "
+            "and line endings, and edits must not overlap, so include enough surrounding "
+            "text to make it unique. Omitting new_text or replace deletes the match. All "
+            "edits are checked before anything is written, then the file is replaced "
+            f"atomically. The file must be at most {MAX_FILE_READ_BYTES} bytes and decode "
+            "cleanly in encoding (default utf-8). Use write_file to create a file or rewrite it "
+            "entirely. Path rules are the same as read_file, and files with multiple hard "
+            "links are refused.",
             _edit_schema(),
             _builtin_mcp_handler(tools.edit_file),
         ),
@@ -1832,14 +1951,6 @@ def _bounded_capture_text(capture: dict[str, Any] | None) -> str:
     return bytes(capture["data"]).decode(encoding, errors="replace")
 
 
-def _truncate(text: str | bytes, limit: int = MAX_EXEC_OUTPUT_CHARS) -> str:
-    if isinstance(text, bytes):
-        text = text.decode(errors="replace")
-    if len(text) <= limit:
-        return text
-    return text[:limit]
-
-
 def _terminate_builtin_process_tree(
     process: subprocess.Popen | None,
 ) -> tuple[bool, str | None]:
@@ -1900,13 +2011,58 @@ def _base_schema(properties: dict[str, Any], required: list[str]) -> dict[str, A
 def _read_file_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "path": {"type": "string"},
-            "offset": {"type": "integer", "minimum": 0},
-            "limit": {"type": "integer", "minimum": 1, "maximum": MAX_FILE_READ_BYTES},
-            "start_line": {"type": "integer", "minimum": 1},
-            "end_line": {"type": "integer", "minimum": 1},
-            "append_loc": {"type": "boolean", "default": False},
-            "encoding": {"type": "string", "default": "utf-8"},
+            "path": {
+                "type": "string",
+                "description": "File to read. Pass an absolute path.",
+            },
+            "offset": {
+                "type": "integer",
+                "minimum": 0,
+                "description": (
+                    "Byte offset to start from in byte mode. Default 0. Ignored in line mode."
+                ),
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_FILE_READ_BYTES,
+                "description": (
+                    f"Maximum bytes to return in byte mode. Default {MAX_FILE_READ_BYTES}. "
+                    "Ignored in line mode."
+                ),
+            },
+            "start_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": (
+                    "First line to return, counted from 1. Setting it selects line mode. "
+                    "Default 1."
+                ),
+            },
+            "end_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": (
+                    "Last line to return, inclusive. Setting it selects line mode. "
+                    f"Default start_line plus {MAX_GREP_RESULTS - 1}."
+                ),
+            },
+            "append_loc": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "When true, selects line mode and prefixes each returned line with "
+                    "its line number and an arrow."
+                ),
+            },
+            "encoding": {
+                "type": "string",
+                "default": "utf-8",
+                "description": (
+                    "Text encoding used to decode the file, for example utf-8, gbk or "
+                    "cp1252. Undecodable bytes are replaced."
+                ),
+            },
         },
         ["path"],
     )
@@ -1915,7 +2071,10 @@ def _read_file_schema() -> dict[str, Any]:
 def _get_file_metadata_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "path": {"type": "string"},
+            "path": {
+                "type": "string",
+                "description": "Regular file to inspect. Pass an absolute path.",
+            },
         },
         ["path"],
     )
@@ -1924,13 +2083,28 @@ def _get_file_metadata_schema() -> dict[str, Any]:
 def _copy_file_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "source": {"type": "string", "minLength": 1},
-            "target": {"type": "string", "minLength": 1},
+            "source": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Existing file to copy. Pass an absolute path.",
+            },
+            "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "New file path to create. It must not exist yet. Pass an absolute path."
+                ),
+            },
             "expected_source_sha256": {
                 "type": "string",
                 "pattern": "^[0-9A-Fa-f]{64}$",
+                "description": "Current SHA-256 of source, as returned by get_file_metadata.",
             },
-            "create_dirs": {"type": "boolean", "default": True},
+            "create_dirs": {
+                "type": "boolean",
+                "default": True,
+                "description": "Create missing parent folders of target. Default true.",
+            },
         },
         ["source", "target", "expected_source_sha256"],
     )
@@ -1939,15 +2113,34 @@ def _copy_file_schema() -> dict[str, Any]:
 def _glob_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "path": {"type": "string", "default": "."},
-            "root": {"type": "string", "default": "."},
-            "pattern": {"type": "string", "default": "**"},
+            "path": {
+                "type": "string",
+                "default": ".",
+                "description": (
+                    "Folder to search. The default '.' is the service working directory, "
+                    "so pass an absolute folder."
+                ),
+            },
+            "root": {
+                "type": "string",
+                "default": ".",
+                "description": "Alias of path, used only when path is omitted.",
+            },
+            "pattern": {
+                "type": "string",
+                "default": "**",
+                "description": "Alias of include, used only when include is omitted.",
+            },
             "include": {
                 "oneOf": [
                     {"type": "string"},
                     {"type": "array", "items": {"type": "string"}},
                 ],
                 "default": "**",
+                "description": (
+                    "Glob pattern or list of patterns a file must match, such as '*.gpkg' "
+                    "or ['*.shp', '*.tif']. The default '**' matches every file."
+                ),
             },
             "exclude": {
                 "oneOf": [
@@ -1955,17 +2148,31 @@ def _glob_schema() -> dict[str, Any]:
                     {"type": "array", "items": {"type": "string"}},
                 ],
                 "default": [],
+                "description": (
+                    "Glob pattern or list of patterns for files to leave out, matched like "
+                    "include."
+                ),
             },
-            "max_results": {"type": "integer", "minimum": 1, "maximum": MAX_GLOB_RESULTS},
+            "max_results": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_GLOB_RESULTS,
+                "description": f"Maximum paths to return. Default {MAX_GLOB_RESULTS}.",
+            },
             "max_scanned_entries": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": MAX_SEARCH_SCANNED_ENTRIES,
+                "description": (
+                    "Maximum files and folders to visit before stopping. Default "
+                    f"{MAX_SEARCH_SCANNED_ENTRIES}."
+                ),
             },
             "timeout_seconds": {
                 "type": "number",
                 "minimum": 0.01,
                 "maximum": MAX_GREP_SEARCH_SECONDS,
+                "description": f"Time budget in seconds. Default {MAX_GREP_SEARCH_SECONDS:g}.",
             },
         },
         [],
@@ -1975,31 +2182,109 @@ def _glob_schema() -> dict[str, Any]:
 def _grep_schema() -> dict[str, Any]:
     return _base_schema(
         {
-            "path": {"type": "string", "default": "."},
-            "root": {"type": "string", "default": "."},
-            "pattern": {"type": "string", "maxLength": MAX_GREP_PATTERN_CHARS},
-            "include": {"type": "string", "default": "**"},
+            "path": {
+                "type": "string",
+                "default": ".",
+                "description": (
+                    "File or folder to search. The default '.' is the service working "
+                    "directory, so pass an absolute path."
+                ),
+            },
+            "root": {
+                "type": "string",
+                "default": ".",
+                "description": "Alias of path, used only when path is omitted.",
+            },
+            "pattern": {
+                "type": "string",
+                "maxLength": MAX_GREP_PATTERN_CHARS,
+                "description": (
+                    "Regular expression searched in each line, or plain text when literal "
+                    "is true. Regex limits are listed in the tool description."
+                ),
+            },
+            "include": {
+                "type": "string",
+                "default": "**",
+                "description": (
+                    "One glob pattern that files must match when path is a folder, such as "
+                    "'*.py' or '*.qgs'. Lists are not accepted here."
+                ),
+            },
             "exclude": {
                 "oneOf": [
                     {"type": "string"},
                     {"type": "array", "items": {"type": "string"}},
                 ],
                 "default": [],
+                "description": "Glob pattern or list of patterns for files to skip.",
             },
-            "ignore_case": {"type": "boolean", "default": False},
-            "case_sensitive": {"type": "boolean", "default": True},
-            "literal": {"type": "boolean", "default": False},
-            "context_lines": {"type": "integer", "minimum": 0, "default": 0},
-            "return_line_numbers": {"type": "boolean", "default": False},
-            "max_results": {"type": "integer", "minimum": 1, "maximum": MAX_GREP_RESULTS},
-            "max_scanned_files": {"type": "integer", "minimum": 1, "maximum": MAX_GREP_SCANNED_FILES},
+            "ignore_case": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Match without regard to case. Ignored when case_sensitive is given."
+                ),
+            },
+            "case_sensitive": {
+                "type": "boolean",
+                "default": True,
+                "description": "Match case exactly. Takes precedence over ignore_case.",
+            },
+            "literal": {
+                "type": "boolean",
+                "default": False,
+                "description": "Treat pattern as plain text instead of a regular expression.",
+            },
+            "context_lines": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0,
+                "description": "Lines before and after each match to return in its context list.",
+            },
+            "return_line_numbers": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Write path:line_number:line instead of path:line in "
+                    "plain_text_response. matches always include line_number."
+                ),
+            },
+            "max_results": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_GREP_RESULTS,
+                "description": f"Maximum matching lines to return. Default {MAX_GREP_RESULTS}.",
+            },
+            "max_scanned_files": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_GREP_SCANNED_FILES,
+                "description": f"Maximum files to read. Default {MAX_GREP_SCANNED_FILES}.",
+            },
             "max_scanned_entries": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": MAX_SEARCH_SCANNED_ENTRIES,
+                "description": (
+                    "Maximum files and folders to visit before stopping. Default "
+                    f"{MAX_SEARCH_SCANNED_ENTRIES}."
+                ),
             },
-            "timeout_seconds": {"type": "number", "minimum": 0.01, "maximum": MAX_GREP_SEARCH_SECONDS},
-            "encoding": {"type": "string", "default": "utf-8"},
+            "timeout_seconds": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": MAX_GREP_SEARCH_SECONDS,
+                "description": f"Time budget in seconds. Default {MAX_GREP_SEARCH_SECONDS:g}.",
+            },
+            "encoding": {
+                "type": "string",
+                "default": "utf-8",
+                "description": (
+                    "Text encoding used to decode files, for example utf-8 or gbk. "
+                    "Undecodable bytes are replaced."
+                ),
+            },
         },
         ["pattern"],
     )
@@ -2014,57 +2299,130 @@ def _exec_schema() -> dict[str, Any]:
                 "items": {"type": "string", "minLength": 1},
                 "description": (
                     "Non-empty argv array. The first item is the executable and every "
-                    "remaining item is one argument."
+                    "remaining item is one argument. No shell is involved, so shell "
+                    "built-ins need a shell program such as ['cmd', '/c', 'dir']."
                 ),
             },
-            "cwd": {"type": "string", "default": "."},
-            "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": MAX_EXEC_TIMEOUT_SECONDS},
-            "timeout": {"type": "integer", "minimum": 1, "maximum": MAX_EXEC_TIMEOUT_SECONDS},
-            "max_output_size": {"type": "integer", "minimum": 0, "maximum": MAX_EXEC_OUTPUT_CHARS},
+            "cwd": {
+                "type": "string",
+                "default": ".",
+                "description": (
+                    "Working directory. The default '.' is the service working directory. "
+                    "Absolute values must stay within the allowed shell roots."
+                ),
+            },
+            "timeout_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_EXEC_TIMEOUT_SECONDS,
+                "description": (
+                    "Seconds before the process tree is killed. Default "
+                    f"{MAX_EXEC_TIMEOUT_SECONDS}."
+                ),
+            },
+            "timeout": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": MAX_EXEC_TIMEOUT_SECONDS,
+                "description": (
+                    "Alias of timeout_seconds, used only when timeout_seconds is omitted."
+                ),
+            },
+            "max_output_size": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": MAX_EXEC_OUTPUT_BYTES,
+                "description": (
+                    "Maximum bytes kept from each of stdout and stderr. Default "
+                    f"{MAX_EXEC_OUTPUT_BYTES}. Extra output is dropped and flagged as truncated."
+                ),
+            },
         },
         ["command"],
     )
 
 
 def _write_schema() -> dict[str, Any]:
-    schema = _base_schema(
+    return _base_schema(
         {
-            "path": {"type": "string"},
-            "content": {"type": "string"},
-            "encoding": {"type": "string", "default": "utf-8"},
-            "create_dirs": {"type": "boolean", "default": True},
-            "overwrite": {"type": "boolean", "default": False},
+            "path": {
+                "type": "string",
+                "description": "File to create or replace. Pass an absolute path.",
+            },
+            "content": {
+                "type": "string",
+                "description": "Complete new text of the file.",
+            },
+            "encoding": {
+                "type": "string",
+                "default": "utf-8",
+                "description": (
+                    "Encoding used to write content, for example utf-8 or gbk. Characters "
+                    "it cannot encode cause an error."
+                ),
+            },
+            "create_dirs": {
+                "type": "boolean",
+                "default": True,
+                "description": "Create missing parent folders. Default true.",
+            },
+            "overwrite": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Only matters when path already exists. Set true, together with "
+                    "expected_sha256, to replace that file. With false an existing file "
+                    "makes the call fail. A missing file is created either way."
+                ),
+            },
             "expected_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-fA-F]{64}$",
-                "description": "Optional SHA-256 required to match an existing overwrite target.",
+                "description": (
+                    "Current SHA-256 of the existing file, required to replace it with "
+                    "overwrite true. Omit it when creating a new file, otherwise the "
+                    "call fails."
+                ),
             },
         },
         ["path", "content"],
     )
-    schema["allOf"] = [
-        {
-            "if": {
-                "properties": {"overwrite": {"const": True}},
-                "required": ["overwrite"],
-            },
-            "then": {"required": ["expected_sha256"]},
-        }
-    ]
-    return schema
 
 
 def _edit_schema() -> dict[str, Any]:
     schema = _base_schema(
         {
-            "path": {"type": "string"},
-            "search": {"type": "string", "minLength": 1},
-            "replace": {"type": "string"},
-            "old_text": {"type": "string", "minLength": 1},
-            "new_text": {"type": "string"},
+            "path": {
+                "type": "string",
+                "description": "Existing file to edit. Pass an absolute path.",
+            },
+            "search": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Alias of old_text. Exact text that must occur once in the file.",
+            },
+            "replace": {
+                "type": "string",
+                "description": "Alias of new_text. Replacement for search, empty by default.",
+            },
+            "old_text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Exact text to replace. It must occur exactly once in the file.",
+            },
+            "new_text": {
+                "type": "string",
+                "description": (
+                    "Replacement for old_text. Empty by default, which deletes old_text."
+                ),
+            },
             "edits": {
                 "type": "array",
                 "minItems": 1,
+                "description": (
+                    "Several replacements applied together, each with old_text and "
+                    "new_text, or search and replace. Each must match once and none may overlap."
+                ),
                 "items": {
                     "type": "object",
                     "properties": {
@@ -2086,12 +2444,28 @@ def _edit_schema() -> dict[str, Any]:
                     ],
                 },
             },
-            "encoding": {"type": "string", "default": "utf-8"},
-            "expected_replacements": {"type": "integer", "minimum": 0},
+            "encoding": {
+                "type": "string",
+                "default": "utf-8",
+                "description": (
+                    "Encoding used to read and write the file. It must decode without errors."
+                ),
+            },
+            "expected_replacements": {
+                "type": "integer",
+                "minimum": 0,
+                "description": (
+                    "Optional check. The call fails unless the number of edits equals this "
+                    "value."
+                ),
+            },
             "expected_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-fA-F]{64}$",
-                "description": "SHA-256 required to match the file before editing.",
+                "description": (
+                    "Current SHA-256 of the file from get_file_metadata or the last "
+                    "write_file or edit_file result. The edit is refused if it differs."
+                ),
             },
         },
         ["path", "expected_sha256"],

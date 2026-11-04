@@ -6,6 +6,10 @@ Faults occur at acknowledged I/O boundaries rather than depending on timing.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import copy
 import errno
 import hashlib
@@ -831,9 +835,18 @@ class TestQCopilotsMcpServerFileTransferJobs(unittest.TestCase):
             self.upload([self.source("different.bin")], client_request_id="request-one")
 
     def test_formal_restricted_policy_rejects_before_connect(self):
-        self.manager = self.new_manager(policy=FilesystemPolicy(mode="formal_restricted"))
-        with self.assertRaises(FileTransferError):
-            self.upload([self.source()])
+        # Same codes and priority as test_connection and trust_host_key.
+        cases = (
+            (FilesystemPolicy(mode="formal_restricted", network_enabled=True), "file_transfer_restricted"),
+            (FilesystemPolicy(network_enabled=False), "network_disabled"),
+            (FilesystemPolicy(mode="formal_restricted", network_enabled=False), "network_disabled"),
+        )
+        for policy, code in cases:
+            with self.subTest(code=code, mode=policy.mode):
+                self.manager = self.new_manager(policy=policy)
+                with self.assertRaises(FileTransferError) as failure:
+                    self.upload([self.source()])
+                self.assertEqual(failure.exception.code, code)
         self.assertEqual(self.backend.connections, [])
 
     def test_restricted_policy_also_rejects_recovery_before_connect(self):
@@ -1125,6 +1138,36 @@ class TestQCopilotsMcpServerFileTransferJobs(unittest.TestCase):
                 self.upload([source], client_request_id="thread-retry")
         self.assertEqual(self.manager.list_jobs()["jobs"], [])
         self.assert_success(self.upload([source], client_request_id="thread-retry"))
+
+    def test_observer_cannot_cancel_attempt_owned_by_another_manager(self):
+        self.backend.write_gate = threading.Event()
+        started = self.upload([self.source()])
+        self.assertTrue(self.backend.write_observed.wait(5))
+        observer = self.new_manager()
+        with self.assertRaises(FileTransferError) as caught:
+            observer.cancel_job(started["job_id"])
+        self.assertEqual(caught.exception.code, "transfer_busy")
+        self.backend.write_gate.set()
+        self.assert_success(started)
+
+    def test_stopped_manager_rejects_new_work_as_retryable(self):
+        source = self.source()
+        self.manager.shutdown(timeout=2)
+        with self.assertRaises(FileTransferError) as caught:
+            self.upload([source])
+        self.assertEqual(caught.exception.code, "service_stopping")
+        self.assertTrue(caught.exception.retryable)
+        self.assertEqual(self.backend.connections, [])
+
+    def test_list_rejects_empty_and_unknown_state_filters(self):
+        finished = self.assert_success(self.upload([self.source(data=b"listed")]))
+        for states in ([], ["paused"], "failed"):
+            with self.subTest(states=states):
+                with self.assertRaises(FileTransferError) as caught:
+                    self.manager.list_jobs(states=states)
+                self.assertEqual(caught.exception.code, "invalid_states")
+        listed = self.manager.list_jobs(states=["succeeded"])["jobs"]
+        self.assertEqual([item["job_id"] for item in listed], [finished["job_id"]])
 
     def test_observer_can_discard_after_cached_active_attempt_stops(self):
         self.backend.write_gate = threading.Event()

@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-12"
 __copyright__ = "Copyright 2026, The QGIS Project"
 

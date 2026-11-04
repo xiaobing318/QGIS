@@ -5,6 +5,10 @@ TemporaryDirectory. Write failures happen after an actual partial write, so
 recovery must validate and reuse data beyond the last acknowledged checkpoint.
 """
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import errno
 import hashlib
 import json

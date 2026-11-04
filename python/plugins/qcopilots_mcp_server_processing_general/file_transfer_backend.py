@@ -180,15 +180,21 @@ class FileTransferBackend:
         self._pending_lock = threading.RLock()
 
     def _check_policy(self):
-        if not self.policy.network_enabled or self.policy.restricted:
+        # Use the same codes and precedence as the job manager's policy check.
+        if not self.policy.network_enabled:
             raise FileTransferError(
-                "network_disallowed",
-                "SSH transfers require enabled networking in compatible mode.",
+                "network_disabled",
+                "File transfer network access is disabled by security policy.",
+            )
+        if self.policy.restricted:
+            raise FileTransferError(
+                "file_transfer_restricted",
+                "File transfer is unavailable in formal_restricted mode.",
             )
 
     @staticmethod
     def _endpoint(config):
-        return validate_connection_fields(config, required=True, code="invalid_configuration")
+        return validate_connection_fields(config, required=True, code="invalid_config")
 
     @staticmethod
     def _host_name(host, port):

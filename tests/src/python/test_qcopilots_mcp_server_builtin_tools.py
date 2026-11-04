@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-12"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -273,7 +273,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             self.assertEqual((root / "copied.txt").read_bytes(), source.read_bytes())
 
     def test_file_writes_are_atomic_and_sha_guarded(self):
-        from qcopilots_common.builtin_tools import BuiltinTools
+        from qcopilots_common.builtin_tools import BuiltinTools, _publish_new_file
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -348,6 +348,59 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                     )
             self.assertEqual(path.read_bytes(), b"beta\n")
             self.assertEqual(list(root.glob(".guarded.txt.qcopilots-*.tmp")), [])
+
+            # overwrite=true on a missing file creates it ("create or replace").
+            created_with_overwrite = tools.write_file(
+                {
+                    "path": "created-with-overwrite.txt",
+                    "content": "delta\n",
+                    "overwrite": True,
+                }
+            )
+            self.assertFalse(created_with_overwrite["overwritten"])
+            self.assertIsNone(created_with_overwrite["previous_sha256"])
+            self.assertEqual(
+                created_with_overwrite["sha256"],
+                hashlib.sha256(b"delta\n").hexdigest(),
+            )
+            self.assertEqual(
+                (root / "created-with-overwrite.txt").read_bytes(), b"delta\n"
+            )
+
+            # A missing file is published without clobbering, so a file that
+            # appears after the existence check is preserved.
+            raced = root / "raced.txt"
+
+            def create_concurrently(temporary, target):
+                target.write_bytes(b"concurrent\n")
+                _publish_new_file(temporary, target)
+
+            with patch(
+                "qcopilots_common.builtin_tools._publish_new_file",
+                side_effect=create_concurrently,
+            ):
+                with self.assertRaises(FileExistsError):
+                    tools.write_file(
+                        {
+                            "path": "raced.txt",
+                            "content": "unsafe\n",
+                            "overwrite": True,
+                        }
+                    )
+            self.assertEqual(raced.read_bytes(), b"concurrent\n")
+            self.assertEqual(list(root.glob(".raced.txt.qcopilots-*.tmp")), [])
+
+            missing = root / "missing.txt"
+            with self.assertRaisesRegex(FileNotFoundError, "expected_sha256"):
+                tools.write_file(
+                    {
+                        "path": "missing.txt",
+                        "content": "unsafe\n",
+                        "overwrite": True,
+                        "expected_sha256": alpha_sha,
+                    }
+                )
+            self.assertFalse(missing.exists())
 
     def test_edit_file_requires_exactly_one_non_empty_edit_mode(self):
         from qcopilots_common.builtin_tools import BuiltinTools
@@ -611,6 +664,19 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             self.assertEqual(line_result["content"], "2\u2192 needle\n3\u2192 omega")
             self.assertEqual(line_result["start_line"], 2)
             self.assertEqual(line_result["end_line"], 3)
+            self.assertEqual(line_result["total_lines"], 3)
+            self.assertTrue(line_result["total_lines_known"])
+            self.assertFalse(line_result["truncated"])
+
+            # Reading only the first lines of a small file leaves text unread,
+            # but the whole file was decoded so its line count is exact.
+            head_result = tools.read_file(
+                {"path": "notes/data.txt", "start_line": 1, "end_line": 1}
+            )
+            self.assertEqual(head_result["content"], "alpha")
+            self.assertTrue(head_result["truncated"])
+            self.assertEqual(head_result["total_lines"], 3)
+            self.assertTrue(head_result["total_lines_known"])
 
             glob_result = tools.file_glob_search({"include": "*.txt", "exclude": ["skip*"]})
             self.assertEqual(glob_result["matches"], ["notes/data.txt"])
@@ -691,6 +757,8 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
             )
             self.assertTrue(large_line_result["truncated"])
             self.assertLessEqual(large_line_result["end_line"], 200)
+            self.assertEqual(large_line_result["total_lines"], 400)
+            self.assertTrue(large_line_result["total_lines_known"])
 
             (root / "notes" / "single-line.txt").write_text(
                 "x" * (256 * 1024 + 4096),
@@ -704,6 +772,7 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 }
             )
             self.assertTrue(single_line_result["truncated"])
+            self.assertFalse(single_line_result["total_lines_known"])
             self.assertLessEqual(
                 len(single_line_result["content"].encode("utf-8")),
                 256 * 1024 + 16,
@@ -1072,6 +1141,65 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                     tools.grep_search(
                         {"path": str(first), "pattern": unsafe_pattern}
                     )
+
+    def test_search_tools_truncate_only_when_more_results_exist(self):
+        from qcopilots_common.builtin_tools import BuiltinTools
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("a.txt", "b.txt"):
+                (root / name).write_text("needle\n", encoding="utf-8")
+            (root / "skip.txt").write_text("needle\n", encoding="utf-8")
+            tools = BuiltinTools(root_path=root)
+
+            exact_glob = tools.file_glob_search(
+                {"path": ".", "include": "*.txt", "exclude": ["skip*"], "max_results": 2}
+            )
+            self.assertEqual(exact_glob["matches"], ["a.txt", "b.txt"])
+            self.assertFalse(exact_glob["truncated"])
+
+            limited_glob = tools.file_glob_search(
+                {"path": ".", "include": "*.txt", "max_results": 2}
+            )
+            self.assertEqual(len(limited_glob["matches"]), 2)
+            self.assertTrue(limited_glob["truncated"])
+
+            exact_grep = tools.grep_search(
+                {
+                    "path": ".",
+                    "pattern": "needle",
+                    "exclude": ["skip*"],
+                    "max_results": 2,
+                }
+            )
+            self.assertEqual(
+                [match["path"] for match in exact_grep["matches"]],
+                ["a.txt", "b.txt"],
+            )
+            self.assertFalse(exact_grep["truncated"])
+
+            limited_grep = tools.grep_search(
+                {"path": ".", "pattern": "needle", "max_results": 2}
+            )
+            self.assertEqual(len(limited_grep["matches"]), 2)
+            self.assertEqual(len(limited_grep["plain_text_response"].splitlines()), 2)
+            self.assertTrue(limited_grep["truncated"])
+
+            single_file = root / "many.txt"
+            single_file.write_text("needle\nneedle\n", encoding="utf-8")
+            exact_file_grep = tools.grep_search(
+                {"path": str(single_file), "pattern": "needle", "max_results": 2}
+            )
+            self.assertEqual(len(exact_file_grep["matches"]), 2)
+            self.assertFalse(exact_file_grep["truncated"])
+            limited_file_grep = tools.grep_search(
+                {"path": str(single_file), "pattern": "needle", "max_results": 1}
+            )
+            self.assertEqual(
+                [match["line_number"] for match in limited_file_grep["matches"]],
+                [1],
+            )
+            self.assertTrue(limited_file_grep["truncated"])
 
     def test_file_reads_and_edits_enforce_cap_and_opened_identity(self):
         import qcopilots_common.builtin_tools as builtin_tools
@@ -1475,9 +1603,12 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
                 "expected_sha256",
                 descriptors["edit_file"]["inputSchema"]["required"],
             )
+            # overwrite=true may create a missing file, so the schema must not
+            # require expected_sha256 whenever overwrite is true.
+            self.assertNotIn("allOf", descriptors["write_file"]["inputSchema"])
             self.assertEqual(
-                descriptors["write_file"]["inputSchema"]["allOf"][0]["then"]["required"],
-                ["expected_sha256"],
+                descriptors["write_file"]["inputSchema"]["required"],
+                ["path", "content"],
             )
             for request_id, invalid_command in enumerate(
                 (

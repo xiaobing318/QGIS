@@ -22,6 +22,7 @@ import shutil
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -48,7 +49,11 @@ from qcopilots_common.processing_metadata import (
     processing_algorithm_start_policy,
 )
 from qcopilots_common.mcp_http import ToolError
-from qcopilots_common.security_policy import FilesystemPolicy
+from qcopilots_common.security_policy import (
+    FilesystemPolicy,
+    reject_relative_local_path,
+    reject_restricted_path_syntax,
+)
 
 
 MAX_VECTOR_QUERY_OFFSET = 10000
@@ -63,6 +68,34 @@ MAX_LAYER_REMOVAL_LAYERS = 64
 MAX_LAYER_REMOVAL_EDIT_ENTRIES = 10000
 MAX_LAYER_REMOVAL_FINGERPRINT_BYTES = 4 * 1024 * 1024
 LAYER_REMOVAL_EDITABLE_CHANGES = frozenset({"reject", "save", "discard"})
+# Explicit output formats and the path suffixes each one accepts.
+VECTOR_LAYER_SUFFIX_FORMATS = {
+    ".gpkg": "GPKG",
+    ".shp": "ESRI Shapefile",
+    ".geojson": "GeoJSON",
+    ".json": "GeoJSON",
+}
+MAP_IMAGE_SUFFIX_FORMATS = {
+    ".png": "png",
+    ".jpg": "jpeg",
+    ".jpeg": "jpeg",
+    ".bmp": "bmp",
+    ".tif": "tiff",
+    ".tiff": "tiff",
+}
+MAP_IMAGE_FORMAT_ENCODERS = {
+    "png": "PNG",
+    "jpeg": "JPEG",
+    "bmp": "BMP",
+    "tiff": "TIFF",
+}
+LAYOUT_EXPORT_SUFFIX_FORMATS = {
+    ".pdf": "pdf",
+    ".png": "png",
+    ".jpg": "jpeg",
+    ".jpeg": "jpeg",
+    ".svg": "svg",
+}
 
 
 class ProcessingAlgorithmCursorError(RuntimeError):
@@ -572,11 +605,11 @@ class QgisBridgeController:
 
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if self._stopping.is_set():
-            raise RuntimeError("QCopilots QGIS bridge is stopping")
+            raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
 
         def invoke() -> dict[str, Any]:
             if self._stopping.is_set():
-                raise RuntimeError("QCopilots QGIS bridge is stopping")
+                raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
             return QgisBridgeTools(
                 self.iface,
                 processing_job_manager_factory=self._get_processing_job_manager,
@@ -598,7 +631,7 @@ class QgisBridgeController:
     def _get_processing_job_manager(self):
         with self._processing_job_manager_lock:
             if self._stopping.is_set():
-                raise RuntimeError("QCopilots QGIS bridge is stopping")
+                raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
             if self._processing_job_manager is None:
                 from qcopilots_common.processing_jobs import ProcessingJobManager
 
@@ -615,7 +648,7 @@ class QgisBridgeController:
     def _get_qgis_binary_job_manager(self):
         with self._qgis_binary_job_manager_lock:
             if self._stopping.is_set():
-                raise RuntimeError("QCopilots QGIS bridge is stopping")
+                raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
             if self._qgis_binary_job_manager is None:
                 from qcopilots_common.qgis_binary_jobs import QGISBinaryJobManager
 
@@ -647,7 +680,7 @@ class _QtMainThreadDispatcher:
 
     def call(self, function, timeout_seconds: float = 60):
         if self._closed.is_set():
-            raise RuntimeError("QCopilots QGIS bridge is stopping")
+            raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
         if not self._app or self._qthread.currentThread() == self._app.thread():
             return function()
 
@@ -664,7 +697,7 @@ class _QtMainThreadDispatcher:
         payload_id = id(payload)
         with self._pending_lock:
             if self._closed.is_set():
-                raise RuntimeError("QCopilots QGIS bridge is stopping")
+                raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
             self._pending[payload_id] = payload
         self._object.request.emit(payload)
         if not done.wait(timeout_seconds):
@@ -717,7 +750,7 @@ class _QtMainThreadDispatcher:
 
     def close(self) -> None:
         self._closed.set()
-        cancellation_error = RuntimeError("QCopilots QGIS bridge is stopping")
+        cancellation_error = RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
         with self._pending_lock:
             pending = list(self._pending.values())
             self._pending.clear()
@@ -773,11 +806,15 @@ class QgisBridgeTools:
         )
 
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        handlers = {
+        handlers = self.handlers()
+        if tool not in handlers:
+            raise ValueError(f"Unknown QGIS bridge tool: {tool}")
+        return handlers[tool](arguments)
+
+    def handlers(self) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]]]:
+        """Return the bridge operations that MCP tools may route to."""
+        return {
             "list_layers": self.list_layers,
-            "add_vector_layer": self.add_vector_layer,
-            "add_raster_layer": self.add_raster_layer,
-            "remove_layer": self.remove_layer,
             "set_layer_visibility": self.set_layer_visibility,
             "zoom_to_layer": self.zoom_to_layer,
             "zoom_to_extent": self.zoom_to_extent,
@@ -793,7 +830,6 @@ class QgisBridgeTools:
             "export_map_image": self.export_map_image,
             "interactive_capture_screenshot": self.interactive_capture_screenshot,
             "interactive_layer_describe_sources": self.interactive_layer_describe_sources,
-            "interactive_layer_list_layers": self.interactive_layer_list_layers,
             "interactive_layer_load_layer": self.interactive_layer_load_layer,
             "interactive_layer_remove_layers": self.interactive_layer_remove_layers,
             "interactive_layer_get_metadata": self.interactive_layer_get_metadata,
@@ -825,9 +861,6 @@ class QgisBridgeTools:
             "qgis_binary_list_jobs": self.qgis_binary_list_jobs,
             "qgis_binary_cancel_job": self.qgis_binary_cancel_job,
         }
-        if tool not in handlers:
-            raise ValueError(f"Unknown QGIS bridge tool: {tool}")
-        return handlers[tool](arguments)
 
     def list_layers(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.core import QgsProject
@@ -836,40 +869,6 @@ class QgisBridgeTools:
         for layer in QgsProject.instance().mapLayers().values():
             layers.append(_layer_summary(layer))
         return {"layers": layers}
-
-    def add_vector_layer(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsProject, QgsVectorLayer
-
-        path = self._safe_workspace_path(arguments["path"], access="read")
-        name = arguments.get("name") or Path(path).stem
-        layer = QgsVectorLayer(path, name, arguments.get("provider", "ogr"))
-        if not layer.isValid():
-            raise RuntimeError(f"Invalid vector layer: {path}")
-        QgsProject.instance().addMapLayer(layer)
-        return {"layer_id": layer.id(), "name": layer.name()}
-
-    def add_raster_layer(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsProject, QgsRasterLayer
-
-        path = self._safe_workspace_path(arguments["path"], access="read")
-        name = arguments.get("name") or Path(path).stem
-        layer = QgsRasterLayer(path, name)
-        if not layer.isValid():
-            raise RuntimeError(f"Invalid raster layer: {path}")
-        QgsProject.instance().addMapLayer(layer)
-        return {"layer_id": layer.id(), "name": layer.name()}
-
-    def remove_layer(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        return self.interactive_layer_remove_layers(
-            {
-                "layer_id": arguments["layer_id"],
-                **(
-                    {"confirmation_token": arguments["confirmation_token"]}
-                    if arguments.get("confirmation_token")
-                    else {}
-                ),
-            }
-        )
 
     def set_layer_visibility(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.core import QgsProject
@@ -904,15 +903,22 @@ class QgisBridgeTools:
         target.scale(1.05)
         canvas.setExtent(target, True)
         canvas.refresh()
+        warnings = []
+        if not layer.crs().isValid():
+            # Like QGIS itself, a layer without a CRS is drawn untransformed,
+            # so say so instead of silently using its raw coordinates.
+            warnings.append(
+                "The layer has no valid CRS, so its extent was used as canvas "
+                "coordinates without transformation."
+            )
         return {
             "layer_id": layer.id(),
             "layer_crs": layer.crs().authid(),
             **self._zoom_canvas_state(canvas),
+            "warnings": warnings,
         }
 
     def zoom_to_extent(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle
-
         extent = arguments["extent"]
         if (
             not isinstance(extent, list)
@@ -927,6 +933,14 @@ class QgisBridgeTools:
             raise RuntimeError(
                 "extent must contain exactly four numbers: xmin, ymin, xmax, ymax"
             )
+        if not (extent[0] < extent[2] and extent[1] < extent[3]):
+            # QgsRectangle would silently swap reversed corners.
+            raise RuntimeError(
+                "extent must be [xmin, ymin, xmax, ymax] with xmin < xmax and "
+                f"ymin < ymax, got {extent}"
+            )
+        from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle
+
         canvas = self.iface.mapCanvas()
         canvas_crs = canvas.mapSettings().destinationCrs()
         rectangle = QgsRectangle(extent[0], extent[1], extent[2], extent[3])
@@ -1205,8 +1219,14 @@ class QgisBridgeTools:
     def zoom_to_native_resolution(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.core import QgsProject, QgsRasterLayer
 
-        layer = QgsProject.instance().mapLayer(arguments.get("layer_id", ""))
-        if layer is None and hasattr(self.iface, "activeLayer"):
+        layer = None
+        if arguments.get("layer_id"):
+            # An explicit id must name a project layer. Falling back to the
+            # active layer would silently zoom on a different raster.
+            layer = QgsProject.instance().mapLayer(arguments["layer_id"])
+            if layer is None:
+                raise RuntimeError("Layer not found")
+        elif hasattr(self.iface, "activeLayer"):
             layer = self.iface.activeLayer()
         if not isinstance(layer, QgsRasterLayer):
             raise RuntimeError("A raster layer is required for native resolution zoom")
@@ -1221,13 +1241,12 @@ class QgisBridgeTools:
         from qgis.core import QgsProject
 
         project = QgsProject.instance()
+        current_file = str(project.fileName() or "")
         path = arguments.get("path")
         if path:
             path = self._safe_workspace_path(path, access="write")
-        elif project.fileName():
-            path = self._safe_workspace_path(
-                project.fileName(), access="write"
-            )
+        elif current_file:
+            path = self._safe_workspace_path(current_file, access="write")
         if not path:
             raise RuntimeError("A project output path is required for an unsaved project")
         target = Path(path)
@@ -1236,16 +1255,24 @@ class QgisBridgeTools:
                 "Project output path must end in .qgz so it can be published as "
                 "one atomic file"
             )
-        preview, expected_versions = _authorize_interactive_overwrite(
-            self._destructive_action_confirmations,
-            arguments,
-            target,
-            "save_project",
-            "Project output",
-            binding={"path": str(target)},
-        )
-        if preview is not None:
-            return preview
+        saves_current_file = bool(current_file) and os.path.normcase(
+            str(target.resolve(strict=False))
+        ) == os.path.normcase(str(Path(current_file).resolve(strict=False)))
+        if saves_current_file:
+            # Like Ctrl+S, saving the open project in place needs no overwrite
+            # preview. The version still guards the atomic publish below.
+            expected_versions = [_interactive_file_version(target)]
+        else:
+            preview, expected_versions = _authorize_interactive_overwrite(
+                self._destructive_action_confirmations,
+                arguments,
+                target,
+                "save_project",
+                "Project output",
+                binding={"path": str(target)},
+            )
+            if preview is not None:
+                return preview
         target.parent.mkdir(parents=True, exist_ok=True)
         staged_path = _new_staged_output_path(target)
         previous_file_name = project.fileName()
@@ -1260,7 +1287,8 @@ class QgisBridgeTools:
                 _publish_staged_output(
                     staged_path,
                     target,
-                    overwrite=bool(arguments.get("overwrite", False)),
+                    overwrite=saves_current_file
+                    or bool(arguments.get("overwrite", False)),
                     expected_versions=expected_versions,
                 )
             )
@@ -1308,19 +1336,13 @@ class QgisBridgeTools:
         path = Path(
             self._safe_workspace_path(arguments["path"], access="write")
         )
-        encoders = {
-            ".png": "PNG",
-            ".jpg": "JPEG",
-            ".jpeg": "JPEG",
-            ".bmp": "BMP",
-            ".tif": "TIFF",
-            ".tiff": "TIFF",
-        }
-        encoder = encoders.get(path.suffix.lower())
-        if encoder is None:
-            raise RuntimeError(
-                "Map image output must use a .png, .jpg, .jpeg, .bmp, .tif or .tiff suffix"
-            )
+        image_format = _explicit_output_format(
+            path,
+            arguments.get("format"),
+            MAP_IMAGE_SUFFIX_FORMATS,
+            "Map image output",
+        )
+        encoder = MAP_IMAGE_FORMAT_ENCODERS[image_format]
         world_path = _map_image_world_file_path(path)
         family_paths = [path, world_path]
         preview, expected_versions = _authorize_interactive_overwrite(
@@ -1329,7 +1351,7 @@ class QgisBridgeTools:
             path,
             "export_map_image",
             "Map image output",
-            binding={"path": str(path), "encoder": encoder},
+            binding={"path": str(path), "format": image_format, "encoder": encoder},
             family_paths=family_paths,
         )
         if preview is not None:
@@ -1409,9 +1431,6 @@ class QgisBridgeTools:
             "available_providers": provider_keys,
         }
 
-    def interactive_layer_list_layers(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        return self.list_layers(arguments)
-
     def interactive_layer_load_layer(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.core import QgsProject
 
@@ -1458,9 +1477,14 @@ class QgisBridgeTools:
             QgsProject.instance().addMapLayer(layer)
         if bool(arguments.get("refresh_canvas", False)) and self.iface:
             self.iface.mapCanvas().refresh()
+        layer_summary = _layer_summary(layer)
+        if not added:
+            # A validated but discarded layer has no project id, so the result
+            # must not offer an id that follow-up tools would reject.
+            layer_summary["id"] = None
         return {
             "added": added,
-            "layer": _layer_summary(layer),
+            "layer": layer_summary,
             "layer_type": resolved_layer_type,
             "provider": resolved_provider,
             "source": resolved_source,
@@ -1474,7 +1498,20 @@ class QgisBridgeTools:
             arguments.get("confirmation_token") or ""
         ).strip()
         if confirmation_token:
-            if set(arguments) != {"confirmation_token"}:
+            # Clients that fill in schema defaults may add the default preview
+            # options, which change nothing for the confirmed removal.
+            schema_defaults = {"allow_multiple": False, "editable_changes": "reject"}
+            extra = [
+                name
+                for name, value in arguments.items()
+                if name != "confirmation_token"
+                and not (
+                    name in schema_defaults
+                    and type(value) is type(schema_defaults[name])
+                    and value == schema_defaults[name]
+                )
+            ]
+            if extra:
                 raise RuntimeError(
                     "A confirmed layer removal must contain only confirmation_token"
                 )
@@ -1513,6 +1550,13 @@ class QgisBridgeTools:
                 selectors,
                 bool(arguments.get("allow_multiple", False)),
             )
+            if not layers:
+                # An empty preview must not issue a token that removes nothing.
+                raise RuntimeError(
+                    "No layer in the current project matches the given layer_id, "
+                    "layer_ids, name, names, source or sources. Call list_layers "
+                    "for the current layer ids, names and sources."
+                )
             layers = sorted(layers, key=lambda layer: str(layer.id()))
             _validate_layer_removal_edit_policy(layers, editable_changes)
             layer_ids = [str(layer.id()) for layer in layers]
@@ -1762,7 +1806,9 @@ class QgisBridgeTools:
 
         layer = _map_layer_from_id(arguments["layer_id"])
         style_path = Path(
-            self._safe_workspace_path(arguments["style_path"], access="read")
+            self._safe_absolute_read_path(
+                arguments["style_path"], label="style_path"
+            )
         )
         if not style_path.is_file():
             raise FileNotFoundError(f"Layer style file not found: {style_path}")
@@ -1863,8 +1909,22 @@ class QgisBridgeTools:
         }
         if mode not in mode_options:
             raise RuntimeError("mode must be single, categorized or graduated")
+        # Clients that fill in schema defaults send them for every mode, so a
+        # default value counts as omitted.
+        schema_defaults = {
+            "method": "equal_interval",
+            "classes": 5,
+            "invert_ramp": False,
+        }
         given = {
-            name for name, value in arguments.items() if value is not None
+            name
+            for name, value in arguments.items()
+            if value is not None
+            and not (
+                name in schema_defaults
+                and type(value) is type(schema_defaults[name])
+                and value == schema_defaults[name]
+            )
         } - {"layer_id", "mode"}
         unexpected = sorted(given - mode_options[mode])
         if unexpected:
@@ -2376,7 +2436,6 @@ class QgisBridgeTools:
         return summary
 
     def interactive_layer_configure_labels(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        from qgis.PyQt.QtGui import QColor
         from qgis.core import (
             QgsExpression,
             QgsPalLayerSettings,
@@ -2386,6 +2445,8 @@ class QgisBridgeTools:
 
         layer = _vector_layer_from_id(arguments["layer_id"])
         enabled = bool(arguments.get("enabled", True))
+        value = None
+        is_expression = False
         if not enabled:
             layer.setLabelsEnabled(False)
         else:
@@ -2412,9 +2473,11 @@ class QgisBridgeTools:
             settings.isExpression = is_expression
             text_format = QgsTextFormat()
             text_format.setSize(float(arguments.get("font_size", 10)))
-            color = QColor(str(arguments.get("color") or "#202020"))
-            if not color.isValid():
-                raise RuntimeError(f"Invalid label color: {arguments.get('color')}")
+            color = _label_text_color(arguments.get("color") or "#202020")
+            # QgsTextRenderer replaces the alpha of the format color with
+            # format.opacity(), so the alpha digits become the text opacity.
+            text_format.setOpacity(color.alphaF())
+            color.setAlpha(255)
             text_format.setColor(color)
             settings.setFormat(text_format)
             layer.setLabeling(QgsVectorLayerSimpleLabeling(settings))
@@ -2425,8 +2488,8 @@ class QgisBridgeTools:
         return {
             "layer": _layer_summary(layer),
             "labels_enabled": layer.labelsEnabled(),
-            "field_or_expression": arguments.get("field_or_expression"),
-            "is_expression": bool(arguments.get("is_expression", False)),
+            "field_or_expression": value,
+            "is_expression": is_expression,
         }
 
     def interactive_layout_list(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -2460,6 +2523,8 @@ class QgisBridgeTools:
         project = QgsProject.instance()
         manager = project.layoutManager()
         name = str(arguments["name"]).strip()
+        if not name:
+            raise RuntimeError("name must contain a non-blank layout name")
         if manager.layoutByName(name) is not None:
             raise FileExistsError(f"Print layout already exists: {name}")
         page_width, page_height = _layout_page_dimensions(
@@ -2502,17 +2567,24 @@ class QgisBridgeTools:
         map_item.attemptMove(QgsLayoutPoint(margin, content_top))
         map_item.attemptResize(QgsLayoutSize(map_width, map_height))
         extent_values = arguments.get("map_extent")
+        map_extent_source = "default"
         if extent_values is not None:
-            extent = QgsRectangle(*[float(value) for value in extent_values])
-            if extent.isEmpty() or not all(
-                math.isfinite(float(value)) for value in extent_values
+            values = [float(value) for value in extent_values]
+            # QgsRectangle would silently swap reversed corners.
+            if not all(math.isfinite(value) for value in values) or not (
+                values[0] < values[2] and values[1] < values[3]
             ):
-                raise RuntimeError("map_extent must describe a finite non-empty extent")
-            map_item.zoomToExtent(extent)
+                raise RuntimeError(
+                    "map_extent must be a finite [xmin, ymin, xmax, ymax] with "
+                    "xmin < xmax and ymin < ymax"
+                )
+            map_item.zoomToExtent(QgsRectangle(*values))
+            map_extent_source = "map_extent"
         elif self.iface is not None and self.iface.mapCanvas() is not None:
             canvas_extent = self.iface.mapCanvas().extent()
             if not canvas_extent.isEmpty():
                 map_item.zoomToExtent(canvas_extent)
+                map_extent_source = "canvas"
         layout.addLayoutItem(map_item)
 
         legend = None
@@ -2568,6 +2640,7 @@ class QgisBridgeTools:
                 "orientation": str(arguments.get("orientation") or "landscape"),
                 "title": title,
                 "has_map_frame": True,
+                "map_extent_source": map_extent_source,
                 "has_legend": include_legend,
                 "has_scale_bar": include_scale_bar,
             },
@@ -2587,6 +2660,12 @@ class QgisBridgeTools:
         )
         if layout.pageCollection().pageCount() != 1 and export_format != "pdf":
             raise RuntimeError("Multi-page layouts must be exported as PDF")
+        # Checked before the overwrite preview, so a confirmed token cannot
+        # fail on a size limit that was already known.
+        dpi = float(arguments.get("dpi", 300))
+        if not math.isfinite(dpi) or not 72 <= dpi <= 1200:
+            raise RuntimeError("Layout export dpi must be between 72 and 1200")
+        _validate_layout_export_pixels(layout, dpi)
         preview, expected_versions = _authorize_interactive_overwrite(
             self._destructive_action_confirmations,
             arguments,
@@ -2597,7 +2676,7 @@ class QgisBridgeTools:
                 "layout_name": layout.name(),
                 "path": str(path),
                 "format": export_format,
-                "dpi": float(arguments.get("dpi", 300)),
+                "dpi": dpi,
             },
         )
         if preview is not None:
@@ -2605,10 +2684,6 @@ class QgisBridgeTools:
         path.parent.mkdir(parents=True, exist_ok=True)
         staged_path = _new_staged_output_path(path)
         exporter = QgsLayoutExporter(layout)
-        dpi = float(arguments.get("dpi", 300))
-        if not math.isfinite(dpi) or not 72 <= dpi <= 1200:
-            raise RuntimeError("Layout export dpi must be between 72 and 1200")
-        _validate_layout_export_pixels(layout, dpi)
         cleanup_residuals = []
         primary_error = None
         try:
@@ -2667,20 +2742,46 @@ class QgisBridgeTools:
 
         name = str(arguments["name"])
         output_path = ""
+        output_format = ""
         target = None
         expected_versions = []
+        added_to_project = bool(arguments.get("add_to_project", True))
+        geometry_type = _vector_geometry_type(arguments.get("geometry_type", "Point"))
         requested_path = str(arguments.get("path") or "").strip()
-        if requested_path.lower() == "memory:":
-            output_path = "memory:"
-        elif requested_path:
+        if not requested_path or requested_path.lower() == "memory:":
+            if arguments.get("format") is not None:
+                raise RuntimeError(
+                    "format applies only to a vector layer file. Omit it for a "
+                    'memory layer, which has no path or path "memory:"'
+                )
+            if not added_to_project:
+                raise RuntimeError(
+                    "add_to_project=false needs a file path. A memory layer that "
+                    "is not added to the project would be discarded at once."
+                )
+            if requested_path:
+                output_path = "memory:"
+        else:
             output_path = self._safe_workspace_path(
                 requested_path, access="write"
             )
             target = Path(output_path)
+            output_format = _explicit_output_format(
+                target,
+                arguments.get("format"),
+                VECTOR_LAYER_SUFFIX_FORMATS,
+                "Vector layer output",
+            )
+        # Checked before any overwrite preview, so a token is never issued for
+        # a call that cannot succeed.
+        crs = _vector_layer_crs(arguments.get("crs"))
+        if target is not None:
             from qcopilots_common.processing_jobs import (
                 _processing_output_family_paths,
             )
 
+            # The binding holds every argument except the token, so the
+            # format, path and contents are all bound to the confirmation.
             preview, expected_versions = _authorize_interactive_overwrite(
                 self._destructive_action_confirmations,
                 arguments,
@@ -2697,11 +2798,18 @@ class QgisBridgeTools:
             if preview is not None:
                 return preview
 
-        geometry_type = _vector_geometry_type(arguments.get("geometry_type", "Point"))
-        crs = str(arguments.get("crs") or "EPSG:4326")
-        layer = QgsVectorLayer(f"{geometry_type}?crs={crs}", name, "memory")
+        # Like QgsMemoryProviderUtils::createMemoryLayer: only the validated
+        # CRS goes into the URI, never the raw argument, and CRS validation is
+        # skipped so the QGIS GUI does not prompt for an undefined CRS.
+        crs_uri = crs.authid() or f"wkt:{crs.toWkt()}"
+        options = QgsVectorLayer.LayerOptions()
+        options.skipCrsValidation = True
+        layer = QgsVectorLayer(
+            f"{geometry_type}?crs={crs_uri}", name, "memory", options
+        )
         if not layer.isValid():
             raise RuntimeError(f"Could not create vector layer: {name}")
+        layer.setCrs(crs)
 
         provider = layer.dataProvider()
         fields = [_qgs_field(field) for field in arguments.get("fields") or []]
@@ -2759,7 +2867,7 @@ class QgisBridgeTools:
                 driver_name, written_layer_name = _write_vector_layer_file(
                     layer,
                     str(staged_target),
-                    arguments.get("driver_name"),
+                    output_format,
                     name,
                 )
                 _validate_interactive_versions(expected_versions)
@@ -2804,12 +2912,15 @@ class QgisBridgeTools:
             finally:
                 cleanup_residuals.extend(_cleanup_processing_stages([stage]))
 
-        added_to_project = bool(arguments.get("add_to_project", True))
         if added_to_project:
             QgsProject.instance().addMapLayer(layer)
+        layer_summary = _layer_summary(layer)
+        if not added_to_project:
+            # A layer left out of the project has no usable project id.
+            layer_summary["id"] = None
         return {
             "added": added_to_project,
-            "layer": _layer_summary(layer),
+            "layer": layer_summary,
             "path": output_path,
             "feature_count": layer.featureCount(),
             "cleanup": {
@@ -3050,7 +3161,10 @@ class QgisBridgeTools:
         _ensure_processing_initialized()
         algorithm = QgsApplication.processingRegistry().createAlgorithmById(arguments["algorithm_id"])
         if not algorithm:
-            raise RuntimeError("Processing algorithm not found")
+            raise RuntimeError(
+                "processing_algorithm_not_found: Processing algorithm not found: "
+                f"{arguments['algorithm_id']}"
+            )
         category = arguments.get("category")
         if category and not _algorithm_matches_category(algorithm, category):
             raise RuntimeError(f"Processing algorithm is not available for {category} data")
@@ -3142,6 +3256,19 @@ class QgisBridgeTools:
             )
         return str(resolved)
 
+    def _safe_absolute_read_path(self, value: str | Path, *, label: str) -> str:
+        resolved = self._safe_workspace_path(value, access="read")
+        raw = str(value).strip()
+        if not Path(raw).expanduser().is_absolute():
+            # Same reason as for outputs: a relative input would silently be
+            # read from the QGIS program folder, the GUI working folder.
+            raise ValueError(
+                f"{label} must be an absolute file path (got '{raw}'). "
+                "Relative paths would be resolved against the QGIS program "
+                f"folder {Path.cwd()}."
+            )
+        return resolved
+
     def _validate_layer_source_path(
         self,
         source: str,
@@ -3160,19 +3287,38 @@ class QgisBridgeTools:
         if not self._filesystem_policy.restricted:
             if path_part.lower().startswith("file:"):
                 resolved = self._filesystem_policy.resolve_file_uri(
-                    path_part, access="read"
+                    path_part, access="read", require_absolute=True
                 )
                 return str(resolved) + (separator + options if separator else "")
             if explicit_local_path:
-                resolved = self._safe_workspace_path(path_part, access="read")
+                resolved = self._safe_absolute_read_path(
+                    path_part, label="Local layer source"
+                )
                 return resolved + (separator + options if separator else "")
             if _is_remote_or_provider_uri(path_part):
+                provider_uri = path_part + (
+                    ("&" + options.replace("|", "&")) if separator else ""
+                )
                 self._filesystem_policy.validate_provider_local_paths(
-                    path_part
-                    + (("&" + options.replace("|", "&")) if separator else ""),
+                    provider_uri,
                     access="read",
                     provider=provider,
+                    require_absolute=True,
                 )
+                if _is_encoded_provider_uri(path_part):
+                    # A url without a scheme, such as an mbtiles path, is a
+                    # local file that the policy check above does not see.
+                    for url in _provider_uri_parts(provider_uri).get("url", []):
+                        if _looks_like_policy_local_path_value(url):
+                            self._safe_workspace_path(url, access="read")
+                            # The URI is passed on unchanged, so "~" is not
+                            # expanded and counts as relative.
+                            reject_relative_local_path(
+                                url,
+                                raw=url,
+                                label="Local layer source",
+                                expand_user=False,
+                            )
                 return source
         elif path_part.lower().startswith(("http://", "https://")):
             if separator:
@@ -3234,8 +3380,10 @@ class QgisBridgeTools:
                     "Formal restricted local provider URI uses an unapproved layer type"
                 )
             local_key = next(iter(local_path_keys))
-            resolved = self._filesystem_policy.resolve_path(
-                fields[local_key], access="read"
+            resolved = Path(
+                self._safe_absolute_read_path(
+                    fields[local_key], label="Local layer source"
+                )
             )
             if not resolved.exists():
                 raise FileNotFoundError(
@@ -3262,7 +3410,9 @@ class QgisBridgeTools:
                     "Formal restricted local layer options contain connection or "
                     "unknown fields"
                 )
-        resolved = self._safe_workspace_path(path_part, access="read")
+        resolved = self._safe_absolute_read_path(
+            path_part, label="Local layer source"
+        )
         if self._filesystem_policy.restricted and not Path(resolved).exists():
             raise FileNotFoundError(
                 f"Formal restricted layer source does not exist: {resolved}"
@@ -3282,6 +3432,7 @@ class QgisBridgeTools:
                 normalized,
                 access="read",
                 provider=provider,
+                require_absolute=True,
             )
         for key in ("path", "file", "filename"):
             if key in normalized and isinstance(normalized[key], str):
@@ -3295,7 +3446,9 @@ class QgisBridgeTools:
             return normalized
         if url.casefold().startswith("file:"):
             normalized["url"] = str(
-                self._filesystem_policy.resolve_file_uri(url, access="read")
+                self._filesystem_policy.resolve_file_uri(
+                    url, access="read", require_absolute=True
+                )
             )
         elif _looks_like_policy_local_path_value(url):
             normalized["url"] = self._validate_layer_source_path(
@@ -3323,8 +3476,13 @@ def _supported_layer_type_descriptions() -> list[dict[str, Any]]:
     return [
         {
             "layer_type": "auto",
-            "providers": ["ogr", "gdal"],
-            "description": "Try common local vector and raster providers in order.",
+            # Same order as the attempts in _create_qgis_layer.
+            "providers": ["ogr", "gdal", "mdal", "pdal", "vectortile", "cesiumtiles"],
+            "description": (
+                "Try local file providers in this order: vector (ogr), raster "
+                "(gdal), mesh (mdal), point_cloud (pdal), vector_tile "
+                "(vectortile) and tiled_scene (cesiumtiles)."
+            ),
         },
         {
             "layer_type": "vector",
@@ -3458,6 +3616,14 @@ def _specialized_layer_type(
         }:
             return encoded_layer_type
     hinted_layer_type = _layer_type_from_provider_token(provider_token)
+    if layer_type == "vector" and hinted_layer_type == "vector_tile":
+        # A vector tile layer is not a vector layer with features, so the
+        # feature tools would reject it later. Do not switch silently.
+        raise RuntimeError(
+            f"provider {provider_token} needs layer_type vector_tile. Vector "
+            "tiles load as a vector tile layer, not as a vector layer with "
+            "features."
+        )
     if hinted_layer_type and _provider_hint_matches_layer_type(layer_type, hinted_layer_type):
         return hinted_layer_type
     if layer_type == "vector":
@@ -3564,7 +3730,7 @@ def _provider_hint_matches_layer_type(layer_type: str, hinted_layer_type: str) -
             "arcgis_image_server",
         }
     if layer_type == "vector":
-        return hinted_layer_type in {"arcgis_feature_server", "vector_tile"}
+        return hinted_layer_type == "arcgis_feature_server"
     return False
 
 
@@ -3610,6 +3776,14 @@ def _create_qgis_layer(
             raise RuntimeError(
                 "auto layer_type is only supported for local files. "
                 "Use an explicit layer_type for remote URLs or provider URIs."
+            )
+        if provider:
+            # auto tries its own fixed providers, so a provider that does not
+            # name a layer type would be ignored without notice.
+            raise RuntimeError(
+                f"provider {provider} cannot be combined with layer_type auto, "
+                "which tries its own providers. Give the matching layer_type, "
+                "for example vector for ogr or raster for gdal, or omit provider."
             )
         attempts = [
             ("vector", "ogr"),
@@ -3694,6 +3868,19 @@ def _instantiate_qgis_layer(
 
         return QgsTiledSceneLayer(source, name, provider)
     raise RuntimeError(f"Unsupported layer_type: {layer_type}")
+
+
+def _vector_layer_crs(value: Any) -> Any:
+    from qgis.core import QgsCoordinateReferenceSystem
+
+    crs_text = str(value or "EPSG:4326").strip()
+    crs = QgsCoordinateReferenceSystem(crs_text)
+    if not crs.isValid():
+        raise RuntimeError(
+            f"Invalid crs: {crs_text}. Use an authority id such as EPSG:4326 "
+            "or EPSG:3857."
+        )
+    return crs
 
 
 def _vector_geometry_type(value: Any) -> str:
@@ -3834,19 +4021,23 @@ def _vector_edit_result_state(started_edit_session: bool) -> dict[str, Any]:
     }
 
 
-def _matching_vector_feature_ids(
+def _vector_feature_filter_request(
     layer: Any,
-    arguments: dict[str, Any],
-    *,
-    maximum: int,
-) -> tuple[list[int], bool]:
-    from qgis.core import QgsExpression, QgsFeatureRequest
+    requested_ids: set[int],
+    expression_text: str,
+) -> tuple[Any, Any]:
+    """Return an id ordered request and an optional extra expression check.
 
-    requested_ids = {
-        _feature_id(value) for value in (arguments.get("feature_ids") or [])
-    }
-    expression_text = str(arguments.get("filter_expression") or "").strip()
+    A QgsFeatureRequest holds either an id filter or an expression filter. When
+    both are needed the request filters by id and the returned expression
+    request must accept each feature. A limit set on the request would then
+    count features before the expression test, so callers only set a limit
+    when no extra check is returned.
+    """
+    from qgis.core import QgsExpression, QgsExpressionContext, QgsFeatureRequest
+
     request = QgsFeatureRequest()
+    expression_filter = None
     if expression_text:
         expression = QgsExpression(expression_text)
         if expression.hasParserError():
@@ -3854,22 +4045,48 @@ def _matching_vector_feature_ids(
                 f"Invalid filter_expression: {expression.parserErrorString()}"
             )
         _validate_expression_fields(expression, layer.fields(), "filter_expression")
-        request.setFilterExpression(expression_text)
-    elif requested_ids:
+        if requested_ids:
+            expression_filter = QgsFeatureRequest()
+            expression_filter.setFilterExpression(expression_text)
+            # Same context as the layer iterator gives a request expression.
+            context = QgsExpressionContext()
+            context.setFields(layer.fields())
+            expression_filter.setExpressionContext(context)
+        else:
+            request.setFilterExpression(expression_text)
+    if requested_ids:
         request.setFilterFids(sorted(requested_ids))
     request.setOrderBy(
         QgsFeatureRequest.OrderBy(
             [QgsFeatureRequest.OrderByClause("$id", True)]
         )
     )
-    request.setLimit(maximum + 1)
+    return request, expression_filter
+
+
+def _matching_vector_feature_ids(
+    layer: Any,
+    arguments: dict[str, Any],
+    *,
+    maximum: int,
+) -> tuple[list[int], bool]:
+    requested_ids = {
+        _feature_id(value) for value in (arguments.get("feature_ids") or [])
+    }
+    expression_text = str(arguments.get("filter_expression") or "").strip()
+    request, expression_filter = _vector_feature_filter_request(
+        layer, requested_ids, expression_text
+    )
+    if expression_filter is None:
+        request.setLimit(maximum + 1)
 
     feature_ids = []
     for feature in layer.getFeatures(request):
-        feature_id = int(feature.id())
-        if requested_ids and feature_id not in requested_ids:
+        if expression_filter is not None and not expression_filter.acceptFeature(
+            feature
+        ):
             continue
-        feature_ids.append(feature_id)
+        feature_ids.append(int(feature.id()))
         if len(feature_ids) > maximum:
             return sorted(feature_ids[:maximum]), True
     if requested_ids and not expression_text:
@@ -3883,7 +4100,6 @@ def _matching_vector_feature_ids(
 
 
 def _query_vector_features(layer: Any, arguments: dict[str, Any]) -> dict[str, Any]:
-    from qgis.core import QgsExpression, QgsFeatureRequest
     from qcopilots_common.processing_jobs import json_safe_value
 
     limit = arguments.get("limit", 100)
@@ -3923,23 +4139,12 @@ def _query_vector_features(layer: Any, arguments: dict[str, Any]) -> dict[str, A
     if unknown_fields:
         raise RuntimeError("Unknown vector fields: " + ", ".join(unknown_fields))
     expression_text = str(arguments.get("filter_expression") or "").strip()
-    request = QgsFeatureRequest()
-    if expression_text:
-        expression = QgsExpression(expression_text)
-        if expression.hasParserError():
-            raise RuntimeError(
-                f"Invalid filter_expression: {expression.parserErrorString()}"
-            )
-        _validate_expression_fields(expression, layer.fields(), "filter_expression")
-        request.setFilterExpression(expression_text)
-    elif requested_ids:
-        request.setFilterFids(sorted(requested_ids))
-    request.setOrderBy(
-        QgsFeatureRequest.OrderBy(
-            [QgsFeatureRequest.OrderByClause("$id", True)]
-        )
+    request, expression_filter = _vector_feature_filter_request(
+        layer, requested_ids, expression_text
     )
-    request.setLimit(offset + limit + 1)
+    if expression_filter is None:
+        # Every filter is in the request, so the limit counts only matches.
+        request.setLimit(offset + limit + 1)
     include_geometry = bool(arguments.get("include_geometry", False))
     features = []
     geometry_bytes = 0
@@ -3947,9 +4152,11 @@ def _query_vector_features(layer: Any, arguments: dict[str, Any]) -> dict[str, A
     matched_index = 0
     truncated = False
     for feature in layer.getFeatures(request):
-        feature_id = int(feature.id())
-        if requested_ids and feature_id not in requested_ids:
+        if expression_filter is not None and not expression_filter.acceptFeature(
+            feature
+        ):
             continue
+        feature_id = int(feature.id())
         if matched_index < offset:
             matched_index += 1
             continue
@@ -3969,8 +4176,9 @@ def _query_vector_features(layer: Any, arguments: dict[str, Any]) -> dict[str, A
             geometry_size = len(geometry_wkt.encode("utf-8"))
             if geometry_bytes + geometry_size > MAX_VECTOR_QUERY_GEOMETRY_BYTES:
                 raise RuntimeError(
-                    "Vector query geometry response exceeds the 1 MiB limit. "
-                    "Use a smaller limit or query without geometry."
+                    "query_geometry_too_large: Vector query geometry response "
+                    f"exceeds the {MAX_VECTOR_QUERY_GEOMETRY_BYTES} byte (1 MiB) "
+                    "limit. Use a smaller limit or query without geometry."
                 )
             item["geometry_wkt"] = geometry_wkt
             geometry_bytes += geometry_size
@@ -3988,10 +4196,10 @@ def _query_vector_features(layer: Any, arguments: dict[str, Any]) -> dict[str, A
         )
         if candidate_response_bytes > MAX_VECTOR_QUERY_RESPONSE_BYTES:
             raise RuntimeError(
-                "code=query_response_too_large, "
-                f"response_byte_limit={MAX_VECTOR_QUERY_RESPONSE_BYTES}, Vector "
-                "query response exceeds the total feature payload limit. Use fewer "
-                "fields, a smaller limit or query without geometry."
+                "query_response_too_large: Vector query response exceeds the "
+                f"{MAX_VECTOR_QUERY_RESPONSE_BYTES} byte total feature payload "
+                "limit. Use fewer fields, a smaller limit or query without "
+                "geometry."
             )
         features.append(item)
         response_bytes = candidate_response_bytes
@@ -4044,29 +4252,6 @@ def _vector_feature_fingerprint(layer: Any, feature_ids: list[int]) -> str:
     return digest.hexdigest()
 
 
-def _write_vector_layer(
-    layer: Any,
-    path: str,
-    driver_name: str | None,
-    layer_name: str,
-) -> Any:
-    from qgis.core import QgsVectorLayer
-
-    driver, new_layer_name = _write_vector_layer_file(
-        layer,
-        path,
-        driver_name,
-        layer_name,
-    )
-    source = path
-    if driver == "GPKG" and new_layer_name:
-        source = f"{path}|layername={new_layer_name}"
-    written_layer = QgsVectorLayer(source, layer.name(), "ogr")
-    if not written_layer.isValid():
-        raise RuntimeError(f"Could not load written vector layer: {source}")
-    return written_layer
-
-
 def _write_vector_layer_file(
     layer: Any,
     path: str,
@@ -4076,7 +4261,14 @@ def _write_vector_layer_file(
     from qgis.core import QgsProject, QgsVectorFileWriter
 
     options = QgsVectorFileWriter.SaveVectorOptions()
-    options.driverName = driver_name or _driver_name_for_path(path)
+    # No suffix guess and no GPKG fallback: the driver must be explicit and
+    # must match the path suffix.
+    options.driverName = _explicit_output_format(
+        Path(path),
+        driver_name,
+        VECTOR_LAYER_SUFFIX_FORMATS,
+        "Vector layer output",
+    )
     options.layerName = layer_name
     result, message, new_file_name, new_layer_name = QgsVectorFileWriter.writeAsVectorFormatV3(
         layer,
@@ -4088,17 +4280,6 @@ def _write_vector_layer_file(
         raise RuntimeError(f"Could not write vector layer: {message}")
     del new_file_name
     return options.driverName, str(new_layer_name or "")
-
-
-def _driver_name_for_path(path: str) -> str:
-    suffix = Path(path).suffix.lower()
-    if suffix == ".gpkg":
-        return "GPKG"
-    if suffix == ".shp":
-        return "ESRI Shapefile"
-    if suffix in (".geojson", ".json"):
-        return "GeoJSON"
-    return "GPKG"
 
 
 def _layer_source_uri(
@@ -4401,6 +4582,12 @@ def _normalize_layer_source_path(source: str) -> str:
     if not path_part or _is_remote_or_provider_uri(path_part):
         return source
     if _looks_like_path_value(path_part):
+        try:
+            reject_restricted_path_syntax(path_part)
+        except PermissionError:
+            # Resolving a UNC or device path would touch it. Such a value is
+            # never a validated local layer source, so keep it as text.
+            return source
         return _safe_workspace_path(path_part) + separator + suffix
     return source
 
@@ -4464,24 +4651,81 @@ def _layer_name_from_source(source: str, layer_type: str) -> str:
     return layer_type.replace("_", " ").title()
 
 
+# Result names of the Qgis.LayerType members, in enum value order.
+LAYER_TYPE_NAMES = (
+    "vector",
+    "raster",
+    "plugin",
+    "mesh",
+    "vector_tile",
+    "annotation",
+    "point_cloud",
+    "group",
+    "tiled_scene",
+)
+
+
+def _layer_type_name(layer: Any) -> str:
+    """Return the layer type as the same lowercase name on every binding.
+
+    Depending on the PyQt binding layer.type() is an int-like enum, a plain
+    enum or a value whose text is for example LayerType.Vector.
+    """
+    try:
+        value = layer.type()
+    except Exception:
+        return "unknown"
+    name = getattr(value, "name", None)
+    if not isinstance(name, str):
+        try:
+            index = int(value)
+        except Exception:
+            name = str(value).rsplit(".", 1)[-1]
+        else:
+            if 0 <= index < len(LAYER_TYPE_NAMES):
+                return LAYER_TYPE_NAMES[index]
+            return "unknown"
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", name):
+        return "unknown"
+    if name.endswith("Layer") and name != "Layer":
+        # Older QgsMapLayerType names such as VectorLayer.
+        name = name[: -len("Layer")]
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
+
+
+def _label_text_color(value: Any) -> Any:
+    """Parse #RRGGBB or #RRGGBBAA with the alpha last, as on the web.
+
+    QColor itself reads eight hex digits as #AARRGGBB, so the channels are
+    split explicitly.
+    """
+    from qgis.PyQt.QtGui import QColor
+
+    match = re.fullmatch(r"#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?", str(value).strip())
+    if match is None:
+        raise RuntimeError(
+            f"Invalid label color: {value}. Use #RRGGBB or #RRGGBBAA."
+        )
+    rgb = match.group(1)
+    return QColor(
+        int(rgb[0:2], 16),
+        int(rgb[2:4], 16),
+        int(rgb[4:6], 16),
+        int(match.group(2), 16) if match.group(2) else 255,
+    )
+
+
 def _layer_summary(layer: Any) -> dict[str, Any]:
     provider = ""
     try:
         provider = layer.providerType()
     except Exception:
         provider = ""
-    try:
-        layer_type_value = int(layer.type())
-    except Exception:
-        try:
-            layer_type_value = str(layer.type())
-        except Exception:
-            layer_type_value = ""
     return {
         "id": layer.id(),
         "name": layer.name(),
         "source": layer.source(),
-        "type": layer_type_value,
+        "type": _layer_type_name(layer),
         "provider": provider,
         "valid": layer.isValid(),
     }
@@ -4870,7 +5114,28 @@ def _layers_matching_selectors(
         for layer in layers
         if _layer_matches_selectors(layer, selectors)
     ]
-    if selectors["ids"] or allow_multiple or len(matches) <= 1:
+    if selectors["ids"]:
+        # Like feature_ids, a listed layer id that is not in the project is an
+        # error, so a preview never silently covers fewer layers than asked.
+        missing = sorted(selectors["ids"] - {str(layer.id()) for layer in matches})
+        if missing:
+            raise RuntimeError(
+                "Layer ids were not found in the current project: "
+                + ", ".join(missing)
+                + ". Call list_layers for the current layer ids."
+            )
+        return matches
+    if selectors["names"]:
+        missing = sorted(selectors["names"] - {str(layer.name()) for layer in matches})
+        if missing and matches:
+            raise RuntimeError(
+                "Layer names did not match a layer"
+                + (" with the given source" if selectors["sources"] else "")
+                + ": "
+                + ", ".join(missing)
+                + ". Call list_layers for the current layer names."
+            )
+    if allow_multiple or len(matches) <= 1:
         return matches
     raise RuntimeError(
         "Layer selector matched multiple layers. Use layer_id/layer_ids "
@@ -5343,28 +5608,60 @@ def _layout_export_target(
     requested_format: Any,
 ) -> tuple[Path, str]:
     path = Path(value)
-    suffix = path.suffix.lower()
-    suffix_formats = {
-        ".pdf": "pdf",
-        ".png": "png",
-        ".jpg": "jpeg",
-        ".jpeg": "jpeg",
-        ".svg": "svg",
-    }
-    suffix_format = suffix_formats.get(suffix)
-    export_format = str(requested_format or suffix_format or "").strip().lower()
-    if export_format == "jpg":
-        export_format = "jpeg"
-    if export_format not in {"pdf", "png", "jpeg", "svg"}:
-        raise RuntimeError(
-            "Layout output path must end in .pdf, .png, .jpg, .jpeg or .svg"
-        )
-    if suffix_format != export_format:
-        raise RuntimeError(
-            "Layout export format must match the output path suffix: "
-            f"format={export_format}, path={path}"
-        )
+    export_format = _explicit_output_format(
+        path,
+        requested_format,
+        LAYOUT_EXPORT_SUFFIX_FORMATS,
+        "Layout export",
+    )
     return path, export_format
+
+
+def _explicit_output_format(
+    path: Path,
+    requested_format: Any,
+    suffix_formats: dict[str, str],
+    description: str,
+) -> str:
+    """Return the explicit output format after checking the path suffix.
+
+    The format is never guessed from the suffix. It must be given, it must be
+    one of the accepted formats, and the path must end in one of the suffixes
+    of that format.
+    """
+
+    format_suffixes: dict[str, list[str]] = {}
+    for suffix, output_format in suffix_formats.items():
+        format_suffixes.setdefault(output_format, []).append(suffix)
+    accepted = ", ".join(
+        f"{output_format} ({' or '.join(suffixes)})"
+        for output_format, suffixes in format_suffixes.items()
+    )
+    output_format = str(requested_format or "").strip()
+    if not output_format:
+        raise RuntimeError(
+            f"{description} format is required. Accepted formats and path "
+            f"suffixes: {accepted}"
+        )
+    if output_format not in format_suffixes:
+        raise RuntimeError(
+            f"{description} format {output_format!r} is not supported. "
+            f"Accepted formats and path suffixes: {accepted}"
+        )
+    suffix = path.suffix.lower()
+    if suffix not in suffix_formats:
+        raise RuntimeError(
+            f"{description} path suffix {suffix or '(none)'} is not supported. "
+            f"Accepted formats and path suffixes: {accepted}. Path: {path}"
+        )
+    if suffix_formats[suffix] != output_format:
+        raise RuntimeError(
+            f"{description} format must match the output path suffix: "
+            f"format {output_format} needs a path ending in "
+            f"{' or '.join(format_suffixes[output_format])}, got {suffix}. "
+            f"Path: {path}"
+        )
+    return output_format
 
 
 def _validate_layout_export_pixels(layout: Any, dpi: float) -> None:

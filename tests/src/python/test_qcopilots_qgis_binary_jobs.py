@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-08-02"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -52,6 +52,7 @@ from qcopilots_common.qgis_binary_jobs import (
     BinaryExecutionError,
     BinarySubprocessExecution,
     QGISBinaryJobManager,
+    _resolve_catalog_executable,
     _root_matches_markers,
 )
 from qcopilots_common.security_policy import (
@@ -557,6 +558,12 @@ class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
         target.mkdir()
         self.assertEqual(fixture.manager.get_binary_details("alpha")["availability"], "unavailable")
         self.assertEqual(fixture.manager.list_binaries({"enabled": True})["binaries"][0]["id"], "bravo")
+        with self.assertRaisesRegex(
+            BinaryExecutionError,
+            r"^qgis_binary_unavailable: Configured QGIS binary is missing: "
+            r"bin/alpha\.exe$",
+        ):
+            _resolve_catalog_executable(fixture.root.resolve(), "bin/alpha.exe")
         target.rmdir()
         target.write_bytes(b"MZ")
         extra = fixture.root.resolve() / "bin" / "outside.exe"
@@ -1933,7 +1940,7 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
         self.assertFalse(self.manager.accepting)
         self.assertTrue(task.execution.cancelled)
         self.assertEqual(self.manager.get(queued["job_id"])["state"], "cancelled")
-        with self.assertRaisesRegex(RuntimeError, "stopping"):
+        with self.assertRaisesRegex(RuntimeError, r"^service_stopping: .*stopping"):
             self.manager.start({"binary_id": "alpha"})
 
     def test_shutdown_wait_timeout_keeps_live_process_cancelling(self):
@@ -2394,7 +2401,9 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
             self.assertEqual(len(instances), 1)
             controller.stop(timeout_seconds=0.25)
             self.assertEqual(first.shutdown_calls, [0.25])
-            with self.assertRaisesRegex(RuntimeError, "bridge is stopping"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^service_stopping: .*bridge is stopping"
+            ):
                 controller._get_qgis_binary_job_manager()
 
             restarted = QgisBridgeController(iface=object(), port=0)
@@ -2476,7 +2485,9 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
             self.assertIs(controller._processing_job_manager, processing)
             self.assertTrue(controller._stopping.is_set())
             self.assertEqual(processing.shutdown.call_count, attempt + 1)
-            with self.assertRaisesRegex(RuntimeError, "bridge is stopping"):
+            with self.assertRaisesRegex(
+                RuntimeError, "^service_stopping: .*bridge is stopping"
+            ):
                 controller._get_processing_job_manager()
             with self.assertRaisesRegex(RuntimeError, "recovery is still pending.*Retry bridge stop"):
                 controller.start()

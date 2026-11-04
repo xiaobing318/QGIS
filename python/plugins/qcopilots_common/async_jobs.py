@@ -19,9 +19,16 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-PUBLIC_JOB_STATES = frozenset(
-    {"queued", "running", "cancelling", "succeeded", "failed", "cancelled"}
+# Lifecycle order, used where the states are published as a schema enum.
+PUBLIC_JOB_STATE_ORDER = (
+    "queued",
+    "running",
+    "cancelling",
+    "succeeded",
+    "failed",
+    "cancelled",
 )
+PUBLIC_JOB_STATES = frozenset(PUBLIC_JOB_STATE_ORDER)
 TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled"})
 
 _ALLOWED_TRANSITIONS = {
@@ -179,7 +186,7 @@ class AsyncJobStore:
         normalized_scope = str(scope)
         with self._lock:
             if not self._accepting:
-                raise RuntimeError("QCopilots job manager is stopping")
+                raise RuntimeError("service_stopping: QCopilots job manager is stopping")
             self._purge_locked()
             existing = self.lookup_idempotent(
                 normalized_scope,
@@ -257,7 +264,8 @@ class AsyncJobStore:
             invalid_states = requested_states - PUBLIC_JOB_STATES
             if invalid_states:
                 raise ValueError(
-                    "Invalid public job states: " + ", ".join(sorted(invalid_states))
+                    "invalid_states: Invalid public job states: "
+                    + ", ".join(sorted(invalid_states))
                 )
         with self._lock:
             self._purge_locked()

@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-12"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -503,13 +503,20 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                         '"enum"',
                         json.dumps(tools[tool_name]["inputSchema"]),
                     )
-                    for selector in ("name", "slug", "path"):
+                    for selector in ("name", "slug"):
                         self.assertEqual(
                             tools[tool_name]["inputSchema"]["properties"][
                                 selector
                             ],
                             {"type": "string", "minLength": 1},
                         )
+                    path_schema = tools[tool_name]["inputSchema"]["properties"][
+                        "path"
+                    ]
+                    self.assertEqual(path_schema["type"], "string")
+                    self.assertEqual(path_schema["minLength"], 1)
+                    self.assertIn("Absolute path", path_schema["description"])
+                    self.assertIn("UNC", path_schema["description"])
                     self.assertNotIn("oneOf", tools[tool_name]["inputSchema"])
                     self.assertEqual(
                         tools[tool_name]["inputSchema"]["allOf"][0]["oneOf"],
@@ -647,11 +654,17 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
             )
             description = self._tools_by_name(server)["read_skill"]["description"]
             base_description = (
-                "Read a skill's instructions and metadata. After refreshing with "
-                "list_skills, use a current or newly discovered slug. Scripts remain "
-                "resources: run them from skill_root only when a user or host explicitly "
-                "approves the execution tool. allowed-tools does not automatically grant "
-                "permission."
+                "Read one skill's instructions (content, the SKILL.md body) and metadata "
+                "without activating it. Also returns name, slug, conformance, source_kind, "
+                "skill_root (null for archive skills), instructions_path, skill_content and "
+                "resource_metadata, the files that read_skill_resource can fetch. Use it to "
+                "review or verify a skill, for example after creating or editing one. To "
+                "apply a skill to a user task, call the skill's own tool with a task, which "
+                "returns the same guidance. Pass exactly one of slug (preferred), name or "
+                "path (the skill folder or archive). After refreshing with list_skills, use "
+                "a current or newly discovered slug. Scripts remain resources: run them from "
+                "skill_root only when a user or host explicitly approves the execution tool. "
+                "allowed-tools does not automatically grant permission. Read-only."
             )
             self.assertLessEqual(
                 len(description) - len(base_description),
@@ -785,6 +798,74 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                         [{"type": "text", "text": expected_message}],
                     )
                     self.assertNotIn("-32000", json.dumps(response, sort_keys=True))
+
+    def test_skill_path_selector_requires_absolute_local_path(self):
+        from qcopilots_common.mcp_http import McpJsonRpcServer
+        from qcopilots_common.skills import SkillService
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Skills"
+            self._write_skill(
+                root,
+                name="path-skill",
+                resources={"references/details.md": "Details\n"},
+            )
+            skill_dir = root / "path-skill"
+            service = SkillService([root], refresh_interval_seconds=0)
+            server = McpJsonRpcServer(
+                server_name="qcopilots-skills-test",
+                server_version="1.0.0",
+                tools=service.tools,
+            )
+            tool_arguments = (
+                ("read_skill", {}),
+                ("list_skill_resources", {}),
+                ("read_skill_resource", {"resource": "references/details.md"}),
+            )
+
+            for tool_name, extra in tool_arguments:
+                with self.subTest(tool=tool_name, path="absolute"):
+                    result = self._call_tool(
+                        server,
+                        tool_name,
+                        {"path": str(skill_dir), **extra},
+                    )
+                    self.assertEqual(result["slug"], "path-skill")
+
+            rejected_paths = (
+                ("relative", "Skills/path-skill", "must be an absolute file path"),
+                ("dot-relative", "./path-skill", "must be an absolute file path"),
+                ("unc", r"\\server\share\Skills\path-skill", "UNC"),
+                ("unc-forward", "//server/share/Skills/path-skill", "UNC"),
+                ("uri", skill_dir.as_uri(), "URI"),
+            )
+            if os.name == "nt":
+                rejected_paths += (
+                    ("device", r"\\?\C:\Skills\path-skill", "device"),
+                    ("drive-relative", "C:Skills\\path-skill", "drive-relative"),
+                    ("ads", f"{skill_dir}:stream", "alternate data streams"),
+                )
+            request_id = 1
+            for case_name, path_value, expected_text in rejected_paths:
+                for tool_name, extra in tool_arguments:
+                    with self.subTest(case=case_name, tool=tool_name):
+                        response = server.handle_json_rpc(
+                            {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "method": "tools/call",
+                                "params": {
+                                    "name": tool_name,
+                                    "arguments": {"path": path_value, **extra},
+                                },
+                            }
+                        )
+                        request_id += 1
+                        self.assertNotIn("error", response)
+                        self.assertTrue(response["result"]["isError"])
+                        text = response["result"]["content"][0]["text"]
+                        self.assertIn(expected_text, text)
+                        self.assertTrue(text.startswith("Skill path "), text)
 
     def test_internal_key_errors_in_skill_tool_responses_are_jsonrpc_errors(self):
         import qcopilots_common.skills as skills_module
@@ -10350,6 +10431,13 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                 == f"qcopilots.mcp_server_processing_{category}"
             )
             live_processing_tools = build_processing_tools(category)
+            if category == "general":
+                # The general service also serves the file transfer tools.
+                from qcopilots_mcp_server_processing_general.file_transfer_tools import (
+                    build_file_transfer_tools,
+                )
+
+                live_processing_tools += build_file_transfer_tools()
             self.assertEqual(
                 [tool["name"] for tool in processing_catalog["tools"]],
                 [tool.name for tool in live_processing_tools],
@@ -10374,6 +10462,28 @@ class TestQCopilotsMcpServerSkills(unittest.TestCase):
                     pagination_term=term,
                 ):
                     self.assertIn(term, list_description)
+            # Invocation policies must follow the live schemas: every
+            # schema-required argument is listed and no unknown one is named.
+            live_schemas = {
+                tool.name: tool.input_schema
+                for tool in live_processing_tools + live_interactive_tools
+            }
+            for tool in processing_catalog["tools"] + interactive_catalog["tools"]:
+                policy = tool.get("invocation_policy")
+                if policy is None:
+                    continue
+                schema = live_schemas[tool["name"]]
+                properties = set(schema.get("properties", {}))
+                with self.subTest(policy_tool=tool["name"]):
+                    self.assertLessEqual(
+                        set(schema.get("required", [])),
+                        set(policy["required_arguments"]),
+                    )
+                    self.assertLessEqual(
+                        set(policy["required_arguments"]), properties
+                    )
+                    for group in policy["required_any_argument_groups"]:
+                        self.assertLessEqual(set(group), properties)
         self.assertTrue(catalog_data["observed_at"].startswith("2026-08-24"))
         observed_versions = catalog_data["runtime_profile"]["observed_versions"]
         self.assertEqual(observed_versions["processing_algorithm_count_total"], 761)

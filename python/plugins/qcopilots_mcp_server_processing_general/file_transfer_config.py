@@ -14,6 +14,7 @@ from qcopilots_common.constants import qcopilots_home
 
 from .file_transfer_errors import FileTransferError
 from .file_transfer_connection import validate_connection_fields
+from .file_transfer_files import lexical_local_path, normalize_remote
 
 
 CONFIG_VERSION = 1
@@ -35,6 +36,13 @@ DEFAULT_CONFIG = {
 }
 CONFIG_FIELDS = frozenset(DEFAULT_CONFIG) - {"config_version"}
 _METADATA_FIELDS = frozenset({"config_version", "$schema"})
+# Default sources and destinations, with the side of the transfer they name.
+_PATH_FIELDS = (
+    ("upload_sources", "local"),
+    ("upload_destination", "remote"),
+    ("download_sources", "remote"),
+    ("download_destination", "local"),
+)
 
 
 class FileTransferConfigStore:
@@ -88,6 +96,7 @@ class FileTransferConfigStore:
             data = self.load()
             data.update(copy.deepcopy(dict(changes)))
             data = _validate_config(data)
+            _validate_paths(data, set(changes))
             data["$schema"] = Path(__file__).with_name("file_transfer_config.schema.json").as_uri()
             try:
                 _atomic_write_json(self.path, data)
@@ -144,6 +153,40 @@ def _validate_config(data, *, require_connection=False):
             raise FileTransferError("invalid_config", f"Configuration field {field} must be an array of non-empty path strings.")
         data[field] = [value.strip() for value in values]
     return data
+
+
+def _validate_paths(data, fields):
+    """Reject saved paths that a transfer would refuse, by spelling only.
+
+    Only the supplied fields are checked. A hand-edited value is left to the
+    transfer's own validation, so it never blocks an unrelated change.
+    """
+    for field, side in _PATH_FIELDS:
+        if field not in fields:
+            continue
+        values = data[field] if isinstance(data[field], list) else [data[field]]
+        for value in values:
+            if not value:
+                # An empty destination means that the caller provides one.
+                continue
+            try:
+                if side == "local":
+                    lexical_local_path(value)
+                else:
+                    normalize_remote(value)
+            except FileTransferError:
+                raise FileTransferError(
+                    "invalid_config",
+                    f"Configuration field {field} must use absolute {side} paths without unsafe components.",
+                ) from None
+    if "known_hosts_file" in fields:
+        value = data["known_hosts_file"]
+        # Relative paths would depend on the service's working directory.
+        if not value.startswith("~") and not Path(value).is_absolute():
+            raise FileTransferError(
+                "invalid_config",
+                "Configuration field known_hosts_file must be an absolute path or start with ~.",
+            )
 
 
 def _atomic_write_json(path, data):

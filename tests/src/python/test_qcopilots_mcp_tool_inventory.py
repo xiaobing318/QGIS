@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-08-25"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -62,7 +62,6 @@ EXPECTED_TOOLS = {
         "export_map_image",
         "capture_qgis_screenshot",
         "describe_layer_sources",
-        "list_map_layers",
         "load_map_layer",
         "remove_map_layers",
         "get_layer_metadata",
@@ -130,7 +129,7 @@ EXPECTED_TOOLS = {
 EXPECTED_COUNTS = {
     "qcopilots_mcp_server_builtin_tools": 8,
     "qcopilots_mcp_server_skills": 5,
-    "qcopilots_mcp_server_interactive_tools": 35,
+    "qcopilots_mcp_server_interactive_tools": 34,
     "qcopilots_mcp_server_processing_vector": 6,
     "qcopilots_mcp_server_processing_raster": 6,
     "qcopilots_mcp_server_processing_general": 17,
@@ -335,7 +334,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         self.assertEqual(descriptor["inputSchema"]["type"], "object")
                     all_names.extend(actual_names)
 
-            self.assertEqual(len(all_names), 83)
+            self.assertEqual(len(all_names), 82)
             self.assertEqual(len(all_names), len(set(all_names)))
 
     def test_minimal_arguments_supports_any_of_array_items(self):
@@ -442,7 +441,7 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
                         reject_conflicting_arguments=True,
                     )
 
-        self.assertEqual(len(_RecordingBridge.calls), 59)
+        self.assertEqual(len(_RecordingBridge.calls), 58)
         recorded_operations = [operation for operation, _ in _RecordingBridge.calls]
         self.assertEqual(
             recorded_operations.count("interactive_capture_screenshot"), 1

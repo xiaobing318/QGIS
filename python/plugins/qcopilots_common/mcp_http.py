@@ -1622,6 +1622,18 @@ def _validate_schema_value(value: Any, schema: Any, path: str) -> None:
             raise _SchemaValidationError(
                 f"{path} must match at least one anyOf alternative"
             )
+    if "allOf" in schema:
+        parts = schema["allOf"]
+        if not isinstance(parts, list):
+            raise _SchemaValidationError(f"{path} uses an invalid allOf schema")
+        for part in parts:
+            _validate_schema_value(value, part, path)
+    if "not" in schema and _schema_matches(value, schema["not"], path):
+        raise _SchemaValidationError(f"{path} must not match the not schema")
+    if "if" in schema:
+        branch = "then" if _schema_matches(value, schema["if"], path) else "else"
+        if branch in schema:
+            _validate_schema_value(value, schema[branch], path)
 
     if "const" in schema and not _json_values_equal(value, schema["const"]):
         raise _SchemaValidationError(f"{path} must equal the declared const value")
@@ -1696,9 +1708,15 @@ def _validate_array_schema(
     path: str,
 ) -> None:
     _validate_count(len(value), schema, path, "Items")
+    prefix_schemas = schema.get("prefixItems") or []
+    if not isinstance(prefix_schemas, list):
+        raise _SchemaValidationError(f"{path} uses an invalid prefixItems schema")
+    for index, (item, prefix_schema) in enumerate(zip(value, prefix_schemas)):
+        _validate_schema_value(item, prefix_schema, f"{path}[{index}]")
     item_schema = schema.get("items")
     if item_schema is not None:
-        for index, item in enumerate(value):
+        # As in JSON Schema 2020-12, items covers the entries after prefixItems.
+        for index, item in enumerate(value[len(prefix_schemas):], len(prefix_schemas)):
             _validate_schema_value(item, item_schema, f"{path}[{index}]")
     if schema.get("uniqueItems") is True:
         seen: set[str] = set()

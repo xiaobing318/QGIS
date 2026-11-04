@@ -218,6 +218,9 @@ class FileTransferJobManager:
             not isinstance(states, list) or any(value not in _ACTIVE | TERMINAL_JOB_STATES for value in states)
         ):
             raise FileTransferError("invalid_states", "states contains an unsupported job state")
+        if states is not None and not states:
+            # An empty filter would silently match nothing. Omit states to list all jobs.
+            raise FileTransferError("invalid_states", "states must contain at least one job state")
         with self._lock:
             self._refresh_summaries()
             jobs = [self._public_summary(record, snapshot) for record in self._records.values()
@@ -233,7 +236,7 @@ class FileTransferJobManager:
                 return self._public_summary(record, snapshot)
             runtime = self._runtimes.get(job_id)
             if runtime is None:
-                raise FileTransferError("job_busy", "This attempt is owned by another service process")
+                raise FileTransferError("transfer_busy", "This attempt is owned by another service process")
             if record["manifest_ready"] and all(item["phase"] == "published" for item in record["files"]):
                 return {**copy.deepcopy(snapshot), "cancel_too_late": True}
             # Persist the user's intent before interrupting any network operation.
@@ -1429,7 +1432,7 @@ class FileTransferJobManager:
 
     def _check_capacity(self):
         if self._stopping:
-            raise FileTransferError("service_stopping", "The file transfer service is stopping")
+            raise FileTransferError("service_stopping", "The file transfer service is stopping", retryable=True)
         if len(self._runtimes) >= 2:
             raise FileTransferError("too_many_jobs", "At most two file transfer attempts can run simultaneously", retryable=True)
 

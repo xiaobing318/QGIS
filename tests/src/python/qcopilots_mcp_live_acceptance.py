@@ -20,6 +20,10 @@ runner-owned cleanup is itself an acceptance failure.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-08-26"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import argparse
 import base64
 import binascii
@@ -150,7 +154,6 @@ EXPECTED_TOOLS = {
         "export_map_image",
         "capture_qgis_screenshot",
         "describe_layer_sources",
-        "list_map_layers",
         "load_map_layer",
         "remove_map_layers",
         "get_layer_metadata",
@@ -233,9 +236,9 @@ def validate_expected_inventory() -> None:
     if set(EXPECTED_TOOLS) != {service.key for service in SERVICES}:
         raise AcceptanceFailure("Expected tool inventory does not match service inventory")
     names = [name for tools in EXPECTED_TOOLS.values() for name in tools]
-    if len(names) != 83 or len(set(names)) != 83:
+    if len(names) != 82 or len(set(names)) != 82:
         raise AcceptanceFailure(
-            "Expected tool inventory must contain exactly 83 unique tool names"
+            "Expected tool inventory must contain exactly 82 unique tool names"
         )
 
 
@@ -342,8 +345,8 @@ class CoverageLedger:
     def assert_all_complete(self) -> None:
         for service_key in EXPECTED_TOOLS:
             self.assert_service_complete(service_key)
-        if sum(len(calls) for calls in self._calls.values()) != 83:
-            raise AcceptanceFailure("Live tool coverage did not reach exactly 83 tools")
+        if sum(len(calls) for calls in self._calls.values()) != 82:
+            raise AcceptanceFailure("Live tool coverage did not reach exactly 82 tools")
 
 
 class McpSession:
@@ -1125,7 +1128,7 @@ class AcceptanceRunner:
             messages.extend(_redacted_message(item, self._token) for item in cleanup_errors)
             raise AcceptanceFailure(". ".join(message for message in messages if message))
         self.output(
-            "PASS: all 83 QCopilots MCP tool contracts completed live acceptance "
+            "PASS: all 82 QCopilots MCP tool contracts completed live acceptance "
             "(SSH transfers require the separate file transfer live acceptance runner), "
             f"requires_process_exit={bool(self.cleanup.requires_process_exit)}, "
             "process_exit_resource_count="
@@ -1524,9 +1527,9 @@ class AcceptanceRunner:
         if int(deleted.get("deleted_count", -1)) != 1:
             raise AcceptanceFailure("delete_vector_features did not delete one feature")
 
-        layers = self._success(session, "list_map_layers", {})
+        layers = self._success(session, "list_layers", {})
         if vector_layer_id not in self._layer_ids(layers):
-            raise AcceptanceFailure("list_map_layers omitted the created vector layer")
+            raise AcceptanceFailure("list_layers omitted the created vector layer")
         self._success(session, "describe_layer_sources", {})
         self._success(
             session,
@@ -2407,7 +2410,7 @@ class AcceptanceRunner:
         try:
             with self._session(service, with_coverage=False) as session:
                 required_tools = {
-                    "list_map_layers",
+                    "list_layers",
                     "remove_map_layers",
                     "refresh_canvas",
                 }
@@ -2415,8 +2418,8 @@ class AcceptanceRunner:
                     required_tools.add("set_project_crs")
                 self._assert_cleanup_tools(session, required_tools)
                 listed = require_success(
-                    session.call_tool("list_map_layers", {}),
-                    "cleanup.list_map_layers",
+                    session.call_tool("list_layers", {}),
+                    "cleanup.list_layers",
                 )
                 present = self.cleanup.layer_ids & self._layer_ids(listed)
                 present.update(
@@ -2430,8 +2433,8 @@ class AcceptanceRunner:
                     self._remove_layers(session, present)
                     self.cleanup.mark_layers_removed(present)
                 verified = require_success(
-                    session.call_tool("list_map_layers", {}),
-                    "cleanup.verify_list_map_layers",
+                    session.call_tool("list_layers", {}),
+                    "cleanup.verify_list_layers",
                 )
                 residual_layers = self.cleanup.layer_ids & self._layer_ids(verified)
                 residual_names = {

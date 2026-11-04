@@ -397,7 +397,9 @@ class ProcessingJobManager:
     def start(self, arguments: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             if not self._accepting:
-                raise RuntimeError("QCopilots Processing job manager is stopping")
+                raise RuntimeError(
+                    "service_stopping: QCopilots Processing job manager is stopping"
+                )
             generation = self._generation
 
         category = _required_category(arguments.get("category"))
@@ -447,7 +449,10 @@ class ProcessingJobManager:
         registry = self._registry()
         algorithm = registry.createAlgorithmById(algorithm_id)
         if algorithm is None:
-            raise RuntimeError("Processing algorithm not found")
+            raise RuntimeError(
+                "processing_algorithm_not_found: Processing algorithm not found: "
+                f"{algorithm_id}"
+            )
         if not self._category_matcher()(algorithm, category):
             raise RuntimeError(
                 f"Processing algorithm is not available for {category} data"
@@ -467,6 +472,7 @@ class ProcessingJobManager:
             parameters,
             algorithm.parameterDefinitions(),
             self._filesystem_policy(),
+            category=category,
         )
         sanitized_parameters = self._parameter_sanitizer()(
             policy_parameters, algorithm.parameterDefinitions()
@@ -503,7 +509,9 @@ class ProcessingJobManager:
         }
         with self._lock:
             if not self._accepting or generation != self._generation:
-                raise RuntimeError("QCopilots Processing job manager is stopping")
+                raise RuntimeError(
+                    "service_stopping: QCopilots Processing job manager is stopping"
+                )
             # Recheck after metadata preparation. Concurrent submissions must
             # share one admission decision, and replays never need a new slot.
             existing = self.store.lookup_idempotent(
@@ -650,11 +658,14 @@ class ProcessingJobManager:
         if self.store.get(job_id, category)["state"] in TERMINAL_JOB_STATES:
             self.store.patch_cleanup_receipt(job_id, receipt, category)
             return
+        with runtime.lock:
+            feedback_messages = list(runtime.feedback_messages)
         self.store.transition(
             job_id, "failed", category, phase="complete", cancellable=False,
             finished_at=utc_now_rfc3339(),
             error={"code": "continuation_schedule_failed", "stage": runtime.phase,
-                   "message": str(error)},
+                   "message": str(error), "details": None,
+                   "feedback_messages": feedback_messages},
             cleanup=receipt,
         )
 
@@ -804,7 +815,7 @@ class ProcessingJobManager:
                     failed = self._finish_failed(
                         job_id,
                         category,
-                        "algorithm_prepare_failed",
+                        "algorithm_preparation_failed",
                         "prepare",
                         "Processing algorithm could not be prepared",
                         runtime,
@@ -860,12 +871,16 @@ class ProcessingJobManager:
         category = _required_category(arguments.get("category"))
         states = arguments.get("states")
         if states is not None:
-            if not isinstance(states, list):
-                raise ValueError("states must be an array")
+            # Same rules as the QGIS binary and file transfer job lists.
+            if not isinstance(states, list) or not states:
+                raise ValueError("invalid_states: states must be a non-empty array")
+            if len({str(state) for state in states}) != len(states):
+                raise ValueError("invalid_states: states must not contain duplicates")
             invalid = {str(state) for state in states} - PUBLIC_JOB_STATES
             if invalid:
                 raise ValueError(
-                    "Invalid public job states: " + ", ".join(sorted(invalid))
+                    "invalid_states: Invalid public job states: "
+                    + ", ".join(sorted(invalid))
                 )
         limit = arguments.get("limit", 100)
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
@@ -1171,12 +1186,19 @@ class ProcessingJobManager:
                     refresh_retention=receipt["complete"],
                 )
             else:
-                terminal = dict(runtime.pending_terminal or {"state": "failed", "error": {"code": "cleanup_failed"}})
+                with runtime.lock:
+                    feedback_messages = list(runtime.feedback_messages)
+                terminal = dict(runtime.pending_terminal or {
+                    "state": "failed",
+                    "error": {"code": "cleanup_failed", "stage": "cleanup",
+                              "message": "Processing job ended without a recorded result",
+                              "details": None, "feedback_messages": feedback_messages}})
                 state = terminal.pop("state")
                 if not receipt["complete"] and state != "succeeded":
                     terminal["error"] = {"code": "output_state_indeterminate", "stage": "cleanup",
                                          "message": "Output cleanup was incomplete, inspect residual_paths",
-                                         "details": {"original_error": terminal.get("error"), "cleanup": receipt}}
+                                         "details": {"original_error": terminal.get("error"), "cleanup": receipt},
+                                         "feedback_messages": feedback_messages}
                     state = "failed"
                 self.store.transition(job_id, state, category, phase="complete", cancellable=False,
                                       finished_at=utc_now_rfc3339(), cleanup=receipt, **terminal)
@@ -1708,16 +1730,27 @@ def _apply_processing_filesystem_policy(
     parameters: dict[str, Any],
     parameter_definitions: Any,
     policy: FilesystemPolicy,
+    *,
+    category: str = "",
 ) -> dict[str, Any]:
     definitions = {
         str(definition.name()): definition
         for definition in parameter_definitions or []
     }
+    unknown = [str(name) for name in parameters if str(name) not in definitions]
+    if unknown:
+        # QGIS ignores unknown keys, but later path sanitizing would still
+        # treat them as paths without this policy check.
+        details_tool = f"get_{category or '<category>'}_processing_algorithm_details"
+        raise ValueError(
+            "processing_parameter_unknown: The Processing algorithm has no "
+            f"parameter named {', '.join(unknown)}. Valid names are "
+            f"{', '.join(definitions) or 'none'} and they are case sensitive. "
+            f"Call {details_tool} for the parameter definitions."
+        )
     normalized = dict(parameters)
     for name, value in parameters.items():
-        definition = definitions.get(str(name))
-        if definition is None:
-            continue
+        definition = definitions[str(name)]
         if _processing_definition_is_destination(definition):
             normalized[name] = _normalize_processing_policy_path_value(
                 value,
@@ -1878,6 +1911,19 @@ def _normalize_processing_policy_path_value(
             'file path, "memory:" or "TEMPORARY_OUTPUT" '
             f"(got '{raw}'). Relative paths would be written into the QGIS "
             f"program folder {Path.cwd()}."
+        )
+    if access == "read" and not Path(path_part).expanduser().is_absolute():
+        # Reads follow the same rule, a relative input would silently be read
+        # from the QGIS program folder instead of the user's data.
+        accepted = (
+            "a project layer id, a unique layer name or an absolute file path"
+            if _processing_definition_accepts_layer(definition)
+            else "an absolute file path"
+        )
+        raise ValueError(
+            f"Processing input {definition.name()} must be {accepted} "
+            f"(got '{raw}'). Relative paths would be resolved against the "
+            f"QGIS program folder {Path.cwd()}."
         )
     if policy.restricted and access == "read" and not resolved.exists():
         raise FileNotFoundError(

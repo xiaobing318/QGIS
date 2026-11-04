@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-12"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -1416,6 +1416,46 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         for capability in capabilities.values():
             self.assertNotIn("listChanged", capability)
         self.assertNotIn("sse", capabilities)
+
+    def test_tool_arguments_enforce_allof_not_conditionals_and_prefix_items(self):
+        from qcopilots_common.mcp_http import ToolError, _validate_tool_arguments
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string"},
+                "size": {"type": "integer"},
+                "region": {
+                    "type": "array",
+                    "items": {"type": "integer", "minimum": 0},
+                    "prefixItems": [
+                        {"type": "integer", "minimum": 0},
+                        {"type": "integer", "minimum": 1},
+                    ],
+                },
+            },
+            "allOf": [{"not": {"required": ["forbidden"]}}],
+            "if": {"properties": {"mode": {"const": "sized"}}, "required": ["mode"]},
+            "then": {"required": ["size"]},
+            "else": {"not": {"required": ["size"]}},
+        }
+
+        def assert_valid(arguments):
+            _validate_tool_arguments(arguments, schema)
+
+        def assert_invalid(arguments):
+            with self.assertRaisesRegex(ToolError, "Invalid tool arguments"):
+                _validate_tool_arguments(arguments, schema)
+
+        assert_valid({"mode": "sized", "size": 3})
+        assert_valid({"mode": "plain"})
+        assert_valid({"region": [0, 1, 0, 0]})
+        # Declared keywords used to be skipped silently by the server.
+        assert_invalid({"mode": "sized"})
+        assert_invalid({"mode": "plain", "size": 3})
+        assert_invalid({"forbidden": True})
+        assert_invalid({"region": [0, 0]})
+        assert_invalid({"region": [0, 1, -1]})
 
     def test_tool_arguments_validate_supported_json_schema_subset_before_handler(self):
         from qcopilots_common.mcp_http import McpJsonRpcServer, McpTool
@@ -3641,7 +3681,6 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                         "export_map_image",
                         "capture_qgis_screenshot",
                         "describe_layer_sources",
-                        "list_map_layers",
                         "load_map_layer",
                         "remove_map_layers",
                         "get_layer_metadata",
@@ -3968,7 +4007,6 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
 
                 for tool_name, arguments, bridge_tool_name in (
                     ("describe_layer_sources", {}, "interactive_layer_describe_sources"),
-                    ("list_map_layers", {}, "interactive_layer_list_layers"),
                     (
                         "load_map_layer",
                         {

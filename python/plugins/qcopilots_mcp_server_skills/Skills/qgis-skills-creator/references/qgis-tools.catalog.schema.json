@@ -139,7 +139,7 @@
       "type": "array",
       "minItems": 1,
       "items": {"$ref": "#/$defs/mcpService"},
-      "description": "字段作用是声明模板可识别的 QCopilots MCP 服务与基础工具。候选值包括 Builtin Tools、Skills、Interactive Tools、Processing Vector 和 Processing Raster。只有同时出现在默认启动配置和当前会话实际工具清单中的服务才能判为可用。"
+      "description": "字段作用是声明模板可识别的 QCopilots MCP 服务与基础工具。候选值包括 Builtin Tools、Skills、Interactive Tools、Processing Vector、Processing Raster、Processing General 和 QGIS Binary。只有同时出现在默认启动配置和当前会话实际工具清单中的服务才能判为可用。"
     },
     "cli_tools": {
       "type": "array",

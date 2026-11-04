@@ -6,6 +6,10 @@ The subprocess cases exercise OS lease release without opening any connection.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import os
 import subprocess
 import sys

@@ -35,6 +35,7 @@ from urllib.parse import quote
 
 from qcopilots_common.constants import MAX_FILE_READ_BYTES
 from qcopilots_common.mcp_http import McpPrompt, McpResource, McpTool, ToolError
+from qcopilots_common.security_policy import reject_restricted_path_syntax
 
 
 FRONT_MATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)", re.DOTALL)
@@ -1857,10 +1858,13 @@ def _list_skills_tool(
 
     return McpTool(
         "list_skills",
-        "List skills currently available using catalog metadata only: slug, name, "
-        "description, and conformance. Use this stable management tool after skill "
-        "files or configuration change to refresh the in-session catalog, then use "
-        "read_skill with a current slug.",
+        "List the skills that are currently available. Returns count, skills (slug, "
+        "name, description and conformance of each), validation_mode and diagnostics "
+        "(code, severity, source and message for skills that were skipped or adjusted "
+        "while loading). It reads catalog metadata only, not instructions. Call it to "
+        "see which skills exist, and again after skill files or configuration change "
+        "to refresh the in-session catalog. Then call the skill's own tool with a task, "
+        "or read_skill with a current slug. Takes no arguments. Read-only.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         _handler,
     )
@@ -1876,11 +1880,18 @@ def _compatibility_tools(
     return [
         McpTool(
             "read_skill",
-            "Read a skill's instructions and metadata. After refreshing with "
-            "list_skills, use a current or newly discovered slug. Scripts remain "
-            "resources: run them from skill_root only when a user or host explicitly "
-            "approves the execution tool. allowed-tools does not automatically grant "
-            f"permission.{catalog_note}",
+            "Read one skill's instructions (content, the SKILL.md body) and metadata "
+            "without activating it. Also returns name, slug, conformance, source_kind, "
+            "skill_root (null for archive skills), instructions_path, skill_content and "
+            "resource_metadata, the files that read_skill_resource can fetch. Use it to "
+            "review or verify a skill, for example after creating or editing one. To "
+            "apply a skill to a user task, call the skill's own tool with a task, which "
+            "returns the same guidance. Pass exactly one of slug (preferred), name or path (the "
+            "skill folder or archive). After refreshing with list_skills, use a current "
+            "or newly discovered slug. Scripts remain resources: run them from skill_root "
+            "only when a user or host explicitly approves the execution tool. "
+            "allowed-tools does not automatically grant permission. Read-only."
+            f"{catalog_note}",
             _read_skill_schema(),
             lambda arguments: _read_skill_from_registry(
                 registry,
@@ -1891,13 +1902,25 @@ def _compatibility_tools(
         ),
         McpTool(
             "list_skill_resources",
-            f"List resources exposed by a skill.{catalog_note}",
+            "List the files packaged with one skill, such as references, scripts and "
+            "assets, without reading them. Returns name, slug, resources (paths relative "
+            "to the skill root, for example references/guide.md) and resource_metadata "
+            "(uri, path, mime_type and kind of each). Pass a returned path as resource to "
+            "read_skill_resource. Pass exactly one of slug (preferred), name or path. "
+            f"Read-only.{catalog_note}",
             _read_skill_schema(),
             lambda arguments: _list_resources_from_registry(registry, arguments),
         ),
         McpTool(
             "read_skill_resource",
-            f"Read a resource from a skill package.{catalog_note}",
+            "Read one file packaged with a skill. resource is its path relative to the "
+            "skill root, as listed by list_skill_resources or named in the instructions, "
+            "with forward slashes and no leading slash or '..', for example "
+            "references/guide.md. Returns name, slug, resource, encoding and either "
+            "content (UTF-8 text) or blob (base64 for binary files). Use it instead of "
+            "read_file for skill files, because it also works for skills packaged as "
+            "archives. Reading a script does not run it. Pass exactly one of slug "
+            f"(preferred), name or path. Read-only.{catalog_note}",
             _resource_read_schema(),
             lambda arguments: _read_resource_from_registry(registry, arguments),
         ),
@@ -1939,7 +1962,10 @@ def _skill_tool(
             "properties": {
                 "task": {
                     "type": "string",
-                    "description": "Specific task the client wants to complete with this skill.",
+                    "description": (
+                        "Specific task the client wants to complete with this skill, "
+                        "stated as the user's concrete request in one or two sentences."
+                    ),
                 }
             },
             "required": ["task"],
@@ -2106,7 +2132,21 @@ def _resolve_skill(
         except (KeyError, SkillError) as exc:
             raise SkillError("The requested skill was not found.") from exc
 
-    candidate = Path(value).expanduser().resolve(strict=False)
+    # Reject remote, device, URI and stream syntax before any filesystem
+    # access. resolve_path is not used because it refuses the junctions that
+    # some configured skill roots live behind.
+    try:
+        reject_restricted_path_syntax(value)
+    except PermissionError as exc:
+        raise ToolError(f"Skill path is not allowed: {exc}") from exc
+    expanded = Path(value).expanduser()
+    if not expanded.is_absolute():
+        raise ToolError(
+            f"Skill path must be an absolute file path (got '{value}'). "
+            "Relative paths would be resolved against the service working "
+            f"folder {Path.cwd()}."
+        )
+    candidate = expanded.resolve(strict=False)
     for skill in registry.skills:
         if skill.is_zip and candidate == skill.zip_path:
             return skill
@@ -2259,7 +2299,10 @@ def _skill_summary_with_paths(skill: Skill) -> dict[str, str]:
 def _format_tool_description(skill: Skill) -> str:
     return (
         f"[SKILL] {skill.metadata.description} - Invoke this to receive "
-        "specialized instructions and resources for this task."
+        "specialized instructions and resources for this task. Pass the user's "
+        "concrete request as task. The result holds the skill instructions, metadata, "
+        "skill_root, a resource list and usage notes, and nothing is executed. Then "
+        "follow the instructions and fetch the files they need with read_skill_resource."
     )
 
 
@@ -4730,7 +4773,15 @@ def _read_skill_schema() -> dict[str, Any]:
         "properties": {
             "name": {"type": "string", "minLength": 1},
             "slug": {"type": "string", "minLength": 1},
-            "path": {"type": "string", "minLength": 1},
+            "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Absolute path of the skill folder or archive, '~' allowed. "
+                    "Relative, network (UNC), device and URI paths and alternate "
+                    "data streams are rejected."
+                ),
+            },
         },
         "oneOf": [
             {"required": ["slug"]},

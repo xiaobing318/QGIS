@@ -1,5 +1,9 @@
 """Historical attempt receipts and current transfer recovery capabilities."""
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import json
 import threading
 import unittest

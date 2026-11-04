@@ -30,6 +30,10 @@ failing exit status. Credentials and raw tracebacks are never printed.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import argparse
 import errno
 import hashlib
@@ -807,7 +811,7 @@ class AcceptanceRunner:
             try:
                 self.manager.resume_job(started["job_id"])
             except Exception as error:
-                require(getattr(error, "code", None) in {"not_resumable", "transfer_not_resumable", "checkpoint_not_found", "transfer_not_found"}, "unexpected_discard_resume_error")
+                require(getattr(error, "code", None) in {"transfer_not_resumable", "job_not_found"}, "unexpected_discard_resume_error")
             else:
                 raise AcceptanceFailure("discarded_transfer_resumed")
             if direction == "upload":

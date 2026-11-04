@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-07-19"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -21,6 +21,35 @@ from pathlib import Path
 from unittest import mock
 from urllib.parse import parse_qs, urlencode
 
+
+_QGIS_DLL_DIRECTORY_HANDLES = []
+
+
+def _prepare_windows_qgis_dll_search_path():
+    """Add the active multi-config QGIS build directory before QGIS imports.
+
+    Without it the real QGIS tests below are skipped under ctest, whose
+    QGIS_PREFIX_PATH names the unexpanded configuration folder.
+    """
+
+    if sys.platform != "win32":
+        return
+
+    prefix_path = os.environ.get("QGIS_PREFIX_PATH", "")
+    bin_root = Path(prefix_path).parent if prefix_path else None
+    if bin_root is None or not bin_root.is_dir():
+        return
+
+    for candidate in sorted(bin_root.iterdir()):
+        if not (candidate / "qgis_core.dll").is_file():
+            continue
+        os.environ["PATH"] = f"{candidate}{os.pathsep}{os.environ.get('PATH', '')}"
+        if hasattr(os, "add_dll_directory"):
+            _QGIS_DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(candidate)))
+        return
+
+
+_prepare_windows_qgis_dll_search_path()
 
 TILE_URL = "http://127.0.0.1/tiles/{z}/{x}/{y}.png"
 WCS_URL = "http://127.0.0.1/wcs"
@@ -58,7 +87,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
         try:
             tools = processing_tools.build_interactive_tools()
             tool_names = [tool.name for tool in tools]
-            self.assertEqual(len(tool_names), 35)
+            self.assertEqual(len(tool_names), 34)
             self.assertEqual(
                 tool_names,
                 [
@@ -78,7 +107,6 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                     "export_map_image",
                     "capture_qgis_screenshot",
                     "describe_layer_sources",
-                    "list_map_layers",
                     "load_map_layer",
                     "remove_map_layers",
                     "get_layer_metadata",
@@ -233,7 +261,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 {"layer_id": "abc", "feature_ids": [1]}
             )
             tools_by_name["export_print_layout"].handler(
-                {"layout_name": "Atlas", "path": "atlas.pdf"}
+                {"layout_name": "Atlas", "path": "atlas.pdf", "format": "pdf"}
             )
             tools_by_name["create_vector_layer"].handler({"name": "Memory Points"})
             tools_by_name["update_vector_features"].handler(
@@ -267,7 +295,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 ),
                 (
                     "interactive_layout_export",
-                    {"layout_name": "Atlas", "path": "atlas.pdf"},
+                    {"layout_name": "Atlas", "path": "atlas.pdf", "format": "pdf"},
                 ),
                 ("create_vector_layer", {"name": "Memory Points"}),
                 (
@@ -280,9 +308,10 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             ],
         )
 
-    def test_all_35_interactive_tools_route_to_the_declared_bridge_operations(self):
+    def test_all_34_interactive_tools_route_to_the_declared_bridge_operations(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools
         import qcopilots_common.processing_tools as processing_tools
+        from qcopilots_common.bridge import QgisBridgeTools
 
         calls = []
 
@@ -311,7 +340,6 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             "export_map_image",
             "interactive_capture_screenshot",
             "interactive_layer_describe_sources",
-            "interactive_layer_list_layers",
             "interactive_layer_load_layer",
             "interactive_layer_remove_layers",
             "interactive_layer_get_metadata",
@@ -341,9 +369,17 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             for tool in tools:
                 tool.handler({})
 
-        self.assertEqual(len(tools), 35)
+        self.assertEqual(len(tools), 34)
         self.assertEqual([operation for operation, _arguments in calls], expected_operations)
         self.assertTrue(all(arguments == {} for _operation, arguments in calls))
+        # The fake client accepts any name, so check the real bridge too: a
+        # route to a removed operation would fail only at call time.
+        self.assertLessEqual(
+            set(expected_operations),
+            set(QgisBridgeTools(None).handlers()),
+        )
+        for legacy in ("add_vector_layer", "add_raster_layer", "remove_layer"):
+            self.assertNotIn(legacy, QgisBridgeTools(None).handlers())
 
     def test_interactive_schemas_enforce_extent_and_confirmation_branches(self):
         import qcopilots_common.processing_tools as processing_tools
@@ -548,11 +584,11 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 RuntimeError,
                 "Could not add vector layer fields",
             ):
+                # The field failure is raised before the layer would be added.
                 tools.create_vector_layer(
                     {
                         "name": "Rejected fields",
                         "fields": [{"name": "broken", "type": "string"}],
-                        "add_to_project": False,
                     }
                 )
 
@@ -859,13 +895,17 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             nested.mkdir()
             equals_path = nested / "dbname=data.gpkg"
             equals_path.write_bytes(b"data")
+            self.assertEqual(
+                bridge._validate_layer_source_path(str(equals_path)),
+                str(equals_path.resolve()),
+            )
             previous_directory = Path.cwd()
             try:
                 os.chdir(root)
-                self.assertEqual(
-                    bridge._validate_layer_source_path("layers/dbname=data.gpkg"),
-                    str(equals_path.resolve()),
-                )
+                # A relative local source would be read from the QGIS program
+                # folder, so it is rejected even when the file exists here.
+                with self.assertRaisesRegex(ValueError, "absolute file path"):
+                    bridge._validate_layer_source_path("layers/dbname=data.gpkg")
             finally:
                 os.chdir(previous_directory)
 
@@ -1118,7 +1158,9 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             target = root / "map.jpg"
-            result = tools.export_map_image({"path": str(target)})
+            result = tools.export_map_image(
+                {"path": str(target), "format": "jpeg"}
+            )
             self.assertEqual(canvas.calls, [(None, "JPEG")])
             self.assertEqual(target.read_bytes(), b"jpeg-image")
             self.assertEqual((root / "map.jgw").read_bytes(), b"world-file")
@@ -1150,7 +1192,9 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 "rmtree",
                 side_effect=PermissionError("locked staging directory"),
             ):
-                result = tools.export_map_image({"path": str(target)})
+                result = tools.export_map_image(
+                    {"path": str(target), "format": "png"}
+                )
             self.assertFalse(result["cleanup"]["complete"])
             self.assertTrue(result["cleanup"]["retry_recommended"])
             self.assertEqual(len(result["cleanup"]["residual_paths"]), 1)
@@ -1515,11 +1559,17 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 tools.interactive_layer_remove_layers(
                     {
                         "confirmation_token": clean_preview["confirmation_token"],
-                        "allow_multiple": False,
+                        "allow_multiple": True,
                     }
                 )
+            # Default preview options, as sent by clients that fill in schema
+            # defaults, are tolerated and do not change the confirmed removal.
             clean_removed = tools.interactive_layer_remove_layers(
-                {"confirmation_token": clean_preview["confirmation_token"]}
+                {
+                    "confirmation_token": clean_preview["confirmation_token"],
+                    "allow_multiple": False,
+                    "editable_changes": "reject",
+                }
             )
             self.assertEqual(clean_removed["removed_count"], 1)
             self.assertEqual(clean_removed["editable_changes"], "reject")
@@ -1806,6 +1856,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                             {
                                 "layout_name": layout_name,
                                 "path": str(root / "too-large.pdf"),
+                                "format": "pdf",
                                 "dpi": 96,
                             }
                         )
@@ -2154,11 +2205,12 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 map_path = root / "map.png"
                 map_path.write_bytes(b"existing-map")
                 map_preview = tools.export_map_image(
-                    {"path": str(map_path), "overwrite": True}
+                    {"path": str(map_path), "format": "png", "overwrite": True}
                 )
                 exported = tools.export_map_image(
                     {
                         "path": str(map_path),
+                        "format": "png",
                         "overwrite": True,
                         "overwrite_confirmation_token": map_preview[
                             "overwrite_confirmation_token"
@@ -2176,6 +2228,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                     tools.export_map_image(
                         {
                             "path": str(map_path),
+                            "format": "png",
                             "overwrite": True,
                             "overwrite_confirmation_token": map_preview[
                                 "overwrite_confirmation_token"
@@ -2187,6 +2240,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 vector_arguments = {
                     "name": "QCopilots points",
                     "path": str(vector_path),
+                    "format": "GPKG",
                     "geometry_type": "Point",
                     "fields": [{"name": "name", "type": "string"}],
                     "features": [
@@ -2556,8 +2610,20 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 tools.interactive_layer_query_features(
                     {"layer_id": layer.id(), "feature_ids": [feature_id]}
                 )
-            self.assertIn("code=query_response_too_large", str(error_context.exception))
-            self.assertIn("response_byte_limit=8", str(error_context.exception))
+            self.assertTrue(
+                str(error_context.exception).startswith("query_response_too_large: ")
+            )
+            self.assertIn("exceeds the 8 byte", str(error_context.exception))
+            with mock.patch.object(
+                bridge, "MAX_VECTOR_QUERY_GEOMETRY_BYTES", 8
+            ), self.assertRaisesRegex(RuntimeError, "^query_geometry_too_large: "):
+                tools.interactive_layer_query_features(
+                    {
+                        "layer_id": layer.id(),
+                        "feature_ids": [feature_id],
+                        "include_geometry": True,
+                    }
+                )
 
             selected = tools.interactive_layer_set_selection(
                 {
@@ -2925,6 +2991,467 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             ],
             ["layer-1", "layer-2"],
         )
+
+    def test_layer_remove_selectors_report_missing_ids_and_names(self):
+        import qcopilots_common.bridge as bridge
+
+        layer = types.SimpleNamespace(
+            id=lambda: "layer-1",
+            name=lambda: "Roads",
+            source=lambda: "C:/Data/roads.gpkg",
+        )
+        with self.assertRaisesRegex(RuntimeError, "Layer ids were not found.*missing"):
+            bridge._layers_matching_selectors(
+                [layer],
+                bridge._layer_remove_selectors({"layer_ids": ["layer-1", "missing"]}),
+            )
+        with self.assertRaisesRegex(RuntimeError, "names did not match.*Rivers"):
+            bridge._layers_matching_selectors(
+                [layer],
+                bridge._layer_remove_selectors({"names": ["Roads", "Rivers"]}),
+                allow_multiple=True,
+            )
+        # A UNC selector is compared as text and never resolved.
+        unc = r"\\server.invalid\share\roads.gpkg"
+        with mock.patch.object(bridge, "_safe_workspace_path") as resolve:
+            self.assertEqual(bridge._normalize_layer_source_path(unc), unc)
+        resolve.assert_not_called()
+
+    def test_layer_provider_hints_are_never_ignored_or_switched_silently(self):
+        import qcopilots_common.bridge as bridge
+
+        with self.assertRaisesRegex(RuntimeError, "needs layer_type vector_tile"):
+            bridge._resolve_layer_type_and_provider("vector", "vector_tile", TILE_URL, {})
+        with self.assertRaisesRegex(RuntimeError, "cannot be combined with layer_type auto"):
+            bridge._create_qgis_layer("auto", "C:/Data/roads.gpkg", "Roads", "ogr", {})
+        auto = next(
+            item
+            for item in bridge._supported_layer_type_descriptions()
+            if item["layer_type"] == "auto"
+        )
+        self.assertEqual(
+            auto["providers"],
+            ["ogr", "gdal", "mdal", "pdal", "vectortile", "cesiumtiles"],
+        )
+
+    def test_zoom_to_extent_rejects_reversed_corners(self):
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        tools = QgisBridgeTools(None)
+        for extent in ([2, 0, 1, 1], [0, 2, 1, 1], [0, 0, 0, 1]):
+            with self.subTest(extent=extent), self.assertRaisesRegex(
+                RuntimeError, "xmin < xmax"
+            ):
+                tools.zoom_to_extent({"extent": extent})
+
+    def test_interactive_schemas_tolerate_defaults_in_exclusive_branches(self):
+        import qcopilots_common.processing_tools as processing_tools
+        from qcopilots_common.mcp_http import ToolError, _validate_tool_arguments
+
+        tools = {
+            tool.name: tool for tool in processing_tools.build_interactive_tools()
+        }
+
+        def assert_valid(tool_name, arguments):
+            _validate_tool_arguments(arguments, tools[tool_name].input_schema)
+
+        def assert_invalid(tool_name, arguments):
+            with self.assertRaisesRegex(ToolError, "Invalid tool arguments"):
+                _validate_tool_arguments(arguments, tools[tool_name].input_schema)
+
+        assert_valid(
+            "configure_vector_labels",
+            {
+                "layer_id": "layer-a",
+                "enabled": False,
+                "is_expression": False,
+                "font_size": 10,
+                "color": "#202020",
+            },
+        )
+        assert_invalid(
+            "configure_vector_labels",
+            {"layer_id": "layer-a", "enabled": False, "font_size": 12},
+        )
+        assert_invalid(
+            "configure_vector_labels",
+            {"layer_id": "layer-a", "enabled": False, "field_or_expression": "name"},
+        )
+        assert_valid(
+            "remove_map_layers",
+            {
+                "confirmation_token": "confirmation-token",
+                "allow_multiple": False,
+                "editable_changes": "reject",
+            },
+        )
+        assert_invalid(
+            "remove_map_layers",
+            {"confirmation_token": "confirmation-token", "editable_changes": "save"},
+        )
+        assert_invalid("create_print_layout", {"name": "   "})
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_combined_feature_filters_count_only_matching_features(self):
+        from qgis.core import QgsProject, QgsVectorLayer
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        layer = QgsVectorLayer(
+            "Point?crs=EPSG:4326&field=rank:integer",
+            "QCopilots combined filter test",
+            "memory",
+        )
+        self.assertTrue(layer.isValid())
+        project.addMapLayer(layer)
+        try:
+            tools = QgisBridgeTools(None)
+            added = tools.add_vector_features(
+                {
+                    "layer_id": layer.id(),
+                    "features": [
+                        {"attributes": {"rank": rank}, "geometry_wkt": f"POINT ({rank} 0)"}
+                        for rank in range(1, 7)
+                    ],
+                }
+            )
+            ids = sorted(added["added_feature_ids"])
+            high_ids = [
+                feature.id()
+                for feature in layer.getFeatures()
+                if feature["rank"] >= 5
+            ]
+            # The expression only matches the last ids, so a limit applied
+            # before the id check would miss them.
+            queried = tools.interactive_layer_query_features(
+                {
+                    "layer_id": layer.id(),
+                    "feature_ids": ids,
+                    "filter_expression": '"rank" >= 5',
+                    "limit": 1,
+                }
+            )
+            self.assertEqual(queried["returned_count"], 1)
+            self.assertTrue(queried["truncated"])
+            self.assertEqual(
+                queried["features"][0]["feature_id"], sorted(high_ids)[0]
+            )
+            second_page = tools.interactive_layer_query_features(
+                {
+                    "layer_id": layer.id(),
+                    "feature_ids": ids,
+                    "filter_expression": '"rank" >= 5',
+                    "limit": 1,
+                    "offset": 1,
+                }
+            )
+            self.assertEqual(second_page["returned_count"], 1)
+            self.assertFalse(second_page["truncated"])
+
+            layer.selectByIds(ids)
+            selected = tools.interactive_layer_query_features(
+                {
+                    "layer_id": layer.id(),
+                    "selected_only": True,
+                    "filter_expression": '"rank" >= 5',
+                    "limit": 5,
+                }
+            )
+            self.assertEqual(
+                sorted(item["feature_id"] for item in selected["features"]),
+                sorted(high_ids),
+            )
+            self.assertFalse(selected["truncated"])
+
+            selection = tools.interactive_layer_set_selection(
+                {
+                    "layer_id": layer.id(),
+                    "feature_ids": ids + [999999],
+                    "filter_expression": '"rank" >= 5',
+                    "mode": "replace",
+                }
+            )
+            self.assertEqual(selection["matched_count"], len(high_ids))
+            with self.assertRaisesRegex(RuntimeError, "ids were not found"):
+                tools.interactive_layer_set_selection(
+                    {"layer_id": layer.id(), "feature_ids": [999999]}
+                )
+
+            preview = tools.interactive_layer_delete_features(
+                {
+                    "layer_id": layer.id(),
+                    "feature_ids": ids,
+                    "filter_expression": '"rank" >= 5',
+                }
+            )
+            self.assertEqual(preview["matched_count"], len(high_ids))
+        finally:
+            if layer.isEditable():
+                layer.rollBack()
+            project.removeMapLayer(layer.id())
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_create_vector_layer_rejects_unusable_arguments_early(self):
+        from qgis.core import QgsProject
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        tools = QgisBridgeTools(None)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            cases = (
+                ({"path": str(root / "out.gpkg")}, "format is required"),
+                ({"path": str(root / "out.csv"), "format": "GPKG"}, "suffix .csv"),
+                (
+                    {"path": str(root / "out.shp"), "format": "GPKG"},
+                    "must match the output path suffix",
+                ),
+                ({"path": "memory:", "format": "GPKG"}, "format applies only"),
+                ({"add_to_project": False}, "add_to_project=false needs a file path"),
+                ({"crs": "EPSG:999999"}, "Invalid crs"),
+                (
+                    {"path": str(root / "out.gpkg"), "format": "GPKG", "crs": "bad&x=1"},
+                    "Invalid crs",
+                ),
+            )
+            for extra, message in cases:
+                with self.subTest(extra=extra), self.assertRaisesRegex(
+                    RuntimeError, message
+                ):
+                    tools.create_vector_layer({"name": "Rejected", **extra})
+            self.assertEqual(list(root.iterdir()), [])
+
+            written = tools.create_vector_layer(
+                {
+                    "name": "Written only",
+                    "path": str(root / "written.gpkg"),
+                    "format": "GPKG",
+                    "crs": "EPSG:3857",
+                    "add_to_project": False,
+                }
+            )
+            self.assertFalse(written["added"])
+            self.assertIsNone(written["layer"]["id"])
+            self.assertTrue((root / "written.gpkg").is_file())
+            # Release the reopened layer before the folder is removed.
+            gc.collect()
+
+        memory = tools.create_vector_layer({"name": "Memory crs", "crs": "EPSG:3035"})
+        try:
+            layer = QgsProject.instance().mapLayer(memory["layer"]["id"])
+            self.assertEqual(layer.crs().authid(), "EPSG:3035")
+            # The provider gets the CRS from the URI, as with QGIS's own
+            # memory layer helper, instead of only the layer.
+            self.assertEqual(layer.dataProvider().crs().authid(), "EPSG:3035")
+        finally:
+            QgsProject.instance().removeMapLayer(memory["layer"]["id"])
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_missing_layer_ids_are_errors(self):
+        from qgis.core import QgsProject, QgsVectorLayer
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+
+        class FakeIface:
+            def activeLayer(self):
+                raise AssertionError("an explicit layer id must not fall back")
+
+        tools = QgisBridgeTools(FakeIface())
+        with self.assertRaisesRegex(RuntimeError, "Layer not found"):
+            tools.zoom_to_native_resolution({"layer_id": "missing-raster"})
+
+        project = QgsProject.instance()
+        layer = QgsVectorLayer("Point?crs=EPSG:4326", "QCopilots missing id test", "memory")
+        project.addMapLayer(layer)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "Layer ids were not found"):
+                tools.interactive_layer_remove_layers(
+                    {"layer_ids": [layer.id(), "missing-layer"]}
+                )
+            self.assertIsNotNone(project.mapLayer(layer.id()))
+        finally:
+            project.removeMapLayer(layer.id())
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_renderer_ignores_auto_filled_defaults(self):
+        from qgis.core import QgsProject, QgsVectorLayer
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        layer = QgsVectorLayer("Point?crs=EPSG:4326", "QCopilots renderer test", "memory")
+        project.addMapLayer(layer)
+        try:
+            tools = QgisBridgeTools(None)
+            result = tools.interactive_layer_set_renderer(
+                {
+                    "layer_id": layer.id(),
+                    "mode": "single",
+                    "color": "#336699",
+                    "method": "equal_interval",
+                    "classes": 5,
+                    "invert_ramp": False,
+                }
+            )
+            self.assertEqual(result["mode"], "single")
+            with self.assertRaisesRegex(RuntimeError, "classes cannot be used"):
+                tools.interactive_layer_set_renderer(
+                    {"layer_id": layer.id(), "mode": "single", "classes": 4}
+                )
+        finally:
+            project.removeMapLayer(layer.id())
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_layout_arguments_are_checked_before_side_effects(self):
+        from qgis.core import QgsProject
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        tools = QgisBridgeTools(None)
+        manager = QgsProject.instance().layoutManager()
+        with self.assertRaisesRegex(RuntimeError, "non-blank layout name"):
+            tools.interactive_layout_create({"name": "   "})
+        with self.assertRaisesRegex(RuntimeError, "xmin < xmax"):
+            tools.interactive_layout_create(
+                {"name": "QCopilots reversed extent", "map_extent": [10, 0, 0, 10]}
+            )
+        self.assertIsNone(manager.layoutByName("QCopilots reversed extent"))
+
+        created = tools.interactive_layout_create(
+            {"name": "QCopilots dpi check", "include_legend": False}
+        )
+        self.assertEqual(created["layout"]["map_extent_source"], "default")
+        try:
+            with tempfile.TemporaryDirectory() as temporary_directory:
+                target = Path(temporary_directory) / "new-folder" / "layout.pdf"
+                with self.assertRaisesRegex(RuntimeError, "dpi must be between"):
+                    tools.interactive_layout_export(
+                        {
+                            "layout_name": "QCopilots dpi check",
+                            "path": str(target),
+                            "format": "pdf",
+                            "dpi": 5000,
+                            "overwrite": True,
+                        }
+                    )
+                # No preview token was issued and no folder was created.
+                self.assertFalse(target.parent.exists())
+        finally:
+            layout = manager.layoutByName("QCopilots dpi check")
+            if layout is not None:
+                manager.removeLayout(layout)
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_invalid_arguments_fail_before_an_overwrite_preview(self):
+        from qgis.core import QgsProject
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        tools = QgisBridgeTools(None)
+        manager = QgsProject.instance().layoutManager()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            # An existing target is what makes the overwrite step issue a
+            # token, so only an existing target shows the check order.
+            vector_target = root / "existing.gpkg"
+            vector_target.write_bytes(b"keep")
+            with self.assertRaisesRegex(RuntimeError, "Invalid crs"):
+                tools.create_vector_layer(
+                    {
+                        "name": "Rejected",
+                        "path": str(vector_target),
+                        "format": "GPKG",
+                        "crs": "not a crs",
+                        "overwrite": True,
+                    }
+                )
+            self.assertEqual(vector_target.read_bytes(), b"keep")
+
+            tools.interactive_layout_create(
+                {"name": "QCopilots preview order", "include_legend": False}
+            )
+            try:
+                layout_target = root / "existing.pdf"
+                layout_target.write_bytes(b"keep")
+                with self.assertRaisesRegex(RuntimeError, "dpi must be between"):
+                    tools.interactive_layout_export(
+                        {
+                            "layout_name": "QCopilots preview order",
+                            "path": str(layout_target),
+                            "format": "pdf",
+                            "dpi": 5000,
+                            "overwrite": True,
+                        }
+                    )
+                self.assertEqual(layout_target.read_bytes(), b"keep")
+            finally:
+                layout = manager.layoutByName("QCopilots preview order")
+                if layout is not None:
+                    manager.removeLayout(layout)
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_zoom_to_layer_warns_when_the_layer_has_no_crs(self):
+        from qgis.core import QgsCoordinateReferenceSystem, QgsProject, QgsVectorLayer
+        from qgis.gui import QgsMapCanvas
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        project = QgsProject.instance()
+        canvas = QgsMapCanvas()
+        tools = QgisBridgeTools(types.SimpleNamespace(mapCanvas=lambda: canvas))
+        layers = []
+        try:
+            for uri in ("Point", "Point?crs=EPSG:4326"):
+                layer = QgsVectorLayer(uri, f"QCopilots zoom warning {uri}", "memory")
+                if "crs=" not in uri:
+                    # QGIS may give a new layer a default CRS, so clear it.
+                    layer.setCrs(QgsCoordinateReferenceSystem())
+                self.assertTrue(
+                    layer.dataProvider().addFeatures([self._point_feature(layer)])[0]
+                )
+                layer.updateExtents()
+                project.addMapLayer(layer)
+                layers.append(layer)
+            without_crs = tools.zoom_to_layer({"layer_id": layers[0].id()})
+            self.assertEqual(len(without_crs["warnings"]), 1)
+            self.assertIn("no valid CRS", without_crs["warnings"][0])
+            with_crs = tools.zoom_to_layer({"layer_id": layers[1].id()})
+            self.assertEqual(with_crs["warnings"], [])
+        finally:
+            for layer in layers:
+                project.removeMapLayer(layer.id())
+            canvas.deleteLater()
+
+    @staticmethod
+    def _point_feature(layer):
+        from qgis.core import QgsFeature, QgsGeometry
+
+        feature = QgsFeature(layer.fields())
+        feature.setGeometry(QgsGeometry.fromWkt("POINT (1 2)"))
+        return feature
+
+    @unittest.skipUnless(_qgis_bindings_available(), "QGIS bindings are unavailable")
+    def test_real_unknown_processing_algorithm_reports_error_code(self):
+        from qgis.testing import start_app
+        from qcopilots_common.bridge import QgisBridgeTools
+
+        start_app()
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "^processing_algorithm_not_found: .*qcopilots:missing_algorithm",
+        ):
+            QgisBridgeTools(None).processing_algorithm_details(
+                {"algorithm_id": "qcopilots:missing_algorithm"}
+            )
 
 
 if __name__ == "__main__":

@@ -8,6 +8,10 @@
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-08-26"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import base64
 import json
 import shutil
@@ -332,11 +336,11 @@ class TestQCopilotsMcpLiveAcceptance(unittest.TestCase):
             for service in live.SERVICES
             for name in live.EXPECTED_TOOLS[service.key]
         ]
-        self.assertEqual(len(names), 83)
-        self.assertEqual(len(set(names)), 83)
+        self.assertEqual(len(names), 82)
+        self.assertEqual(len(set(names)), 82)
         self.assertEqual(
             [len(live.EXPECTED_TOOLS[service.key]) for service in live.SERVICES],
-            [8, 5, 35, 6, 6, 6, 17],
+            [8, 5, 34, 6, 6, 6, 17],
         )
 
     def test_screenshot_result_requires_matching_image_and_clean_text(self):

@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-08-02"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -895,7 +895,9 @@ class TestAsyncJobStore(unittest.TestCase):
             [item["job_id"] for item in store.list("vector", states=["queued"])],
             [first["job_id"]],
         )
-        with self.assertRaisesRegex(ValueError, "Invalid public job states"):
+        with self.assertRaisesRegex(
+            ValueError, "^invalid_states: Invalid public job states: paused"
+        ):
             store.list("vector", states=["paused"])
         with self.assertRaisesRegex(ValueError, "1 through 200"):
             store.list("vector", limit=201)
@@ -903,7 +905,7 @@ class TestAsyncJobStore(unittest.TestCase):
         store.shutdown()
         self.assertFalse(store.accepting)
         self.assertEqual(store.get(first["job_id"])["state"], "queued")
-        with self.assertRaisesRegex(RuntimeError, "stopping"):
+        with self.assertRaisesRegex(RuntimeError, "^service_stopping: "):
             store.create("vector", job_snapshot(13))
 
         # Public snapshots must always be strict JSON serializable.
@@ -1212,6 +1214,16 @@ class TestProcessingJobManager(unittest.TestCase):
             )
         self.assertEqual(environment.tasks, [])
         self.assertEqual(manager.list({"category": "general"})["jobs"], [])
+        # Same state filter rules as the binary and file transfer job lists.
+        for states, message in (
+            ([], "non-empty array"),
+            (["queued", "queued"], "duplicates"),
+            (["paused"], "paused"),
+        ):
+            with self.subTest(states=states), self.assertRaisesRegex(
+                ValueError, f"^invalid_states: .*{message}"
+            ):
+                manager.list({"category": "general", "states": states})
 
         started = manager.start(
             {
@@ -1946,6 +1958,341 @@ class TestProcessingJobManager(unittest.TestCase):
                 os.chdir(previous_directory)
             self.assertEqual(list(program_folder.iterdir()), [])
             self.assertEqual(list(root.iterdir()), [program_folder])
+
+    def test_relative_processing_inputs_are_rejected_before_start(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import (
+            FORMAL_RESTRICTED_MODE,
+            FilesystemPolicy,
+        )
+
+        input_definition = FakeProcessingDefinition(
+            "INPUT",
+            destination=False,
+            definition_type="vector",
+        )
+        style_definition = FakeProcessingDefinition(
+            "STYLE",
+            destination=False,
+            definition_type="file",
+        )
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        algorithm = FakeAlgorithm(
+            "vector:relative-input",
+            parameter_definitions=[
+                input_definition,
+                style_definition,
+                output_definition,
+            ],
+        )
+        restricted = FilesystemPolicy(
+            mode=FORMAL_RESTRICTED_MODE,
+            shell_enabled=False,
+            network_enabled=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            program_folder = root / "program"
+            program_folder.mkdir()
+            # A same-named file in the program folder must not be read.
+            (program_folder / "germany.gpkg").write_bytes(b"program data")
+            target = root / "result.gpkg"
+            previous_directory = Path.cwd()
+            try:
+                os.chdir(program_folder)
+                for parameter_name, accepted in (
+                    (
+                        "INPUT",
+                        "a project layer id, a unique layer name or an "
+                        "absolute file path",
+                    ),
+                    ("STYLE", "an absolute file path"),
+                ):
+                    for relative in (
+                        "germany.gpkg",
+                        "data/germany.gpkg",
+                        "..\\x.gpkg",
+                        "./germany.gpkg",
+                        "file:germany.gpkg",
+                        "germany.gpkg|layername=roads",
+                    ):
+                        environment = FakeProcessingEnvironment([algorithm])
+                        dependencies = environment.dependencies()
+                        sanitizer_calls = []
+                        dependencies["parameter_sanitizer"] = (
+                            lambda parameters, _definitions, calls=sanitizer_calls: (
+                                calls.append(parameters) or dict(parameters)
+                            )
+                        )
+                        manager = ProcessingJobManager(dependencies=dependencies)
+                        with self.subTest(parameter=parameter_name, relative=relative):
+                            with self.assertRaises(ValueError) as caught:
+                                manager.start(
+                                    {
+                                        "category": "vector",
+                                        "algorithm_id": algorithm.id(),
+                                        "parameters": {
+                                            parameter_name: relative,
+                                            "OUTPUT": str(target),
+                                        },
+                                    }
+                                )
+                            message = str(caught.exception)
+                            self.assertIn(
+                                f"Processing input {parameter_name} must be "
+                                f"{accepted} (got '{relative}')",
+                                message,
+                            )
+                            self.assertIn(
+                                f"QGIS program folder {Path.cwd()}",
+                                message,
+                            )
+                            self.assertEqual(sanitizer_calls, [])
+                            self.assertEqual(environment.tasks, [])
+                            self.assertEqual(
+                                manager.list({"category": "vector"})["jobs"], []
+                            )
+
+                for relative in ("germany.gpkg", "data/germany.gpkg", "..\\x.gpkg"):
+                    with self.subTest(mode=restricted.mode, relative=relative):
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "must be an absolute file path",
+                        ):
+                            processing_jobs._apply_processing_filesystem_policy(
+                                {"STYLE": relative},
+                                [style_definition],
+                                restricted,
+                            )
+                # Existing policy rejections keep their own message.
+                with self.assertRaisesRegex(PermissionError, "drive-relative"):
+                    processing_jobs._apply_processing_filesystem_policy(
+                        {"INPUT": "C:germany.gpkg"},
+                        [input_definition],
+                        FilesystemPolicy(),
+                    )
+            finally:
+                os.chdir(previous_directory)
+            self.assertFalse(target.exists())
+
+            # Absolute inputs and values which are not local files keep
+            # their previous behavior.
+            source = root / "source.gpkg"
+            source.write_bytes(b"data")
+            for value, expected in (
+                (str(source), str(source)),
+                (f"{source}|layername=roads", f"{source}|layername=roads"),
+                (source.as_uri(), str(source)),
+                ("memory", "memory"),
+                ("memory:roads", "memory:roads"),
+                ("EPSG:4326", "EPSG:4326"),
+                ("roads", "roads"),
+                (
+                    "/vsicurl/http://example.test/source.gpkg",
+                    "/vsicurl/http://example.test/source.gpkg",
+                ),
+                (
+                    "postgresql://127.0.0.1/database",
+                    "postgresql://127.0.0.1/database",
+                ),
+            ):
+                with self.subTest(value=value):
+                    self.assertEqual(
+                        processing_jobs._apply_processing_filesystem_policy(
+                            {"INPUT": value},
+                            [input_definition],
+                            FilesystemPolicy(),
+                        )["INPUT"],
+                        expected,
+                    )
+
+    def test_unknown_processing_parameter_names_are_rejected_before_start(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+        from qcopilots_common.security_policy import FilesystemPolicy
+
+        input_definition = FakeProcessingDefinition(
+            "INPUT",
+            destination=False,
+            definition_type="vector",
+        )
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
+        algorithm = FakeAlgorithm(
+            "vector:known-parameters",
+            parameter_definitions=[input_definition, output_definition],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            target = (Path(tmp) / "result.gpkg").resolve()
+            for unknown in (
+                {"EXTRA": "file://server.invalid/share/source.gpkg"},
+                {"input": "relative.gpkg"},
+                {"EXTRA": 1, "MORE": "value"},
+            ):
+                environment = FakeProcessingEnvironment([algorithm])
+                dependencies = environment.dependencies()
+                sanitizer_calls = []
+                dependencies["parameter_sanitizer"] = (
+                    lambda parameters, _definitions, calls=sanitizer_calls: (
+                        calls.append(parameters) or dict(parameters)
+                    )
+                )
+                manager = ProcessingJobManager(dependencies=dependencies)
+                with self.subTest(unknown=unknown):
+                    with self.assertRaises(ValueError) as caught:
+                        manager.start(
+                            {
+                                "category": "vector",
+                                "algorithm_id": algorithm.id(),
+                                "parameters": {"OUTPUT": str(target), **unknown},
+                            }
+                        )
+                    message = str(caught.exception)
+                    self.assertTrue(
+                        message.startswith("processing_parameter_unknown: "),
+                        message,
+                    )
+                    self.assertIn(
+                        "has no parameter named " + ", ".join(unknown), message
+                    )
+                    self.assertIn("Valid names are INPUT, OUTPUT", message)
+                    self.assertIn("get_vector_processing_algorithm_details", message)
+                    self.assertEqual(sanitizer_calls, [])
+                    self.assertEqual(environment.tasks, [])
+                    self.assertEqual(manager.list({"category": "vector"})["jobs"], [])
+            self.assertFalse(target.exists())
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "get_<category>_processing_algorithm_details",
+        ):
+            processing_jobs._apply_processing_filesystem_policy(
+                {"EXTRA": "value"},
+                [input_definition],
+                FilesystemPolicy(),
+            )
+
+    def test_unknown_processing_algorithm_reports_error_code(self):
+        environment = FakeProcessingEnvironment([])
+        manager = ProcessingJobManager(dependencies=environment.dependencies())
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "^processing_algorithm_not_found: Processing algorithm not found: vector:missing$",
+        ):
+            manager.start({"category": "vector", "algorithm_id": "vector:missing"})
+        self.assertEqual(manager.list({"category": "vector"})["jobs"], [])
+
+    def test_failed_job_errors_share_one_structure(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+
+        error_keys = {"code", "stage", "message", "details", "feedback_messages"}
+        algorithm = FakeAlgorithm("vector:structured-error")
+
+        # A task cancelled before submission fails during preparation.
+        environment = FakeProcessingEnvironment([algorithm])
+        dependencies = environment.dependencies()
+        create_task = dependencies["task_factory"]
+
+        def cancelled_task_factory(*arguments):
+            task = create_task(*arguments)
+            task.cancelled = True
+            return task
+
+        dependencies["task_factory"] = cancelled_task_factory
+        manager = ProcessingJobManager(dependencies=dependencies)
+        failed = manager.start({"category": "vector", "algorithm_id": algorithm.id()})
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["error"]["code"], "algorithm_preparation_failed")
+        self.assertEqual(failed["error"]["stage"], "prepare")
+        self.assertEqual(set(failed["error"]), error_keys)
+        self.assertEqual(environment.task_manager.tasks, [])
+
+        # A continuation which cannot be queued fails the running job.
+        environment = FakeProcessingEnvironment([algorithm])
+        dependencies = environment.dependencies()
+
+        def unavailable_scheduler(_callback):
+            raise RuntimeError("event loop unavailable")
+
+        dependencies["continuation_scheduler"] = unavailable_scheduler
+        manager = ProcessingJobManager(dependencies=dependencies)
+        failed = manager.start({"category": "vector", "algorithm_id": algorithm.id()})
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(
+            failed["error"],
+            {
+                "code": "continuation_schedule_failed",
+                "stage": "preflight",
+                "message": "event loop unavailable",
+                "details": None,
+                "feedback_messages": [],
+            },
+        )
+
+        def running_runtime(feedback_message):
+            runtime = processing_jobs._ProcessingRuntime(
+                algorithm=None,
+                parameters={},
+                context=None,
+                feedback=None,
+                add_outputs_to_project=False,
+                generation=0,
+            )
+            runtime.feedback_messages.append(feedback_message)
+            job_id = str(uuid.uuid4())
+            manager.store.create(
+                "vector",
+                {"job_id": job_id, "state": "running"},
+                runtime=runtime,
+            )
+            return job_id, runtime
+
+        # Recovery without a recorded terminal result still reports a full error.
+        manager = ProcessingJobManager(
+            dependencies=FakeProcessingEnvironment([algorithm]).dependencies()
+        )
+        job_id, runtime = running_runtime("Error: survey failed")
+        manager._recover_runtime(job_id, "vector", runtime)
+        self.assertEqual(
+            manager.store.get(job_id, "vector")["error"],
+            {
+                "code": "cleanup_failed",
+                "stage": "cleanup",
+                "message": "Processing job ended without a recorded result",
+                "details": None,
+                "feedback_messages": ["Error: survey failed"],
+            },
+        )
+
+        # Incomplete cleanup wraps the original error in the same structure.
+        job_id, runtime = running_runtime("Warning: partial output")
+        runtime.pending_terminal = {
+            "state": "failed",
+            "progress_text": "Algorithm failed",
+            "error": {
+                "code": "algorithm_failed",
+                "stage": "execute",
+                "message": "Algorithm failed",
+                "details": None,
+                "feedback_messages": ["Warning: partial output"],
+            },
+        }
+        incomplete = {
+            "complete": False,
+            "residual_paths": [],
+            "residual_layer_ids": [],
+            "errors": ["output locked"],
+            "retry_recommended": True,
+        }
+        with mock.patch.object(
+            processing_jobs,
+            "_processing_cleanup_receipt",
+            return_value=incomplete,
+        ):
+            manager._recover_runtime(job_id, "vector", runtime)
+        error = manager.store.get(job_id, "vector")["error"]
+        self.assertEqual(error["code"], "output_state_indeterminate")
+        self.assertEqual(set(error), error_keys)
+        self.assertEqual(error["feedback_messages"], ["Warning: partial output"])
+        self.assertEqual(error["details"]["original_error"]["code"], "algorithm_failed")
 
     def test_absolute_and_non_file_processing_destinations_are_unchanged(self):
         import qcopilots_common.processing_jobs as processing_jobs
@@ -2898,8 +3245,19 @@ class TestProcessingJobManager(unittest.TestCase):
             self.assertFalse(staged.exists())
 
     def test_qgs_task_lifecycle_progress_idempotency_and_summary(self):
+        distance_definition = FakeProcessingDefinition(
+            "DISTANCE",
+            destination=False,
+            definition_type="distance",
+        )
         environment = FakeProcessingEnvironment(
-            [FakeAlgorithm("vector:buffer", cancellable=True)]
+            [
+                FakeAlgorithm(
+                    "vector:buffer",
+                    cancellable=True,
+                    parameter_definitions=[distance_definition],
+                )
+            ]
         )
         manager = ProcessingJobManager(dependencies=environment.dependencies())
         request = {
@@ -3120,7 +3478,16 @@ class TestProcessingJobManager(unittest.TestCase):
         self.assertEqual(project_layer_ids, {"preexisting"})
 
     def test_outputs_disabled_retains_context_without_postprocessing(self):
-        environment = FakeProcessingEnvironment([FakeAlgorithm("raster:warp")])
+        environment = FakeProcessingEnvironment(
+            [
+                FakeAlgorithm(
+                    "raster:warp",
+                    parameter_definitions=[
+                        FakeProcessingDefinition("OUTPUT", destination=True)
+                    ],
+                )
+            ]
+        )
         manager = ProcessingJobManager(dependencies=environment.dependencies())
         started = manager.start(
             {
@@ -3158,11 +3525,12 @@ class TestProcessingJobManager(unittest.TestCase):
             destination=False,
             definition_type="raster",
         )
+        output_definition = FakeProcessingDefinition("OUTPUT", destination=True)
         environment = FakeProcessingEnvironment(
             [
                 FakeAlgorithm(
                     "raster:warp",
-                    parameter_definitions=[input_definition],
+                    parameter_definitions=[input_definition, output_definition],
                 )
             ]
         )
@@ -3200,12 +3568,16 @@ class TestProcessingJobManager(unittest.TestCase):
                 )
                 runtime = manager.store.get_runtime(started["job_id"], "raster")
                 task = environment.tasks[0]
-                output_path.write_bytes(b"disk output")
+                # The algorithm writes into the staged destination, which is
+                # published to output_path after verification.
+                staged_output = Path(runtime.parameters["OUTPUT"])
+                staged_output.write_bytes(b"disk output")
                 task.begun.emit()
-                task.executed.emit(True, {"OUTPUT": str(output_path)})
+                task.executed.emit(True, {"OUTPUT": str(staged_output)})
 
                 succeeded = manager.get(started["job_id"])
                 self.assertEqual(succeeded["state"], "succeeded")
+                self.assertEqual(output_path.read_bytes(), b"disk output")
                 self.assertFalse(runtime.retain_context_for_results)
                 self.assertIsNotNone(runtime.context)
 
@@ -3699,7 +4071,7 @@ class TestProcessingJobManager(unittest.TestCase):
         self.assertTrue(stopped["cancel_requested"])
         pending_callback()
         self.assertEqual(manager.get(pending["job_id"]), stopped)
-        with self.assertRaisesRegex(RuntimeError, "stopping"):
+        with self.assertRaisesRegex(RuntimeError, "^service_stopping: "):
             manager.start(
                 {"category": "vector", "algorithm_id": "vector:main"}
             )

@@ -11,7 +11,7 @@ application and never write through QGIS.
    (at your option) any later version.
 """
 
-__author__ = "QCopilots"
+__author__ = "Ethan.Yang"
 __date__ = "2026-11-01"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -221,7 +221,7 @@ class TestQCopilotsWorkspacePaths(unittest.TestCase):
 
         canvas = _FakeCanvas()
         tools = bridge.QgisBridgeTools(types.SimpleNamespace(mapCanvas=lambda: canvas))
-        result = tools.export_map_image({"path": str(target)})
+        result = tools.export_map_image({"path": str(target), "format": "png"})
         self.assertEqual(Path(result["path"]), target.resolve())
         self.assertEqual(target.read_bytes(), b"png-image")
         self.assertEqual(len(canvas.calls), 1)
@@ -244,12 +244,64 @@ class TestQCopilotsWorkspacePaths(unittest.TestCase):
                 with self.assertRaisesRegex(PermissionError, "drive-relative"):
                     tools._safe_workspace_path("C:roads.gpkg", access="read")
 
+        # A local layer source is stricter than the path helper: a relative
+        # source would be read from the QGIS program folder, so it is refused.
         tools = bridge.QgisBridgeTools(None)
+        with self.assertRaisesRegex(ValueError, "absolute file path"):
+            tools._validate_layer_source_path("data/roads.gpkg|layername=roads")
         self.assertEqual(
-            tools._validate_layer_source_path("data/roads.gpkg|layername=roads"),
+            tools._validate_layer_source_path(expected + "|layername=roads"),
             expected + "|layername=roads",
         )
         self.assert_nothing_written()
+
+    def test_embedded_local_layer_paths_must_be_absolute(self):
+        data = self.root / "data.gpkg"
+        data.write_bytes(b"data")
+        compatible = bridge.QgisBridgeTools(None)
+        relative_sources = (
+            "file:data.gpkg",
+            "dbname='data.gpkg' table=roads",
+            "GPKG:data.gpkg",
+            # QGIS does not expand "~" in a provider URI it receives as is.
+            "dbname='~/data.gpkg' table=roads",
+            # A url without a scheme is a local file, for example mbtiles.
+            "type=mbtiles&url=data/tiles.mbtiles",
+        )
+        for source in relative_sources:
+            with self.subTest(source=source), self.assertRaisesRegex(
+                ValueError, "absolute file path"
+            ):
+                compatible._validate_layer_source_path(source)
+        for options in (
+            {"url": "file:data.gpkg"},
+            {"url": "data.gpkg"},
+            {"dbname": "data.gpkg"},
+        ):
+            with self.subTest(options=options), self.assertRaisesRegex(
+                ValueError, "absolute file path"
+            ):
+                compatible._validate_layer_uri_options(
+                    options, layer_type="vector", provider="ogr"
+                )
+        self.assertEqual(
+            compatible._validate_layer_source_path(data.as_uri()),
+            str(data.resolve()),
+        )
+        absolute_provider = f"dbname='{data}' table=roads"
+        self.assertEqual(
+            compatible._validate_layer_source_path(absolute_provider),
+            absolute_provider,
+        )
+
+        restricted = bridge.QgisBridgeTools(None, filesystem_policy=RESTRICTED_POLICY)
+        with self.assertRaisesRegex(ValueError, "absolute file path"):
+            restricted._validate_layer_source_path("dbname=data.gpkg&table=roads")
+        self.assertEqual(
+            restricted._validate_layer_source_path(f"dbname={data}&table=roads"),
+            f"dbname={data}&table=roads",
+        )
+        self.assertEqual(list(self.program_folder.iterdir()), [])
 
 
 if __name__ == "__main__":

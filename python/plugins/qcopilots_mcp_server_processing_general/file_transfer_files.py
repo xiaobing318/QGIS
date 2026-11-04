@@ -167,7 +167,9 @@ def sha256_stream(
     return digest.hexdigest(), count
 
 
-def _local_path(policy: FilesystemPolicy, value: str | Path, access: str) -> Path:
+def lexical_local_path(value: str | Path) -> Path:
+    """Return an absolute local path checked by spelling only, without filesystem access."""
+
     raw = str(value)
     slashed = raw.replace("\\", "/")
     if (
@@ -181,6 +183,12 @@ def _local_path(policy: FilesystemPolicy, value: str | Path, access: str) -> Pat
     if os.name == "nt":
         for component in path.parts[1:]:
             _component(component, windows=True)
+    return path
+
+
+def _local_path(policy: FilesystemPolicy, value: str | Path, access: str) -> Path:
+    path = lexical_local_path(value)
+    if os.name == "nt":
         # Query the local drive table before lstat could touch a mapped network drive.
         import ctypes
 

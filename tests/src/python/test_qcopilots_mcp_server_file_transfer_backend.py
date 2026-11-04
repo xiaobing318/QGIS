@@ -6,6 +6,10 @@
    (at your option) any later version.
 """
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import base64
 import errno
 import hashlib
@@ -317,19 +321,23 @@ class TestFileTransferBackend(unittest.TestCase):
         self.sftp.close.assert_called_once()
 
     def test_policy_denies_all_ssh_paths_before_dependency_import(self):
-        for policy in (FilesystemPolicy(network_enabled=False), FilesystemPolicy(mode="formal_restricted")):
+        for policy, code in (
+            (FilesystemPolicy(network_enabled=False), "network_disabled"),
+            (FilesystemPolicy(mode="formal_restricted"), "file_transfer_restricted"),
+            (FilesystemPolicy(mode="formal_restricted", network_enabled=False), "network_disabled"),
+        ):
             with self.subTest(policy=policy):
                 backend = file_transfer_backend.FileTransferBackend(types.SimpleNamespace(root=self.root), policy)
-                self.assert_error("network_disallowed", backend.connect, self.config)
-                self.assert_error("network_disallowed", backend.test_connection, self.config)
-                self.assert_error("network_disallowed", backend.trust_host, self.config, "fingerprint", "token")
+                self.assert_error(code, backend.connect, self.config)
+                self.assert_error(code, backend.test_connection, self.config)
+                self.assert_error(code, backend.trust_host, self.config, "fingerprint", "token")
         self.load.assert_not_called()
         self.create_socket.assert_not_called()
 
     def test_invalid_endpoint_and_timeouts_rejected(self):
         for updates in ({"host": "bad\nhost"}, {"host": "bad,host"}, {"port": True}, {"port": 0}, {"port": 65536}, {"username": ""}, {"password": None}, {"connect_timeout": float("nan")}, {"io_timeout": 0}):
             with self.subTest(updates=updates):
-                self.assert_error("invalid_configuration", self.backend.connect, {**self.config, **updates})
+                self.assert_error("invalid_config", self.backend.connect, {**self.config, **updates})
         self.load.assert_not_called()
 
     def test_missing_paramiko_is_controlled_and_import_is_lazy(self):

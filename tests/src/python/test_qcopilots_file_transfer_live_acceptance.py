@@ -6,6 +6,10 @@ the user's configuration, known hosts or persistent GIS corpus.
 
 from __future__ import annotations
 
+__author__ = "Ethan.Yang"
+__date__ = "2026-10-10"
+__copyright__ = "Copyright 2026, The QGIS Project"
+
 import contextlib
 import io
 import json

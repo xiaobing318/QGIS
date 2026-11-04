@@ -11,19 +11,16 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from qcopilots_common.async_jobs import PUBLIC_JOB_STATE_ORDER
 from qcopilots_common.bridge import BridgeClient
-from qcopilots_common.constants import BRIDGE_URL_ENV
+from qcopilots_common.constants import (
+    BRIDGE_URL_ENV,
+    QGIS_BINARY_DEFAULT_LIST_LIMIT,
+    QGIS_BINARY_MAX_LIST_LIMIT,
+)
 from qcopilots_common.mcp_http import McpTool
 
 
-PUBLIC_JOB_STATES = (
-    "queued",
-    "running",
-    "cancelling",
-    "succeeded",
-    "failed",
-    "cancelled",
-)
 MAX_STDIN_CHARS = 1024 * 1024
 MAX_TIMEOUT_SECONDS = 24 * 60 * 60
 
@@ -56,16 +53,24 @@ def build_qgis_binary_tools() -> list[McpTool]:
         McpTool(
             "list_qgis_binaries",
             (
-                "Discover the current QGIS package binaries without "
-                "starting a process. Returns a filtered, cursor-paginated page of "
-                "binary summaries, including catalog enablement, configured risk, "
-                "environment, package-relative path and disabled reasons, so a "
-                "returned binary_id can be used with the details or start tools. "
-                "Package changes are discovered on each lookup. Unreviewed binaries "
-                "are listed but cannot run, and missing configured binaries remain "
-                "listed as unavailable. Availability and policy_status distinguish "
-                "package presence from reviewed execution policy. "
-                "Listing the catalog does not execute a configured probe or binary."
+                "Discover the command line programs shipped in the current QGIS "
+                "package, such as gdalinfo, ogrinfo, ogr2ogr, gdalwarp, projinfo "
+                "and qgis_process, without starting a process. This is step one "
+                "of the binary workflow: list_qgis_binaries, "
+                "get_qgis_binary_details, start_qgis_binary, then poll "
+                "get_qgis_binary_job. Returns a filtered, cursor-paginated page "
+                "(binaries, total, next_cursor) of binary summaries, including "
+                "catalog enablement, configured risk, environment, "
+                "package-relative path and disabled reasons, so a returned "
+                "binary_id can be used with the details or start tools. Search "
+                "with query, for example ogr2ogr, and add enabled=true to see "
+                "only runnable entries. Pass next_cursor as cursor until it is "
+                "null. Package changes are discovered on each lookup. Unreviewed "
+                "binaries are listed but cannot run, and missing configured "
+                "binaries remain listed as unavailable. Availability and "
+                "policy_status distinguish package presence from reviewed "
+                "execution policy. Listing the catalog does not execute a "
+                "configured probe or binary."
             ),
             _list_binaries_schema(),
             list_binaries,
@@ -77,10 +82,16 @@ def build_qgis_binary_tools() -> list[McpTool]:
                 "running it. Given a binary_id from list_qgis_binaries, returns its "
                 "effective catalog policy, package-relative executable path, catalog "
                 "enablement, risk, environment, configured probe, exit-code rules, "
-                "and resource limits when reviewed. Newly discovered binaries have "
-                "no configured probe or environment and cannot run. This inspection "
-                "does not execute the probe or "
-                "binary."
+                "and resource limits when reviewed. Check it before "
+                "start_qgis_binary. Risk R1 runs directly, R2 needs "
+                "confirmed_risk=true and R3 never runs. timeout_seconds is the "
+                "largest timeout a start accepts, max_stdin_bytes bounds stdin, "
+                "success_exit_codes decide whether a job succeeds, and a "
+                "progress_parser means progress_percent is reported while "
+                "running. It does not return the program's command line help. "
+                "Newly discovered binaries have no configured probe or "
+                "environment and cannot run. This inspection does not execute "
+                "the probe or binary."
             ),
             _binary_id_schema(),
             binary_details,
@@ -92,13 +103,24 @@ def build_qgis_binary_tools() -> list[McpTool]:
                 "asynchronous QgsTask job. The service passes argv without a command "
                 "shell, applies the catalog environment and resource limits, requires "
                 "explicit confirmation for R2 binaries, blocks R3 binaries, and "
-                "returns a job snapshot for later polling or cancellation. Normal "
-                "local input and output paths may be anywhere the QGIS process account "
-                "can access. For deterministic file outputs, pass absolute input and "
+                "returns a job snapshot (job_id, state queued) for later polling or "
+                "cancellation. Use it when a task needs a specific packaged program "
+                "or option, for example gdalinfo -json or ogr2ogr with -sql. Prefer "
+                "start_raster_processing_algorithm and the other Processing start "
+                "tools when an algorithm covers the task, because they add outputs "
+                "to the project. Use exec_shell_command only for programs outside "
+                "this catalog, since it runs synchronously without the catalog "
+                "environment. R1 binaries run directly. For R2, show the user the "
+                "command and set confirmed_risk=true only after approval. For "
+                "deterministic file outputs, pass absolute input and "
                 "output paths in argv, select an existing absolute working directory, "
-                "and create output parent directories before starting the job. Formal "
+                "and create output parent directories before starting the job. "
+                "The service does not protect existing outputs, so the program's "
+                "flags such as -overwrite decide. Formal "
                 "restricted mode still rejects unsafe path forms, unapproved network "
-                "sources, and rejects non-empty stdin."
+                "sources, and rejects non-empty stdin. Poll get_qgis_binary_job "
+                "until the state is terminal, then use load_map_layer to show "
+                "outputs."
             ),
             _start_binary_schema(),
             start_binary,
@@ -109,7 +131,16 @@ def build_qgis_binary_tools() -> list[McpTool]:
                 "Read the current complete snapshot of one QGIS binary job without "
                 "waiting for or changing it. Returns lifecycle state, progress, "
                 "timestamps, binary metadata, and a terminal result or structured "
-                "error, including bounded stdout and stderr tails when available."
+                "error, including bounded stdout and stderr tails when available. "
+                "Call it repeatedly with the job_id from start_qgis_binary until "
+                "the state is succeeded, failed or cancelled. A succeeded job has "
+                "result.exit_code, result.stdout, result.stderr, truncation flags "
+                "and duration_seconds. An exit code outside the catalog "
+                "success_exit_codes makes the job failed with error.code "
+                "process_exit_failed. Other codes include process_timed_out and "
+                "process_start_failed, and error.details carries any captured "
+                "output. progress_percent stays null unless the binary has a "
+                "progress parser."
             ),
             _job_id_schema(),
             get_job,
@@ -117,10 +148,16 @@ def build_qgis_binary_tools() -> list[McpTool]:
         McpTool(
             "list_qgis_binary_jobs",
             (
-                "List recent QGIS binary job summaries without changing or waiting "
-                "for jobs. Optionally filters by lifecycle state and limits the result "
-                "count. Use get_qgis_binary_job with a returned job_id for complete "
-                "progress, output, result, or error details."
+                "List recent QGIS binary job summaries, newest first, without "
+                "changing or waiting for jobs. Optionally filters by lifecycle "
+                "state and limits the result count, which defaults to "
+                f"{QGIS_BINARY_DEFAULT_LIST_LIMIT}. "
+                "Summaries include job_id, state, binary, progress, timestamps and "
+                "the error code and message, but no stdout, stderr or result. Use "
+                "it to recover a lost job_id or to see what is still running. "
+                "Finished jobs are kept in memory by the running QGIS session for "
+                "up to 24 hours. Use get_qgis_binary_job with a returned job_id "
+                "for complete progress, output, result, or error details."
             ),
             _list_jobs_schema(),
             list_jobs,
@@ -130,9 +167,14 @@ def build_qgis_binary_tools() -> list[McpTool]:
             (
                 "Request cancellation of a queued or running QGIS binary job and its "
                 "spawned process tree. Returns the current job snapshot after the "
-                "request. Cancellation may complete asynchronously, so poll "
-                "get_qgis_binary_job to confirm the terminal state, while already "
-                "terminal jobs remain recorded."
+                "request, normally in state cancelling. Cancellation may complete "
+                "asynchronously, so poll get_qgis_binary_job to confirm the "
+                "terminal state, while already terminal jobs remain recorded. A "
+                "process that exits before it is stopped can still end succeeded "
+                "or failed, and a process tree that cannot be stopped ends failed "
+                "with process_termination_failed. Partial output files are not "
+                "removed. A cancelled job cannot resume, so start a new job to "
+                "retry."
             ),
             _job_id_schema(),
             cancel_job,
@@ -157,10 +199,11 @@ def _list_binaries_schema() -> dict[str, Any]:
             "limit": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 200,
-                "default": 50,
+                "maximum": QGIS_BINARY_MAX_LIST_LIMIT,
+                "default": QGIS_BINARY_DEFAULT_LIST_LIMIT,
                 "description": (
-                    "Maximum number of binary summaries to return on this page."
+                    "Maximum number of binary summaries to return on this page, "
+                    f"{QGIS_BINARY_DEFAULT_LIST_LIMIT} when omitted."
                 ),
             },
             "query": {
@@ -168,7 +211,8 @@ def _list_binaries_schema() -> dict[str, Any]:
                 "maxLength": 256,
                 "description": (
                     "Case-insensitive substring matched against binary ID, name, "
-                    "description, package-relative path, and group."
+                    "description, package-relative path, and group, for example "
+                    "gdalwarp or qgis_process."
                 ),
             },
             "group": {
@@ -273,7 +317,7 @@ def _start_binary_schema() -> dict[str, Any]:
                     "binary may prohibit stdin or impose a smaller byte limit. Formal "
                     "restricted mode permits only omitted or empty stdin because this "
                     "untyped channel could carry paths, data sources, or external "
-                    "references; non-empty stdin is rejected before job creation."
+                    "references, so non-empty stdin is rejected before job creation."
                 ),
             },
             "timeout_seconds": {
@@ -282,7 +326,8 @@ def _start_binary_schema() -> dict[str, Any]:
                 "maximum": MAX_TIMEOUT_SECONDS,
                 "description": (
                     "Requested runtime timeout in seconds. It cannot exceed the "
-                    "selected binary's configured timeout; omission uses that limit."
+                    "selected binary's configured timeout, and omission uses that "
+                    "limit."
                 ),
             },
             "client_request_id": {
@@ -298,8 +343,9 @@ def _start_binary_schema() -> dict[str, Any]:
                 "type": "boolean",
                 "default": False,
                 "description": (
-                    "Explicit per-request risk confirmation. It must be true for an "
-                    "R2 binary and does not allow an R3 binary to run."
+                    "Explicit per-request risk confirmation, required as true for "
+                    "an R2 binary after the user approves the command. It does not "
+                    "allow an R3 binary to run."
                 ),
             },
         },
@@ -333,7 +379,7 @@ def _list_jobs_schema() -> dict[str, Any]:
         "properties": {
             "states": {
                 "type": "array",
-                "items": {"type": "string", "enum": list(PUBLIC_JOB_STATES)},
+                "items": {"type": "string", "enum": list(PUBLIC_JOB_STATE_ORDER)},
                 "minItems": 1,
                 "uniqueItems": True,
                 "description": (
@@ -344,8 +390,12 @@ def _list_jobs_schema() -> dict[str, Any]:
             "limit": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 200,
-                "description": "Maximum number of recent job summaries to return.",
+                "maximum": QGIS_BINARY_MAX_LIST_LIMIT,
+                "default": QGIS_BINARY_DEFAULT_LIST_LIMIT,
+                "description": (
+                    "Maximum number of recent job summaries to return, "
+                    f"{QGIS_BINARY_DEFAULT_LIST_LIMIT} when omitted."
+                ),
             },
         },
         "additionalProperties": False,

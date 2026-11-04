@@ -29,6 +29,10 @@ from qcopilots_common.async_jobs import (
     TERMINAL_JOB_STATES,
     utc_now_rfc3339,
 )
+from qcopilots_common.constants import (
+    QGIS_BINARY_DEFAULT_LIST_LIMIT,
+    QGIS_BINARY_MAX_LIST_LIMIT,
+)
 from qcopilots_common.security_policy import FilesystemPolicy
 
 
@@ -36,8 +40,6 @@ QGIS_BINARY_CATEGORY = "qgis_binary"
 MAX_BINARY_STDIN_BYTES = 1024 * 1024
 MAX_BINARY_OUTPUT_BYTES = 16 * 1024 * 1024
 MAX_BINARY_TIMEOUT_SECONDS = 24 * 60 * 60
-DEFAULT_LIST_LIMIT = 100
-MAX_LIST_LIMIT = 200
 
 _WINDOWS_DEVICE_PATH_PREFIXES = (
     "\\\\?\\",
@@ -621,13 +623,16 @@ class QGISBinaryJobManager:
                 raise ValueError("cursor must be a pagination token")
             cursor_fingerprint = token.group(1)
             offset = int(token.group(2))
-        limit = arguments.get("limit", DEFAULT_LIST_LIMIT)
+        limit = arguments.get("limit", QGIS_BINARY_DEFAULT_LIST_LIMIT)
         if (
             isinstance(limit, bool)
             or not isinstance(limit, int)
-            or not 1 <= limit <= MAX_LIST_LIMIT
+            or not 1 <= limit <= QGIS_BINARY_MAX_LIST_LIMIT
         ):
-            raise ValueError("limit must be an integer from 1 through 200")
+            raise ValueError(
+                "limit must be an integer from 1 through "
+                f"{QGIS_BINARY_MAX_LIST_LIMIT}"
+            )
         query_value = arguments.get("query")
         if query_value is not None and not isinstance(query_value, str):
             raise ValueError("query must be a string")
@@ -696,7 +701,9 @@ class QGISBinaryJobManager:
     def start(self, arguments: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             if not self._accepting:
-                raise RuntimeError("QCopilots QGIS binary job manager is stopping")
+                raise RuntimeError(
+                    "service_stopping: QCopilots QGIS binary job manager is stopping"
+                )
             generation = self._generation
         binary_id = _required_string(arguments.get("binary_id"), "binary_id")
         argv = arguments.get("arguments", [])
@@ -878,19 +885,25 @@ class QGISBinaryJobManager:
         states = arguments.get("states")
         if states is not None:
             if not isinstance(states, list) or not states:
-                raise ValueError("states must be a non-empty array")
+                raise ValueError("invalid_states: states must be a non-empty array")
             if len({str(state) for state in states}) != len(states):
-                raise ValueError("states must not contain duplicates")
+                raise ValueError("invalid_states: states must not contain duplicates")
             invalid = {str(state) for state in states} - PUBLIC_JOB_STATES
             if invalid:
-                raise ValueError("Invalid public job states: " + ", ".join(sorted(invalid)))
-        limit = arguments.get("limit", DEFAULT_LIST_LIMIT)
+                raise ValueError(
+                    "invalid_states: Invalid public job states: "
+                    + ", ".join(sorted(invalid))
+                )
+        limit = arguments.get("limit", QGIS_BINARY_DEFAULT_LIST_LIMIT)
         if (
             isinstance(limit, bool)
             or not isinstance(limit, int)
-            or not 1 <= limit <= MAX_LIST_LIMIT
+            or not 1 <= limit <= QGIS_BINARY_MAX_LIST_LIMIT
         ):
-            raise ValueError("limit must be an integer from 1 through 200")
+            raise ValueError(
+                "limit must be an integer from 1 through "
+                f"{QGIS_BINARY_MAX_LIST_LIMIT}"
+            )
         snapshots = self.store.list(
             QGIS_BINARY_CATEGORY, states=states, limit=limit
         )
@@ -1742,7 +1755,9 @@ def _resolve_catalog_executable(
     except ValueError as err:
         raise BinaryCatalogError(f"Binary path escapes package root: {relative_path}") from err
     if require_exists and not candidate.is_file():
-        raise BinaryExecutionError(f"Configured QGIS binary is missing: {relative_path}")
+        raise BinaryExecutionError(
+            f"qgis_binary_unavailable: Configured QGIS binary is missing: {relative_path}"
+        )
     return candidate
 
 

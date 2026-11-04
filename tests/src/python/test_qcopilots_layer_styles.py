@@ -6,7 +6,7 @@
    (at your option) any later version.
 """
 
-__author__ = "OpenAI"
+__author__ = "Ethan.Yang"
 __date__ = "2026-11-01"
 __copyright__ = "Copyright 2026, The QGIS Project"
 
@@ -226,6 +226,45 @@ class TestQCopilotsLayerStyles(unittest.TestCase):
         self.assertEqual(self.layer.labeling().settings().fieldName, "name")
         self.assertTrue(labeling["enabled"])
         self.assertEqual(labeling["field_or_expression"], "name")
+
+    def test_label_color_alpha_becomes_text_opacity(self):
+        result = self.tools.interactive_layer_configure_labels(
+            {
+                "layer_id": self.layer.id(),
+                "field_or_expression": "  name  ",
+                "color": "#33669980",
+            }
+        )
+        self.assertEqual(result["field_or_expression"], "name")
+        text_format = self.layer.labeling().settings().format()
+        # QgsTextRenderer replaces the color alpha with the format opacity,
+        # so the alpha must arrive as the opacity to be drawn at all.
+        self.assertEqual(text_format.color().name(), "#336699")
+        self.assertEqual(text_format.color().alpha(), 255)
+        self.assertAlmostEqual(text_format.opacity(), 0x80 / 255, places=3)
+
+        opaque = self.tools.interactive_layer_configure_labels(
+            {"layer_id": self.layer.id(), "field_or_expression": "name"}
+        )
+        self.assertTrue(opaque["labels_enabled"])
+        self.assertAlmostEqual(
+            self.layer.labeling().settings().format().opacity(), 1.0
+        )
+        with self.assertRaisesRegex(RuntimeError, "#RRGGBBAA"):
+            self.tools.interactive_layer_configure_labels(
+                {
+                    "layer_id": self.layer.id(),
+                    "field_or_expression": "name",
+                    "color": "red",
+                }
+            )
+
+        disabled = self.tools.interactive_layer_configure_labels(
+            {"layer_id": self.layer.id(), "enabled": False}
+        )
+        self.assertFalse(disabled["labels_enabled"])
+        self.assertIsNone(disabled["field_or_expression"])
+        self.assertFalse(disabled["is_expression"])
 
     def test_sld_without_text_symbolizer_keeps_current_labels(self):
         self._set_single_symbol(self.layer)
