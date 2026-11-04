@@ -687,8 +687,15 @@ def _capture_qgis_screenshot_tool(bridge: BridgeClient) -> McpTool:
             "also any other application window that overlaps QGIS. Use screen "
             "only when the user explicitly asks for it. region crops "
             "[x, y, width, height] in logical pixels of the target, and the "
-            "image is downscaled so its long edge is at most max_dimension. The "
-            "tool waits up to wait_for_render_ms for the map canvas to finish "
+            "image is downscaled so its long edge is at most max_dimension. "
+            "The image cannot be sharper than the screen. A region keeps the "
+            "native pixels, so use one to read small labels or fine detail. "
+            "The warnings downscaled_to_max_dimension, "
+            "downscaled_to_fit_size_budget, "
+            "converted_to_jpeg_to_fit_size_budget and "
+            "jpeg_quality_lowered_to_<quality> mean detail was lost, so "
+            "capture a smaller region when that detail matters. The tool "
+            "waits up to wait_for_render_ms for the map canvas to finish "
             "rendering."
         ),
         _capture_qgis_screenshot_schema(),
@@ -1164,15 +1171,20 @@ def _capture_qgis_screenshot_schema() -> dict[str, Any]:
                 "minimum": screenshot.MIN_MAX_DIMENSION,
                 "maximum": screenshot.MAX_MAX_DIMENSION,
                 "default": screenshot.DEFAULT_MAX_DIMENSION,
-                "description": "Longest image edge in pixels after downscaling.",
+                "description": (
+                    "Longest image edge in pixels. Larger images are downscaled "
+                    "to fit. Values above the default use more model tokens, and "
+                    "some models downscale large images again."
+                ),
             },
             "format": {
                 "type": "string",
                 "enum": list(screenshot.IMAGE_FORMATS),
                 "default": screenshot.DEFAULT_IMAGE_FORMAT,
                 "description": (
-                    "auto uses PNG and switches to JPEG when the PNG is larger "
-                    "than 1 MiB."
+                    "auto uses lossless PNG while it fits the "
+                    f"{screenshot.MAX_IMAGE_BYTES // (1024 * 1024)} MiB image "
+                    "limit and otherwise switches to JPEG."
                 ),
             },
             "jpeg_quality": {

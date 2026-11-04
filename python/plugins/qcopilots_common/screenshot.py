@@ -30,18 +30,18 @@ DEFAULT_CAPTURE_METHOD = "widget"
 DEFAULT_IMAGE_FORMAT = "auto"
 DEFAULT_INCLUDE_QCOPILOTS_PANEL = True
 MIN_MAX_DIMENSION = 256
-MAX_MAX_DIMENSION = 2560
-DEFAULT_MAX_DIMENSION = 1568
+MAX_MAX_DIMENSION = 3840
+DEFAULT_MAX_DIMENSION = 2560
 MIN_JPEG_QUALITY = 40
 MAX_JPEG_QUALITY = 95
-DEFAULT_JPEG_QUALITY = 85
-FALLBACK_JPEG_QUALITY = 70
+DEFAULT_JPEG_QUALITY = 95
+FALLBACK_JPEG_QUALITIES = (85, 70)
 MAX_WAIT_FOR_RENDER_MS = 10000
-DEFAULT_WAIT_FOR_RENDER_MS = 3000
+DEFAULT_WAIT_FOR_RENDER_MS = 10000
 RENDER_POLL_INTERVAL_SECONDS = 0.2
 
-AUTO_PNG_MAX_BYTES = 1024 * 1024
-MAX_IMAGE_BYTES = 3 * 1024 * 1024
+# base64 编码后仍低于 Claude API 的 10 MB 单图上限和 QgsQCopilotsMcpBridge 的 16 MiB 响应上限。
+MAX_IMAGE_BYTES = 7 * 1024 * 1024
 SHRINK_FACTOR = 0.8
 MIN_SHRINK_EDGE = 64
 
@@ -244,6 +244,8 @@ def capture_qgis_screenshot(
     warnings.extend(geometry["warnings"])
 
     image = crop_image(image, device_pixel_ratio, region)
+    if max(image.width(), image.height()) > options["max_dimension"]:
+        warnings.append("downscaled_to_max_dimension")
     image = scale_to_max_dimension(image, options["max_dimension"])
     data, image_format, image = encode_image(
         image,
@@ -641,36 +643,35 @@ def encode_image(
     image_format: str,
     jpeg_quality: int,
     warnings: list[str],
-    png_budget: int = AUTO_PNG_MAX_BYTES,
     max_bytes: int = MAX_IMAGE_BYTES,
 ) -> tuple[bytes, str, Any]:
     """Encode within the size budget and return (data, format, final image).
 
-    auto tries PNG up to png_budget, then JPEG at jpeg_quality, then JPEG at
-    the fallback quality. Every format then shrinks the image in 0.8 steps
-    until it fits max_bytes.
+    auto keeps lossless PNG while it fits, then tries JPEG at jpeg_quality and
+    at each lower fallback quality. Every format then shrinks the image in 0.8
+    steps until it fits max_bytes.
     """
 
-    if image_format == "png":
-        attempts = [("png", None, max_bytes)]
-        shrink_attempt = ("png", None, max_bytes)
-    else:
-        attempts = []
-        if image_format == "auto":
-            attempts.append(("png", None, png_budget))
-        attempts.append(("jpeg", jpeg_quality, max_bytes))
-        if jpeg_quality > FALLBACK_JPEG_QUALITY:
-            attempts.append(("jpeg", FALLBACK_JPEG_QUALITY, max_bytes))
-        shrink_attempt = attempts[-1]
+    attempts = []
+    if image_format != "jpeg":
+        attempts.append(("png", None))
+    if image_format != "png":
+        attempts.append(("jpeg", jpeg_quality))
+        attempts.extend(
+            ("jpeg", quality)
+            for quality in FALLBACK_JPEG_QUALITIES
+            if quality < jpeg_quality
+        )
 
-    for encoded_format, quality, budget in attempts:
+    for encoded_format, quality in attempts:
         data = _encode(image, encoded_format, quality)
-        if len(data) <= budget:
-            if quality is not None and quality != jpeg_quality:
-                warnings.append(f"jpeg_quality_lowered_to_{quality}")
+        if len(data) <= max_bytes:
+            warnings.extend(
+                _encoding_warnings(image_format, encoded_format, quality, jpeg_quality)
+            )
             return data, encoded_format, image
 
-    encoded_format, quality, budget = shrink_attempt
+    encoded_format, quality = attempts[-1]
     current = image
     while True:
         width = int(current.width() * SHRINK_FACTOR)
@@ -682,11 +683,26 @@ def encode_image(
             )
         current = scale_to_max_dimension(current, max(width, height))
         data = _encode(current, encoded_format, quality)
-        if len(data) <= budget:
-            if quality is not None and quality != jpeg_quality:
-                warnings.append(f"jpeg_quality_lowered_to_{quality}")
+        if len(data) <= max_bytes:
+            warnings.extend(
+                _encoding_warnings(image_format, encoded_format, quality, jpeg_quality)
+            )
             warnings.append("downscaled_to_fit_size_budget")
             return data, encoded_format, current
+
+
+def _encoding_warnings(
+    requested_format: str,
+    encoded_format: str,
+    quality: int | None,
+    jpeg_quality: int,
+) -> list[str]:
+    warnings = []
+    if requested_format == "auto" and encoded_format == "jpeg":
+        warnings.append("converted_to_jpeg_to_fit_size_budget")
+    if quality is not None and quality != jpeg_quality:
+        warnings.append(f"jpeg_quality_lowered_to_{quality}")
+    return warnings
 
 
 def _encode(image: Any, image_format: str, quality: int | None) -> bytes:

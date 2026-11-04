@@ -204,7 +204,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
                 properties["max_dimension"]["maximum"],
                 properties["max_dimension"]["default"],
             ),
-            (256, 2560, 1568),
+            (256, 3840, 2560),
         )
         self.assertEqual(properties["format"]["enum"], ["auto", "png", "jpeg"])
         self.assertEqual(
@@ -213,7 +213,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
                 properties["jpeg_quality"]["maximum"],
                 properties["jpeg_quality"]["default"],
             ),
-            (40, 95, 85),
+            (40, 95, 95),
         )
         self.assertEqual(
             (
@@ -221,10 +221,20 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
                 properties["wait_for_render_ms"]["maximum"],
                 properties["wait_for_render_ms"]["default"],
             ),
-            (0, 10000, 3000),
+            (0, 10000, 10000),
         )
         self.assertIn("explicitly asks", tool.description)
         self.assertIn("map_canvas (default", tool.description)
+        self.assertIn("A region keeps the native pixels", tool.description)
+        for warning in (
+            "downscaled_to_max_dimension",
+            "downscaled_to_fit_size_budget",
+            "converted_to_jpeg_to_fit_size_budget",
+            "jpeg_quality_lowered_to_",
+        ):
+            with self.subTest(warning=warning):
+                self.assertIn(warning, tool.description)
+        self.assertIn("7 MiB", properties["format"]["description"])
 
         for arguments in (
             {},
@@ -232,6 +242,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
             {"region": [0, 0, 10, 10], "include_qcopilots_panel": False},
             {"capture_method": "screen", "format": "jpeg", "jpeg_quality": 40},
             {"max_dimension": 256, "wait_for_render_ms": 0},
+            {"max_dimension": 3840},
         ):
             with self.subTest(arguments=arguments):
                 _validate_tool_arguments(arguments, schema)
@@ -241,6 +252,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
             {"region": [0, 0, 10.5, 10]},
             {"region": [-1, 0, 10, 10]},
             {"max_dimension": 100},
+            {"max_dimension": 3841},
             {"jpeg_quality": 99},
             {"wait_for_render_ms": 20000},
             {"format": "webp"},
@@ -374,7 +386,7 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
 
         def call(operation, arguments):
             calls.append((operation, dict(arguments)))
-            if arguments.get("wait_for_render_ms", 3000) > 0:
+            if arguments.get("wait_for_render_ms", 10000) > 0:
                 return {"pending_render": True, "target": "map_canvas"}
             return _sample_bridge_result(warnings=["canvas_still_rendering"])
 
@@ -393,14 +405,29 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
 
         def default_call(operation, arguments):
             default_calls.append(dict(arguments))
-            if arguments.get("wait_for_render_ms", 3000) > 0:
+            if arguments.get("wait_for_render_ms", 10000) > 0:
                 return {"pending_render": True}
             return _sample_bridge_result()
 
         capture_screenshot_via_bridge(default_call, {}, clock=default_clock, sleep=default_clock.sleep)
         self.assertEqual(default_calls[0], {})
         self.assertEqual(default_calls[-1], {"wait_for_render_ms": 0})
-        self.assertAlmostEqual(sum(default_clock.sleeps), 3.0)
+        self.assertAlmostEqual(sum(default_clock.sleeps), 10.0)
+
+    def test_default_wait_returns_as_soon_as_rendering_finishes(self):
+        from qcopilots_common.screenshot import capture_screenshot_via_bridge
+
+        clock = _FakeClock()
+        calls = []
+        responses = [{"pending_render": True}, _sample_bridge_result()]
+
+        def call(operation, arguments):
+            calls.append(dict(arguments))
+            return responses.pop(0)
+
+        capture_screenshot_via_bridge(call, {}, clock=clock, sleep=clock.sleep)
+        self.assertEqual(calls, [{}, {}])
+        self.assertEqual(clock.sleeps, [0.2])
 
     def test_still_pending_after_final_capture_is_a_tool_error(self):
         from qcopilots_common.mcp_http import ToolError
@@ -473,6 +500,78 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
         self.assertIn("error", invalid)
         self.assertEqual(len(calls), 1)
 
+    def test_image_budget_fits_the_model_and_transport_limits(self):
+        from qcopilots_common.screenshot import MAX_IMAGE_BYTES
+
+        encoded_bytes = (MAX_IMAGE_BYTES + 2) // 3 * 4
+        self.assertLess(encoded_bytes, 10_000_000)
+        self.assertLess(encoded_bytes, 16 * 1024 * 1024)
+
+    def test_auto_tries_png_then_each_jpeg_quality_in_order(self):
+        from qcopilots_common.screenshot import encode_image
+
+        sizes = {
+            ("png", None): 1000,
+            ("jpeg", 95): 800,
+            ("jpeg", 90): 800,
+            ("jpeg", 85): 600,
+            ("jpeg", 70): 50,
+        }
+        cases = (
+            (
+                "auto",
+                95,
+                100,
+                [("png", None), ("jpeg", 95), ("jpeg", 85), ("jpeg", 70)],
+                "jpeg",
+                ["converted_to_jpeg_to_fit_size_budget", "jpeg_quality_lowered_to_70"],
+            ),
+            (
+                "auto",
+                95,
+                700,
+                [("png", None), ("jpeg", 95), ("jpeg", 85)],
+                "jpeg",
+                ["converted_to_jpeg_to_fit_size_budget", "jpeg_quality_lowered_to_85"],
+            ),
+            (
+                "auto",
+                95,
+                900,
+                [("png", None), ("jpeg", 95)],
+                "jpeg",
+                ["converted_to_jpeg_to_fit_size_budget"],
+            ),
+            ("auto", 95, 1000, [("png", None)], "png", []),
+            (
+                "jpeg",
+                90,
+                700,
+                [("jpeg", 90), ("jpeg", 85)],
+                "jpeg",
+                ["jpeg_quality_lowered_to_85"],
+            ),
+            ("jpeg", 95, 900, [("jpeg", 95)], "jpeg", []),
+        )
+        for image_format, quality, budget, expected, encoded, expected_warnings in cases:
+            with self.subTest(format=image_format, quality=quality, budget=budget):
+                attempts = []
+                warnings = []
+
+                def fake_encode(image, attempt_format, attempt_quality):
+                    attempts.append((attempt_format, attempt_quality))
+                    return bytes(sizes[(attempt_format, attempt_quality)])
+
+                with mock.patch(
+                    "qcopilots_common.screenshot._encode", side_effect=fake_encode
+                ):
+                    _data, final_format, _final = encode_image(
+                        object(), image_format, quality, warnings, max_bytes=budget
+                    )
+                self.assertEqual(attempts, expected)
+                self.assertEqual(final_format, encoded)
+                self.assertEqual(warnings, expected_warnings)
+
     def test_bridge_argument_validation(self):
         from qcopilots_common.screenshot import normalize_screenshot_arguments
 
@@ -484,10 +583,10 @@ class TestQCopilotsScreenshotResult(unittest.TestCase):
                 "region": None,
                 "include_qcopilots_panel": True,
                 "capture_method": "widget",
-                "max_dimension": 1568,
+                "max_dimension": 2560,
                 "format": "auto",
-                "jpeg_quality": 85,
-                "wait_for_render_ms": 3000,
+                "jpeg_quality": 95,
+                "wait_for_render_ms": 10000,
             },
         )
         for arguments, message in (
@@ -766,6 +865,7 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         self.assertEqual(result["image_size"], [256, 128])
         self.assertEqual(result["scale"], 0.64)
         self.assertEqual(self._rgb(image, 128, 64), (10, 200, 30))
+        self.assertIn("downscaled_to_max_dimension", result["warnings"])
 
         # 800 x 400 device pixels at a device pixel ratio of 2, left half red
         # and right half blue, behind a 400 x 200 logical widget.
@@ -784,6 +884,7 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         self.assertEqual(full["logical_size"], [400, 200])
         self.assertEqual(full["image_size"], [800, 400])
         self.assertEqual(full["scale"], 2.0)
+        self.assertEqual(full["warnings"], [])
 
         cropped = self._capture(
             iface,
@@ -794,6 +895,40 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         self.assertEqual(cropped["scale"], 1.28)
         self.assertEqual(self._rgb(image, 5, 5), (0, 0, 255))
         self.assertEqual(self._rgb(image, 250, 250), (0, 0, 255))
+
+    def test_default_keeps_high_dpi_detail_up_to_the_default_long_edge(self):
+        from qgis.PyQt.QtGui import QColor, QImage
+
+        def capture(width, height, ratio, logical_width, logical_height, arguments):
+            source = QImage(width, height, QImage.Format.Format_RGB32)
+            source.fill(QColor("#336699"))
+            source.setDevicePixelRatio(ratio)
+            widget = self._image_widget(source, logical_width, logical_height)
+            return self._capture(
+                self._iface(main_window=widget),
+                {"target": "main_window", **arguments},
+            )
+
+        kept = capture(2400, 1350, 1.5, 1600, 900, {})
+        self.assertEqual(kept["image_size"], [2400, 1350])
+        self.assertEqual(kept["scale"], 1.5)
+        self.assertEqual(kept["warnings"], [])
+
+        downscaled = capture(3840, 2160, 1.5, 2560, 1440, {})
+        self.assertEqual(downscaled["image_size"], [2560, 1440])
+        self.assertEqual(downscaled["warnings"], ["downscaled_to_max_dimension"])
+
+        explicit = capture(3840, 2160, 1.5, 2560, 1440, {"max_dimension": 3840})
+        self.assertEqual(explicit["image_size"], [3840, 2160])
+        self.assertEqual(explicit["warnings"], [])
+
+        # region 保留原始像素，因此不再触发缩小警告。
+        region = capture(
+            3840, 2160, 1.5, 2560, 1440, {"region": [100, 100, 400, 300]}
+        )
+        self.assertEqual(region["image_size"], [600, 450])
+        self.assertEqual(region["scale"], 1.5)
+        self.assertEqual(region["warnings"], [])
 
     def test_png_jpeg_and_auto_size_budget(self):
         from qgis.PyQt.QtCore import Qt
@@ -811,16 +946,29 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         red, green, blue = self._rgb(image, 200, 100)
         self.assertLess(abs(red - 10) + abs(green - 200) + abs(blue - 30), 30)
 
-        # Noise does not compress, so the PNG exceeds 1 MiB and auto uses JPEG.
+        # 噪声几乎不可压缩，这张 PNG 超过 1 MiB 但在预算内，auto 仍保持无损。
         noise = self._noise_image(1200, 900)
-        noisy = self._capture(
+        lossless = self._capture(
             self._iface(main_window=self._image_widget(noise, 1200, 900)),
-            {"target": "main_window", "max_dimension": 2560},
+            {"target": "main_window"},
+        )
+        self._decode(lossless)
+        self.assertEqual(lossless["format"], "png")
+        self.assertEqual(lossless["image_size"], [1200, 900])
+        self.assertGreater(lossless["bytes"], 1024 * 1024)
+        self.assertEqual(lossless["warnings"], [])
+
+        # 这张 PNG 超过预算，auto 改用 JPEG 并给出警告，尺寸不变。
+        noise = self._noise_image(2000, 1500)
+        noisy = self._capture(
+            self._iface(main_window=self._image_widget(noise, 2000, 1500)),
+            {"target": "main_window"},
         )
         self._decode(noisy)
         self.assertEqual(noisy["format"], "jpeg")
-        self.assertEqual(noisy["image_size"], [1200, 900])
-        self.assertLessEqual(noisy["bytes"], 3 * 1024 * 1024)
+        self.assertEqual(noisy["image_size"], [2000, 1500])
+        self.assertLessEqual(noisy["bytes"], 7 * 1024 * 1024)
+        self.assertEqual(noisy["warnings"][0], "converted_to_jpeg_to_fit_size_budget")
 
         warnings = []
         data, image_format, final = encode_image(
@@ -828,7 +976,6 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
             "auto",
             85,
             warnings,
-            png_budget=100,
             max_bytes=6000,
         )
         self.assertEqual(image_format, "jpeg")
@@ -837,7 +984,11 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         self.assertLess(final.width(), 400)
         self.assertEqual(
             warnings,
-            ["jpeg_quality_lowered_to_70", "downscaled_to_fit_size_budget"],
+            [
+                "converted_to_jpeg_to_fit_size_budget",
+                "jpeg_quality_lowered_to_70",
+                "downscaled_to_fit_size_budget",
+            ],
         )
 
         warnings = []

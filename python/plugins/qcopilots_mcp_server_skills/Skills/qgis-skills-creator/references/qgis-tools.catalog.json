@@ -419,7 +419,7 @@
         },
         {
           "name": "capture_qgis_screenshot",
-          "description": "截取 QGIS 当前画面，让模型直接看到界面。默认目标是地图画布 map_canvas，也可选 main_window 主窗口、active_window 当前活动窗口或 layout_designer 打印布局设计器（需传 layout_name），并可用 region [x, y, width, height] 只截取局部区域，宽和高至少为 1。默认包含 QCopilots 聊天面板，传 include_qcopilots_panel=false 可遮盖该面板。capture_method 默认 widget，只渲染 QGIS 自身控件。screen 直接读取屏幕像素，能显示三维视图、弹出菜单和标题栏，但也会截到叠在 QGIS 上方的其他应用窗口，可能暴露无关的隐私内容，只在确有需要时使用。返回一个 image 内容项和一段纯文本摘要，截地图画布时还附带 CRS、范围、比例尺和旋转角。只读，不写文件，不改变 QGIS 状态。截图只反映调用那一刻，画面变化后需再次调用以获取最新视图。",
+          "description": "截取 QGIS 当前画面，让模型直接看到界面。默认目标是地图画布 map_canvas，也可选 main_window 主窗口、active_window 当前活动窗口或 layout_designer 打印布局设计器（需传 layout_name），并可用 region [x, y, width, height] 只截取局部区域，宽和高至少为 1。图像长边默认不超过 2560 像素，超过时会缩小，截图也不会比屏幕显示的更清晰。看小字或细节时用 region，局部区域保留原始像素。返回的 warnings 含 downscaled_to_max_dimension、downscaled_to_fit_size_budget、converted_to_jpeg_to_fit_size_budget 或 jpeg_quality_lowered_to_<质量> 时表示细节有损失，需要这些细节时改截更小的区域。默认包含 QCopilots 聊天面板，传 include_qcopilots_panel=false 可遮盖该面板。capture_method 默认 widget，只渲染 QGIS 自身控件。screen 直接读取屏幕像素，能显示三维视图、弹出菜单和标题栏，但也会截到叠在 QGIS 上方的其他应用窗口，可能暴露无关的隐私内容，只在确有需要时使用。返回一个 image 内容项和一段纯文本摘要，截地图画布时还附带 CRS、范围、比例尺和旋转角。只读，不写文件，不改变 QGIS 状态。截图只反映调用那一刻，画面变化后需再次调用以获取最新视图。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
