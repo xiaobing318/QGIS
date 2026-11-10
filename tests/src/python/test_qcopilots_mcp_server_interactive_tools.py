@@ -40,9 +40,26 @@ def _prepare_windows_qgis_dll_search_path():
     if bin_root is None or not bin_root.is_dir():
         return
 
-    for candidate in sorted(bin_root.iterdir()):
-        if not (candidate / "qgis_core.dll").is_file():
-            continue
+    requested = Path(prefix_path)
+    configuration = os.environ.get("QCOPILOTS_TEST_CONFIGURATION", "")
+    if configuration:
+        requested = bin_root / configuration
+        if not (requested / "qgis_core.dll").is_file():
+            raise RuntimeError(f"QGIS test configuration is not built: {configuration}")
+    candidates = (
+        [requested] if (requested / "qgis_core.dll").is_file()
+        else [
+            path for path in bin_root.iterdir()
+            if (path / "qgis_core.dll").is_file()
+        ]
+    )
+    if len(candidates) > 1:
+        raise RuntimeError(
+            "Multiple QGIS build configurations are available. Set QGIS_PREFIX_PATH "
+            "to the configuration being tested."
+        )
+    for candidate in candidates:
+        os.environ["QGIS_PREFIX_PATH"] = candidate.as_posix()
         os.environ["PATH"] = f"{candidate}{os.pathsep}{os.environ.get('PATH', '')}"
         if hasattr(os, "add_dll_directory"):
             _QGIS_DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(candidate)))
@@ -63,6 +80,44 @@ def _qgis_bindings_available():
         return True
     except Exception:
         return False
+
+
+def _run_fake_map_export(tools, arguments, image=b"image", world=b"world"):
+    """Exercise HTTP publication without importing Qt or using canvas frames."""
+    from qcopilots_common.map_export import MapImageExportCoordinator
+
+    class Dispatcher:
+        @staticmethod
+        def call(function, timeout_seconds=60):
+            del timeout_seconds
+            return function()
+
+    class Runtime:
+        def __init__(self, coordinator):
+            self.coordinator = coordinator
+
+        def begin(self, operation, options):
+            plan = tools.export_map_image(options)
+            if isinstance(plan, dict):
+                self.coordinator.preview_finished(operation, plan)
+                return
+            operation.plan = plan
+            plan.path.parent.mkdir(parents=True, exist_ok=True)
+            operation.staging_root = Path(tempfile.mkdtemp(
+                prefix=f".{plan.path.stem}.qcopilots-stage-",
+                dir=str(plan.path.parent),
+            ))
+            operation.world_file_bytes = world
+            (operation.staging_root / plan.path.name).write_bytes(image)
+            self.coordinator.render_finished(operation)
+
+        def cancel(self, operation):
+            del operation
+
+    coordinator = MapImageExportCoordinator(
+        Dispatcher(), tools.export_map_image, runtime_factory=Runtime
+    )
+    return coordinator.export(arguments)
 
 
 class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
@@ -1141,27 +1196,15 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
     def test_map_export_uses_suffix_encoder_and_publishes_world_file(self):
         import qcopilots_common.bridge as bridge
 
-        class Canvas:
-            calls = []
-
-            def saveAsImage(self, path, pixmap, encoder):
-                self.calls.append((pixmap, encoder))
-                Path(path).write_bytes(b"jpeg-image")
-                bridge._map_image_world_file_path(Path(path)).write_bytes(
-                    b"world-file"
-                )
-
-        canvas = Canvas()
-        tools = bridge.QgisBridgeTools(
-            types.SimpleNamespace(mapCanvas=lambda: canvas)
-        )
+        tools = bridge.QgisBridgeTools(None)
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             target = root / "map.jpg"
-            result = tools.export_map_image(
-                {"path": str(target), "format": "jpeg"}
+            result = _run_fake_map_export(
+                tools, {"path": str(target), "format": "jpeg"},
+                image=b"jpeg-image", world=b"world-file",
             )
-            self.assertEqual(canvas.calls, [(None, "JPEG")])
+            self.assertEqual(result["encoder"], "JPEG")
             self.assertEqual(target.read_bytes(), b"jpeg-image")
             self.assertEqual((root / "map.jgw").read_bytes(), b"world-file")
             self.assertEqual(
@@ -1174,15 +1217,7 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
     def test_map_export_reports_staging_cleanup_residual(self):
         import qcopilots_common.bridge as bridge
 
-        class Canvas:
-            def saveAsImage(self, path, pixmap, encoder):
-                del pixmap, encoder
-                Path(path).write_bytes(b"image")
-                bridge._map_image_world_file_path(Path(path)).write_bytes(b"world")
-
-        tools = bridge.QgisBridgeTools(
-            types.SimpleNamespace(mapCanvas=lambda: Canvas())
-        )
+        tools = bridge.QgisBridgeTools(None)
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             target = root / "map.png"
@@ -1192,8 +1227,8 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 "rmtree",
                 side_effect=PermissionError("locked staging directory"),
             ):
-                result = tools.export_map_image(
-                    {"path": str(target), "format": "png"}
+                result = _run_fake_map_export(
+                    tools, {"path": str(target), "format": "png"}
                 )
             self.assertFalse(result["cleanup"]["complete"])
             self.assertTrue(result["cleanup"]["retry_recommended"])
@@ -2158,15 +2193,6 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
         previous_dirty = bool(project.isDirty())
 
         class Canvas:
-            encoder = None
-
-            def saveAsImage(self, path, pixmap, encoder):
-                self.encoder = encoder
-                Path(path).write_bytes(b"rendered-map")
-                bridge._map_image_world_file_path(Path(path)).write_bytes(
-                    b"rendered-world"
-                )
-
             @staticmethod
             def refresh():
                 return None
@@ -2207,15 +2233,15 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
                 map_preview = tools.export_map_image(
                     {"path": str(map_path), "format": "png", "overwrite": True}
                 )
-                exported = tools.export_map_image(
-                    {
+                exported = _run_fake_map_export(
+                    tools, {
                         "path": str(map_path),
                         "format": "png",
                         "overwrite": True,
                         "overwrite_confirmation_token": map_preview[
                             "overwrite_confirmation_token"
                         ],
-                    }
+                    }, image=b"rendered-map", world=b"rendered-world",
                 )
                 self.assertTrue(exported["saved"])
                 self.assertEqual(map_path.read_bytes(), b"rendered-map")
@@ -3452,6 +3478,105 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             QgisBridgeTools(None).processing_algorithm_details(
                 {"algorithm_id": "qcopilots:missing_algorithm"}
             )
+
+
+class TestInteractiveOutputPublication(unittest.TestCase):
+    def test_concurrent_output_families_preserve_the_winning_publication(self):
+        from qcopilots_common import bridge, processing_jobs
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "map.png"
+            world = root / "map.pgw"
+            target.write_bytes(b"original-image")
+            world.write_bytes(b"original-world")
+            family = [target, world]
+            versions = [processing_jobs._processing_file_version(path) for path in family]
+            stages = {}
+            for name in ("first", "second"):
+                stage = root / name
+                stage.mkdir()
+                (stage / target.name).write_bytes(name.encode() + b"-image")
+                (stage / world.name).write_bytes(name.encode() + b"-world")
+                stages[name] = stage
+
+            before_backup = threading.Event()
+            allow_backup = threading.Event()
+            outcomes = {}
+            real_replace = os.replace
+
+            def pause_first_backup(source, destination):
+                if threading.current_thread().name == "first-publication" and Path(source) == target:
+                    before_backup.set()
+                    if not allow_backup.wait(5):
+                        raise TimeoutError("Concurrent publication test did not release backup")
+                return real_replace(source, destination)
+
+            def publish(name):
+                try:
+                    bridge._publish_staged_output_family(
+                        stages[name], target, family,
+                        overwrite=True, expected_versions=versions,
+                    )
+                    outcomes[name] = None
+                except Exception as error:
+                    outcomes[name] = error
+
+            first = threading.Thread(target=publish, args=("first",), name="first-publication")
+            with mock.patch.object(processing_jobs.os, "replace", side_effect=pause_first_backup):
+                first.start()
+                try:
+                    self.assertTrue(before_backup.wait(5), "First publication did not reach backup")
+                    # Unrelated output families must remain usable while one
+                    # publisher is paused immediately before its first move.
+                    other = root / "other.png"
+                    other_stage = root / "other-stage"
+                    other_stage.mkdir()
+                    (other_stage / other.name).write_bytes(b"unrelated")
+                    bridge._publish_staged_output_family(
+                        other_stage, other, [other], overwrite=False,
+                        expected_versions=[processing_jobs._processing_file_version(other)],
+                    )
+                    self.assertEqual(other.read_bytes(), b"unrelated")
+                    sidecar_stage = root / "sidecar-stage"
+                    sidecar_stage.mkdir()
+                    (sidecar_stage / world.name).write_bytes(b"competing-world")
+                    with self.assertRaisesRegex(RuntimeError, "output_publication_busy"):
+                        bridge._publish_staged_output_family(
+                            sidecar_stage, world, [world], overwrite=True,
+                            expected_versions=[processing_jobs._processing_file_version(world)],
+                        )
+                    publish("second")
+                finally:
+                    allow_backup.set()
+                    first.join(5)
+            self.assertFalse(first.is_alive())
+            winners = [name for name, error in outcomes.items() if error is None]
+            self.assertEqual(len(winners), 1, outcomes)
+            self.assertTrue(target.exists(), "A competing publisher removed the successful output")
+            winner = winners[0].encode()
+            self.assertEqual(target.read_bytes(), winner + b"-image")
+            self.assertEqual(world.read_bytes(), winner + b"-world")
+            self.assertEqual(list(root.glob(".*.qcopilots-backup-*")), [])
+
+    def test_failed_publication_releases_its_output_family(self):
+        from qcopilots_common import bridge, processing_jobs
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "map.png"
+            stage = root / "stage"
+            stage.mkdir()
+            versions = [processing_jobs._processing_file_version(target)]
+            with self.assertRaisesRegex(RuntimeError, "does not match its authorized targets"):
+                bridge._publish_staged_output_family(
+                    stage, target, [target], overwrite=False, expected_versions=versions,
+                )
+            (stage / target.name).write_bytes(b"retry-image")
+            bridge._publish_staged_output_family(
+                stage, target, [target], overwrite=False, expected_versions=versions,
+            )
+            self.assertEqual(target.read_bytes(), b"retry-image")
 
 
 if __name__ == "__main__":

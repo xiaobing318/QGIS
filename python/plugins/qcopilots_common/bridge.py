@@ -30,10 +30,11 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+from qcopilots_common.canvas import LayerTreeUpdateBarrier, refresh_map_canvases
 from qcopilots_common.constants import (
-    DEFAULT_PROCESSING_ALGORITHM_RESULTS,
     DEFAULT_BRIDGE_PORT,
     DEFAULT_HOST,
+    DEFAULT_PROCESSING_ALGORITHM_RESULTS,
     HTTP_ERROR_BODY_DRAIN_TIMEOUT_SECONDS,
     MAX_HTTP_ERROR_BODY_DRAIN_BYTES,
     MAX_HTTP_REQUEST_BODY_BYTES,
@@ -43,18 +44,17 @@ from qcopilots_common.constants import (
     PROCESSING_ALGORITHM_PAGE_SIZE,
     QGIS_BRIDGE_AUTH_TOKEN_ENV,
 )
+from qcopilots_common.mcp_http import ToolError
 from qcopilots_common.processing_metadata import (
     processing_algorithm_matches_domain,
     processing_algorithm_metadata,
     processing_algorithm_start_policy,
 )
-from qcopilots_common.mcp_http import ToolError
 from qcopilots_common.security_policy import (
     FilesystemPolicy,
     reject_relative_local_path,
     reject_restricted_path_syntax,
 )
-
 
 MAX_VECTOR_QUERY_OFFSET = 10000
 MAX_VECTOR_QUERY_GEOMETRY_BYTES = 1024 * 1024
@@ -313,6 +313,13 @@ class QgisBridgeController:
         self._destructive_action_confirmations = (
             DestructiveActionConfirmationStore()
         )
+        from qcopilots_common.map_export import MapImageExportCoordinator
+
+        self._map_image_exports = MapImageExportCoordinator(
+            self._dispatcher,
+            self._prepare_map_image_export,
+            iface=self.iface,
+        )
 
     @property
     def url(self) -> str:
@@ -350,6 +357,7 @@ class QgisBridgeController:
         self._stopping.clear()
         if self._dispatcher is None or self._dispatcher.closed:
             self._dispatcher = _make_main_thread_dispatcher()
+        self._map_image_exports.reopen(self._dispatcher)
 
         controller = self
 
@@ -528,6 +536,9 @@ class QgisBridgeController:
             )
         deadline = time.monotonic() + timeout
         self._stopping.set()
+        # Release HTTP waiters and request GUI task cancellation before closing
+        # the dispatcher. The export owner retains any still-active writer.
+        self._map_image_exports.shutdown()
         self._feature_delete_confirmations.clear()
         self._destructive_action_confirmations.clear()
         httpd = self._httpd
@@ -606,11 +617,13 @@ class QgisBridgeController:
     def dispatch(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if self._stopping.is_set():
             raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
+        if tool == "export_map_image":
+            return self._map_image_exports.export(arguments)
 
-        def invoke() -> dict[str, Any]:
+        def invoke(layer_tree_pending: bool = False) -> dict[str, Any]:
             if self._stopping.is_set():
                 raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
-            return QgisBridgeTools(
+            tools = QgisBridgeTools(
                 self.iface,
                 processing_job_manager_factory=self._get_processing_job_manager,
                 qgis_binary_job_manager_factory=self._get_qgis_binary_job_manager,
@@ -622,11 +635,27 @@ class QgisBridgeController:
                 processing_algorithm_cursor_secret=(
                     self._processing_algorithm_cursor_secret
                 ),
-            ).dispatch(tool, arguments)
+            )
+            if layer_tree_pending:
+                return tools.interactive_capture_screenshot(
+                    arguments, layer_tree_pending=True
+                )
+            return tools.dispatch(tool, arguments)
 
         if self._dispatcher:
+            if tool == "interactive_capture_screenshot":
+                return self._dispatcher.call(
+                    invoke, barrier_factory=lambda: LayerTreeUpdateBarrier(self.iface)
+                )
             return self._dispatcher.call(invoke)
         return invoke()
+
+    def _prepare_map_image_export(self, arguments: dict[str, Any]):
+        return QgisBridgeTools(
+            self.iface,
+            destructive_action_confirmations=self._destructive_action_confirmations,
+            filesystem_policy=self._filesystem_policy,
+        ).export_map_image(arguments)
 
     def _get_processing_job_manager(self):
         with self._processing_job_manager_lock:
@@ -678,7 +707,17 @@ class _QtMainThreadDispatcher:
     def closed(self) -> bool:
         return self._closed.is_set()
 
-    def call(self, function, timeout_seconds: float = 60):
+    def is_gui_thread(self) -> bool:
+        return bool(self._app and self._qthread.currentThread() == self._app.thread())
+
+    def call(
+        self,
+        function,
+        timeout_seconds: float = 60,
+        *,
+        barrier_factory: Callable[[], LayerTreeUpdateBarrier] | None = None,
+    ):
+        """Dispatch a call, optionally passing its layer-tree pending status."""
         if self._closed.is_set():
             raise RuntimeError("service_stopping: QCopilots QGIS bridge is stopping")
         if not self._app or self._qthread.currentThread() == self._app.thread():
@@ -692,6 +731,7 @@ class _QtMainThreadDispatcher:
             "error": None,
             "cancelled": False,
             "started": False,
+            "barrier_factory": barrier_factory,
             "audit_identifier": secrets.token_hex(16),
         }
         payload_id = id(payload)
@@ -721,32 +761,40 @@ class _QtMainThreadDispatcher:
         return payload["result"]
 
     def _dispatch(self, payload: dict[str, Any]) -> None:
-        payload_id = id(payload)
-        with self._pending_lock:
-            if payload["cancelled"] or self._closed.is_set():
-                self._pending.pop(payload_id, None)
-                payload["cancelled"] = True
-                if payload["error"] is None:
-                    payload["error"] = RuntimeError(
-                        "QCopilots QGIS bridge request was cancelled"
-                    )
-                payload["done"].set()
-                return
-            payload["started"] = True
-
         result = None
         error = None
+        barrier = payload.get("barrier")
         try:
-            result = payload["function"]()
+            with self._pending_lock:
+                if payload["cancelled"] or self._closed.is_set():
+                    raise RuntimeError("QCopilots QGIS bridge request was cancelled")
+            factory = payload.pop("barrier_factory", None)
+            if factory is not None:
+                barrier = payload["barrier"] = factory()
+                barrier.is_settled()
+                self._object.request.emit(payload)
+                return
+            with self._pending_lock:
+                if payload["cancelled"] or self._closed.is_set():
+                    raise RuntimeError("QCopilots QGIS bridge request was cancelled")
+                payload["started"] = True
+            if barrier is None:
+                result = payload["function"]()
+            else:
+                # Return to the MCP polling loop if more tree changes arrived
+                # during this hop. This keeps the screenshot wait budget bounded.
+                result = payload["function"](not barrier.is_settled())
         except Exception as err:
             error = err
-        finally:
-            with self._pending_lock:
-                self._pending.pop(payload_id, None)
-                if not payload["cancelled"]:
-                    payload["result"] = result
-                    payload["error"] = error
-            payload["done"].set()
+
+        if barrier is not None:
+            barrier.close()
+        with self._pending_lock:
+            self._pending.pop(id(payload), None)
+            if not payload["cancelled"]:
+                payload["result"] = result
+                payload["error"] = error
+        payload["done"].set()
 
     def close(self) -> None:
         self._closed.set()
@@ -1329,10 +1377,13 @@ class QgisBridgeTools:
         }
 
     def refresh_canvas(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        self.iface.mapCanvas().refresh()
+        self.iface.actionDraw().trigger()
         return {"refreshed": True}
 
-    def export_map_image(self, arguments: dict[str, Any]) -> dict[str, Any]:
+    def export_map_image(self, arguments: dict[str, Any]):
+        """Authorize one export; the controller privately awaits its renderer."""
+        from qcopilots_common.map_export import MapImageExportPlan
+
         path = Path(
             self._safe_workspace_path(arguments["path"], access="write")
         )
@@ -1356,66 +1407,40 @@ class QgisBridgeTools:
         )
         if preview is not None:
             return preview
-        path.parent.mkdir(parents=True, exist_ok=True)
-        staging_root = Path(
-            tempfile.mkdtemp(
-                prefix=f".{path.stem}.qcopilots-stage-",
-                dir=str(path.parent),
-            )
-        )
-        staged_path = staging_root / path.name
-        staged_world_path = _map_image_world_file_path(staged_path)
-        cleanup_residuals = []
-        primary_error = None
-        try:
-            self.iface.mapCanvas().saveAsImage(str(staged_path), None, encoder)
-            if not staged_path.is_file() or staged_path.stat().st_size <= 0:
-                raise RuntimeError("Map image export produced no output")
-            if (
-                not staged_world_path.is_file()
-                or staged_world_path.stat().st_size <= 0
-            ):
-                raise RuntimeError("Map image export produced no world file")
-            cleanup_residuals = _publish_staged_output_family(
-                staging_root,
-                path,
-                family_paths,
-                overwrite=bool(arguments.get("overwrite", False)),
-                expected_versions=expected_versions,
-            )
-        except Exception as err:
-            primary_error = err
-            raise
-        finally:
-            stage_residuals = _cleanup_interactive_paths([staging_root])
-            if stage_residuals:
-                if primary_error is not None:
-                    raise RuntimeError(
-                        f"{primary_error}. Map image staging cleanup was incomplete: "
-                        + ", ".join(stage_residuals)
-                    ) from primary_error
-                cleanup_residuals.extend(stage_residuals)
-        return {
-            "path": str(path),
-            "world_file_path": str(world_path),
-            "encoder": encoder,
-            "saved": path.is_file() and path.stat().st_size > 0,
-            "bytes_written": path.stat().st_size if path.is_file() else 0,
-            "cleanup": {
-                "complete": not cleanup_residuals,
-                "residual_paths": sorted(set(cleanup_residuals)),
-                "retry_recommended": bool(cleanup_residuals),
-            },
-        }
+        # The closure captures only the immutable filesystem policy and paths,
+        # never iface or other Qt objects used by this GUI-side tools instance.
+        policy = self._filesystem_policy
+        original_path = str(arguments["path"])
 
-    def interactive_capture_screenshot(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        def revalidate() -> None:
+            current = Path(policy.resolve_path(original_path, access="write"))
+            if current != path:
+                raise RuntimeError("Map image output path changed during rendering")
+            for member in family_paths:
+                if Path(policy.resolve_path(member, access="write")) != member:
+                    raise RuntimeError("Map image output family path changed during rendering")
+
+        return MapImageExportPlan(
+            path=path,
+            world_path=world_path,
+            encoder=encoder,
+            overwrite=bool(arguments.get("overwrite", False)),
+            expected_versions=expected_versions,
+            revalidate=revalidate,
+        )
+
+    def interactive_capture_screenshot(
+        self, arguments: dict[str, Any], *, layer_tree_pending: bool = False
+    ) -> dict[str, Any]:
         from qcopilots_common.screenshot import capture_qgis_screenshot
 
         if self.iface is None:
             raise RuntimeError(
                 "QGIS interface is not available, so no screenshot can be taken"
             )
-        return capture_qgis_screenshot(self.iface, arguments)
+        return capture_qgis_screenshot(
+            self.iface, arguments, layer_tree_pending=layer_tree_pending
+        )
 
     def interactive_layer_describe_sources(self, arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments
@@ -1593,6 +1618,9 @@ class QgisBridgeTools:
         for layer in layers:
             removed.append(_layer_summary(layer))
             project.removeMapLayer(layer.id())
+        # Deleted layers may already have disappeared from the canvas's weak
+        # layer list when the queued layer-tree update checks for changes.
+        refresh_map_canvases(self.iface)
         return {
             "removed": removed,
             "removed_count": len(removed),
@@ -1697,8 +1725,7 @@ class QgisBridgeTools:
                 delete_features,
             )
             layer.updateExtents()
-            if self.iface:
-                self.iface.mapCanvas().refresh()
+            layer.triggerRepaint()
             return {
                 "layer": _layer_summary(layer),
                 "deleted_feature_ids": feature_ids,
@@ -1754,14 +1781,21 @@ class QgisBridgeTools:
         from qgis.core import QgsCoordinateReferenceSystem, QgsProject
 
         project = QgsProject.instance()
-        previous = _crs_metadata(project.crs())
+        previous_crs = project.crs()
         crs = QgsCoordinateReferenceSystem(str(arguments["crs"]))
         if not crs.isValid():
             raise RuntimeError(f"Invalid project CRS: {arguments['crs']}")
         project.setCrs(crs)
-        if self.iface:
-            self.iface.mapCanvas().refresh()
-        return {"previous_crs": previous, "crs": _crs_metadata(project.crs())}
+        current_crs = project.crs()
+        if self.iface is not None and current_crs != previous_crs:
+            # Auxiliary views can use their own CRS and still render project
+            # CRS variables in layer styles and labels.
+            for canvas in self.iface.mapCanvases():
+                canvas.redrawAllLayers()
+        return {
+            "previous_crs": _crs_metadata(previous_crs),
+            "crs": _crs_metadata(current_crs),
+        }
 
     def interactive_raster_statistics(self, arguments: dict[str, Any]) -> dict[str, Any]:
         from qgis.core import Qgis
@@ -2975,6 +3009,7 @@ class QgisBridgeTools:
             add_features,
         )
         layer.updateExtents()
+        layer.triggerRepaint()
         assigned_features = returned_features or features
         added_feature_ids = [int(feature.id()) for feature in assigned_features]
         feature_ids_verified = (
@@ -2984,8 +3019,6 @@ class QgisBridgeTools:
         )
         if not feature_ids_verified:
             added_feature_ids = []
-        if self.iface:
-            self.iface.mapCanvas().refresh()
         return {
             "layer": _layer_summary(layer),
             "added_feature_ids": added_feature_ids,
@@ -3051,8 +3084,7 @@ class QgisBridgeTools:
             update_features,
         )
         layer.updateExtents()
-        if self.iface:
-            self.iface.mapCanvas().refresh()
+        layer.triggerRepaint()
         return {
             "layer": _layer_summary(layer),
             "updated_feature_ids": updated_ids,
@@ -3521,18 +3553,55 @@ def _supported_layer_type_descriptions() -> list[dict[str, Any]]:
 
 
 def _native_resolution_zoom_factor(layer: Any, canvas: Any) -> float:
+    from qgis.core import QgsCoordinateTransform, QgsCsException, QgsPointXY, QgsProject
+
+    settings = canvas.mapSettings()
+    output_size = settings.outputSize()
     map_units_per_pixel = float(canvas.mapUnitsPerPixel())
-    if map_units_per_pixel <= 0:
+    if (
+        not math.isfinite(map_units_per_pixel)
+        or map_units_per_pixel <= 0
+        or output_size.isEmpty()
+    ):
         raise RuntimeError("Map canvas resolution is not available")
+
+    extent = canvas.extent()
+    center = extent.center()
+    adjacent = QgsPointXY(
+        center.x() + extent.width() / output_size.width(),
+        center.y() + extent.height() / output_size.height(),
+    )
+    transform = QgsCoordinateTransform(
+        settings.destinationCrs(), layer.crs(), QgsProject.instance()
+    )
+    try:
+        raster_center = transform.transform(center)
+        raster_adjacent = transform.transform(adjacent)
+    except QgsCsException as err:
+        raise RuntimeError(
+            "Could not transform the map canvas pixel to the raster CRS"
+        ) from err
+    pixel_diagonal = math.sqrt(raster_center.sqrDist(raster_adjacent))
+    if not math.isfinite(pixel_diagonal) or pixel_diagonal <= 0:
+        raise RuntimeError("Map canvas pixel size in the raster CRS is not available")
+
     provider = layer.dataProvider()
     native_resolutions = provider.nativeResolutions() if provider else []
     if native_resolutions:
-        factor = float(native_resolutions[0]) / map_units_per_pixel
+        # The native action chooses the coarser level on an equal distance.
+        nearest = min(
+            native_resolutions,
+            key=lambda resolution: (
+                abs(math.sqrt(2 * resolution * resolution) - pixel_diagonal),
+                -resolution,
+            ),
+        )
+        factor = nearest / map_units_per_pixel
     else:
-        factor = math.sqrt(
-            layer.rasterUnitsPerPixelX() * layer.rasterUnitsPerPixelX()
-            + layer.rasterUnitsPerPixelY() * layer.rasterUnitsPerPixelY()
-        ) / map_units_per_pixel
+        native_diagonal = math.hypot(
+            layer.rasterUnitsPerPixelX(), layer.rasterUnitsPerPixelY()
+        )
+        factor = native_diagonal * settings.devicePixelRatio() / pixel_diagonal
     if not math.isfinite(factor) or factor <= 0:
         raise RuntimeError("Raster native resolution is not available")
     return factor
@@ -5703,7 +5772,42 @@ def _map_image_world_file_path(path: Path) -> Path:
     return path.with_suffix(f".{suffix[0]}{suffix[-1]}w")
 
 
+_INTERACTIVE_PUBLICATION_LOCK = threading.Lock()
+_INTERACTIVE_PUBLICATION_PATHS: set[str] = set()
+
+
 def _publish_staged_output_family(
+    staging_root: Path,
+    target: Path,
+    family_paths: list[Path],
+    *,
+    overwrite: bool,
+    expected_versions: list[dict[str, Any]],
+) -> list[str]:
+    from qcopilots_common.processing_jobs import _path_identity
+
+    # Map images publish from HTTP threads while layouts and other interactive
+    # outputs may publish on the GUI thread. Reserve every member before any
+    # file checks or moves, without making the GUI wait for another publisher.
+    identities = {_path_identity(path) for path in [target, *family_paths]}
+    with _INTERACTIVE_PUBLICATION_LOCK:
+        if identities & _INTERACTIVE_PUBLICATION_PATHS:
+            raise RuntimeError(
+                "output_publication_busy: Another interactive output is being "
+                "published to this file family. Retry after it finishes."
+            )
+        _INTERACTIVE_PUBLICATION_PATHS.update(identities)
+    try:
+        return _publish_reserved_output_family(
+            staging_root, target, family_paths,
+            overwrite=overwrite, expected_versions=expected_versions,
+        )
+    finally:
+        with _INTERACTIVE_PUBLICATION_LOCK:
+            _INTERACTIVE_PUBLICATION_PATHS.difference_update(identities)
+
+
+def _publish_reserved_output_family(
     staging_root: Path,
     target: Path,
     family_paths: list[Path],

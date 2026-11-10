@@ -232,10 +232,10 @@ def build_interactive_tools() -> list[McpTool]:
         _bridge_tool(
             "zoom_to_native_resolution",
             (
-                "Zoom the map canvas so that one raster pixel covers one screen "
-                "pixel, like the QGIS Zoom to Native Resolution (100%) action. Use it "
-                "to inspect raster detail at full resolution. Returns layer_id and "
-                "the applied zoom_factor. The layer must be a raster layer. Use "
+                "Zoom the main map view using the QGIS Zoom to Native Resolution "
+                "(100%) calculation. If the raster provider reports resolution "
+                "levels, QGIS uses the closest level. Returns layer_id and the "
+                "applied zoom_factor. The layer must be a raster. Use "
                 "zoom_to_layer to see the whole raster."
             ),
             {"layer_id": "string"},
@@ -295,9 +295,10 @@ def build_interactive_tools() -> list[McpTool]:
         _bridge_tool(
             "refresh_canvas",
             (
-                "Redraw the QGIS map canvas and return refreshed=true. The zoom and "
-                "feature editing tools already redraw the canvas, so use it only when "
-                "the map looks stale, for example before capture_qgis_screenshot."
+                "Reload layers and redraw all QGIS 2D map views, like the QGIS "
+                "Refresh (F5) action. Returns refreshed=true once refresh is "
+                "requested. Use it when a loaded data source has changed. "
+                "Map tools already update the affected views."
             ),
             {},
             bridge,
@@ -305,9 +306,11 @@ def build_interactive_tools() -> list[McpTool]:
         _custom_bridge_tool(
             "export_map_image",
             (
-                "Save the current map canvas view, at its current size and extent, "
+                "Render the current map view, at its current size and extent, "
                 "to an image file on disk together with a world file that "
-                "georeferences it (for example .pgw next to a .png). format is "
+                "georeferences it (for example .pgw next to a .png). The image "
+                "and world file use the same current map settings, including "
+                "changes whose screen rendering has not finished. format is "
                 "required and must match the path suffix, png for .png, jpeg for "
                 ".jpg or .jpeg, bmp for .bmp and tiff for .tif or .tiff. A mismatch "
                 "or another suffix is an error. Returns path, world_file_path, "
@@ -367,7 +370,8 @@ def build_interactive_tools() -> list[McpTool]:
                 "must review and save the layer edits in QGIS, and QGIS can renumber "
                 "the added ids when they are saved. Each feature takes geometry_wkt "
                 "in the layer CRS and attributes keyed by existing field names. All "
-                "features are added in one undoable step or none at all. Use "
+                "features are added in one undoable step or none at all. Map views "
+                "that show the layer redraw on success. Use "
                 "create_vector_layer for a new layer and update_vector_features to "
                 "change existing features."
             ),
@@ -388,7 +392,8 @@ def build_interactive_tools() -> list[McpTool]:
                 "the data source until the user saves the layer edits in QGIS. All "
                 "updates apply in one undoable step or none at all. Unknown fields, "
                 "missing features or a repeated feature_id reject the whole call. "
-                "Use add_vector_features for new features and delete_vector_features "
+                "Map views that show the layer redraw on success. Use "
+                "add_vector_features for new features and delete_vector_features "
                 "to remove features."
             ),
             _update_vector_features_schema(),
@@ -684,7 +689,9 @@ def _capture_qgis_screenshot_tool(bridge: BridgeClient) -> McpTool:
             "(default) draws QGIS itself and never shows other applications, but "
             "3D views can appear blank. capture_method screen copies screen "
             "pixels, so it can show 3D views, popup menus and title bars, but "
-            "also any other application window that overlaps QGIS. Use screen "
+            "also any other application window that overlaps QGIS. Screen "
+            "capture reflects the pixels currently presented by the desktop, "
+            "which can lag a completed map render. Use screen "
             "only when the user explicitly asks for it. region crops "
             "[x, y, width, height] in logical pixels of the target, and the "
             "image is downscaled so its long edge is at most max_dimension. "
@@ -695,8 +702,11 @@ def _capture_qgis_screenshot_tool(bridge: BridgeClient) -> McpTool:
             "converted_to_jpeg_to_fit_size_budget and "
             "jpeg_quality_lowered_to_<quality> mean detail was lost, so "
             "capture a smaller region when that detail matters. The tool "
-            "waits up to wait_for_render_ms for the map canvas to finish "
-            "rendering."
+            "waits up to wait_for_render_ms for queued layer tree updates "
+            "and pending renders of visible 2D canvases included in the capture. "
+            "Zero wait or an expired wait returns the current image with a "
+            "warning if updates are still pending. Frozen canvases and canvases "
+            "with rendering disabled are reported without changing their state."
         ),
         _capture_qgis_screenshot_schema(),
         handler,

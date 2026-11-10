@@ -221,10 +221,14 @@ class TestQCopilotsWorkspacePaths(unittest.TestCase):
 
         canvas = _FakeCanvas()
         tools = bridge.QgisBridgeTools(types.SimpleNamespace(mapCanvas=lambda: canvas))
-        result = tools.export_map_image({"path": str(target), "format": "png"})
+        from test_qcopilots_mcp_server_interactive_tools import _run_fake_map_export
+
+        result = _run_fake_map_export(
+            tools, {"path": str(target), "format": "png"}, image=b"png-image"
+        )
         self.assertEqual(Path(result["path"]), target.resolve())
         self.assertEqual(target.read_bytes(), b"png-image")
-        self.assertEqual(len(canvas.calls), 1)
+        self.assertEqual(canvas.calls, [])
         self.assertEqual(list(self.program_folder.iterdir()), [])
 
     def test_read_paths_still_resolve_against_the_working_folder(self):

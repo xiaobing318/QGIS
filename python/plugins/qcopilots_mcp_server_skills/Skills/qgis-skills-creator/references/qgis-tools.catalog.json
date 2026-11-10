@@ -357,7 +357,7 @@
         },
         {
           "name": "zoom_to_native_resolution",
-          "description": "缩放地图画布，使栅格的一个像元正好对应一个屏幕像素，相当于 QGIS 的“缩放到原生分辨率（100%）”，适合按原始分辨率检查栅格细节。layer_id 应为栅格图层 id，省略时使用当前活动图层，传入的 id 不在工程中会报错，该图层必须是栅格。返回 layer_id 和实际使用的 zoom_factor。查看整个栅格范围请用 zoom_to_layer。",
+          "description": "使用 QGIS 的“缩放到原生分辨率（100%）”算法缩放主地图视图。栅格 provider 提供多个分辨率级别时，选取最接近的级别。layer_id 应为栅格图层 id，省略时使用当前活动图层，传入的 id 不在工程中会报错，该图层必须是栅格。返回 layer_id 和实际使用的 zoom_factor。查看整个栅格范围请用 zoom_to_layer。",
           "status": "restricted",
           "risk_level": "R1",
           "requires_qgis_bridge": true,
@@ -398,28 +398,28 @@
         },
         {
           "name": "refresh_canvas",
-          "description": "重绘 QGIS 地图画布并返回 refreshed=true。缩放工具和要素编辑工具已经会自动重绘画布，所以只在地图显示看起来过时的时候使用，例如调用 capture_qgis_screenshot 之前。",
+          "description": "像 QGIS 的刷新操作（F5）一样重新加载图层并重绘所有二维地图视图。发出刷新请求后返回 refreshed=true。已加载的数据源发生变化时可用此工具。其他地图工具会更新受影响的视图。",
           "status": "restricted",
           "risk_level": "R1",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
-          "side_effects": {"reads_files": false, "writes_files": false, "modifies_qgis_state": true, "uses_network": false, "runs_shell": false, "destructive_possible": false}
+          "side_effects": {"reads_files": true, "writes_files": false, "modifies_qgis_state": true, "uses_network": true, "runs_shell": false, "destructive_possible": false}
         },
         {
           "name": "export_map_image",
-          "description": "把当前地图画布视图按现有尺寸和范围保存为磁盘上的图像文件，并在旁边写入用于地理配准的 world file（例如 .png 对应 .pgw）。path 必须是绝对路径，format 必填且必须与后缀一致，png 对应 .png，jpeg 对应 .jpg 或 .jpeg，bmp 对应 .bmp，tiff 对应 .tif 或 .tiff，不一致或其他后缀会报错。返回 path、world_file_path、encoder、saved、bytes_written 和 cleanup。用户想把地图视图存成文件时使用。模型自己查看地图请用 capture_qgis_screenshot，它直接返回可见图像且不写文件。需要带地图框、标题、图例和比例尺的成品图请用 create_print_layout 和 export_print_layout。不会静默覆盖，图像或 world file 已存在时须传 overwrite=true，不带令牌只返回含一次性 overwrite_confirmation_token 的预览，用户同意后用同一 path、format、overwrite=true 和该令牌再次调用，令牌绑定路径和格式。",
+          "description": "按当前地图状态、尺寸和范围独立渲染图像，并在旁边写入用于地理配准的 world file（例如 .png 对应 .pgw）。图像与 world file 使用同一份地图设置，屏幕尚未完成的更新也会包含在导出结果中。path 必须是绝对路径，format 必填且必须与后缀一致，png 对应 .png，jpeg 对应 .jpg 或 .jpeg，bmp 对应 .bmp，tiff 对应 .tif 或 .tiff，不一致或其他后缀会报错。返回 path、world_file_path、encoder、saved、bytes_written 和 cleanup。用户想把地图视图存成文件时使用。模型自己查看地图请用 capture_qgis_screenshot，它直接返回可见图像且不写文件。需要带地图框、标题、图例和比例尺的成品图请用 create_print_layout 和 export_print_layout。不会静默覆盖，图像或 world file 已存在时须传 overwrite=true，不带令牌只返回含一次性 overwrite_confirmation_token 的预览，用户同意后用同一 path、format、overwrite=true 和该令牌再次调用，令牌绑定路径和格式。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
           "requires_gui": true,
           "requires_explicit_confirmation": true,
           "invocation_policy": {"require_all_schema_properties_explicit": true, "required_arguments": ["path", "format", "overwrite"], "required_any_argument_groups": [], "required_target_arguments": ["path"], "command_shape": "schema-defined"},
-          "side_effects": {"reads_files": false, "writes_files": true, "modifies_qgis_state": false, "uses_network": false, "runs_shell": false, "destructive_possible": true}
+          "side_effects": {"reads_files": true, "writes_files": true, "modifies_qgis_state": false, "uses_network": true, "runs_shell": false, "destructive_possible": true}
         },
         {
           "name": "capture_qgis_screenshot",
-          "description": "截取 QGIS 当前画面，让模型直接看到界面。默认目标是地图画布 map_canvas，也可选 main_window 主窗口、active_window 当前活动窗口或 layout_designer 打印布局设计器（需传 layout_name），并可用 region [x, y, width, height] 只截取局部区域，宽和高至少为 1。图像长边默认不超过 2560 像素，超过时会缩小，截图也不会比屏幕显示的更清晰。看小字或细节时用 region，局部区域保留原始像素。返回的 warnings 含 downscaled_to_max_dimension、downscaled_to_fit_size_budget、converted_to_jpeg_to_fit_size_budget 或 jpeg_quality_lowered_to_<质量> 时表示细节有损失，需要这些细节时改截更小的区域。默认包含 QCopilots 聊天面板，传 include_qcopilots_panel=false 可遮盖该面板。capture_method 默认 widget，只渲染 QGIS 自身控件。screen 直接读取屏幕像素，能显示三维视图、弹出菜单和标题栏，但也会截到叠在 QGIS 上方的其他应用窗口，可能暴露无关的隐私内容，只在确有需要时使用。返回一个 image 内容项和一段纯文本摘要，截地图画布时还附带 CRS、范围、比例尺和旋转角。只读，不写文件，不改变 QGIS 状态。截图只反映调用那一刻，画面变化后需再次调用以获取最新视图。",
+          "description": "截取 QGIS 当前画面，让模型直接看到界面。默认目标是地图画布 map_canvas，也可选 main_window 主窗口、active_window 当前活动窗口或 layout_designer 打印布局设计器（需传 layout_name），并可用 region [x, y, width, height] 只截取局部区域，宽和高至少为 1。图像长边默认不超过 2560 像素，超过时会缩小，截图也不会比屏幕显示的更清晰。看小字或细节时用 region，局部区域保留原始像素。返回的 warnings 含 downscaled_to_max_dimension、downscaled_to_fit_size_budget、converted_to_jpeg_to_fit_size_budget 或 jpeg_quality_lowered_to_<质量> 时表示细节有损失，需要这些细节时改截更小的区域。默认包含 QCopilots 聊天面板，传 include_qcopilots_panel=false 可遮盖该面板。capture_method 默认 widget，只渲染 QGIS 自身控件。screen 直接读取桌面当前呈现的像素，可能稍晚于地图渲染完成，能显示三维视图、弹出菜单和标题栏，但也会截到叠在 QGIS 上方的其他应用窗口，可能暴露无关的隐私内容，只在确有需要时使用。返回一个 image 内容项和一段纯文本摘要，截地图画布时还附带 CRS、范围、比例尺和旋转角。只读，不写文件，不改变 QGIS 状态。最多等待 wait_for_render_ms，覆盖截图范围内可见二维画布的待渲染状态及已排队的图层树同步。零等待或预算耗尽时返回当前画面，对未完成更新给出警告。冻结或关闭渲染的画布会给出相应提示，不改变其状态。画面变化后需再次调用以获取最新视图。",
           "status": "allowed",
           "risk_level": "R0",
           "requires_qgis_bridge": true,
@@ -439,7 +439,7 @@
         },
         {
           "name": "load_map_layer",
-          "description": "从本地文件、provider URI、XYZ 瓦片 URL 或 OGC、ArcGIS 服务 URL 加载一个图层，默认加入当前工程，返回图层摘要（含 id）、layer_type、provider 和 source。加载前可用 list_layers 避免重复，用 describe_layer_sources 查看类型和 provider。auto 只适用于本地文件，会依次尝试矢量、栅格、网格、点云、矢量瓦片和三维场景 provider，因此不接受 provider，除非该 provider 本身指明图层类型（如 pdal）。远程 URL 和 provider URI 必须显式指定 layer_type。provider 指明更具体的类型时会改用该类型，例如 raster 配 xyz 或 wms、vector 配 arcgis_feature_server，结果中的 layer_type 给出实际类型，vector 配 vector_tile 会报错，应改用 layer_type vector_tile。使用普通服务 URL 时，WMS 需要 uri_options.layers，WCS 需要 uri_options.identifier。本地路径必须是绝对路径，file: URI 和 provider URI 中的本地路径也一样，相对路径会被拒绝。来源无效时报错且不添加图层。加载不会自动缩放，可随后调用 zoom_to_layer。",
+          "description": "从本地文件、provider URI、XYZ 瓦片 URL 或 OGC、ArcGIS 服务 URL 加载一个图层，默认加入当前工程，返回图层摘要（含 id）、layer_type、provider 和 source。加载前可用 list_layers 避免重复，用 describe_layer_sources 查看类型和 provider。auto 只适用于本地文件，会依次尝试矢量、栅格、网格、点云、矢量瓦片和三维场景 provider，因此不接受 provider，除非该 provider 本身指明图层类型（如 pdal）。远程 URL 和 provider URI 必须显式指定 layer_type。provider 指明更具体的类型时会改用该类型，例如 raster 配 xyz 或 wms、vector 配 arcgis_feature_server，结果中的 layer_type 给出实际类型，vector 配 vector_tile 会报错，应改用 layer_type vector_tile。使用普通服务 URL 时，WMS 需要 uri_options.layers，WCS 需要 uri_options.identifier。本地路径必须是绝对路径，file: URI 和 provider URI 中的本地路径也一样，相对路径会被拒绝。来源无效时报错且不添加图层。添加首个有效空间图层时，QGIS 可能自动缩放。也可用图层 id 调用 zoom_to_layer 定位任一图层。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -450,7 +450,7 @@
         },
         {
           "name": "remove_map_layers",
-          "description": "分两步从当前工程移除整个图层，不删除磁盘文件或数据库，但内存图层的要素会丢失。第一步预览：用 layer_id、layer_ids、name、names、source 或 sources 选择图层，返回匹配图层、编辑状态和 confirmation_token，此时不移除任何图层。第二步确认：用户同意后只提交该一次性令牌（allow_multiple 和 editable_changes 只允许保持默认值），令牌会过期，预览后图层或其未保存编辑变化时确认失败。优先用图层 id，给出 id 时忽略名称和来源，工程中不存在的 id 会报错。同时给出名称和来源时只选两者都匹配的图层，列出的名称没有匹配图层时报错。名称或来源匹配多个图层时须设 allow_multiple=true，单次最多 64 个。编辑中的图层按预览时的 editable_changes 处理，默认 reject 使确认失败，save 先提交，discard 先放弃，未保存编辑不会被静默丢弃。删除要素请用 delete_vector_features，仅隐藏图层请用 set_layer_visibility。",
+          "description": "分两步从当前工程移除整个图层，不删除磁盘文件或数据库，但内存图层的要素会丢失。第一步预览：用 layer_id、layer_ids、name、names、source 或 sources 选择图层，返回匹配图层、编辑状态和 confirmation_token，此时不移除任何图层。第二步确认：用户同意后只提交该一次性令牌（allow_multiple 和 editable_changes 只允许保持默认值），令牌会过期，预览后图层或其未保存编辑变化时确认失败。优先用图层 id，给出 id 时忽略名称和来源，工程中不存在的 id 会报错。同时给出名称和来源时只选两者都匹配的图层，列出的名称没有匹配图层时报错。名称或来源匹配多个图层时须设 allow_multiple=true，单次最多 64 个。编辑中的图层按预览时的 editable_changes 处理，默认 reject 使确认失败，save 先提交，discard 先放弃，未保存编辑不会被静默丢弃。移除成功后会请求重绘所有二维地图视图。删除要素请用 delete_vector_features，仅隐藏图层请用 set_layer_visibility。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -517,7 +517,7 @@
         },
         {
           "name": "delete_vector_features",
-          "description": "分两步删除矢量要素。第一步预览：提交 layer_id 以及 feature_ids、filter_expression 或两者，不删除任何要素，返回 matched_count、最多 100 个要素 id 和 confirmation_token，无匹配时令牌为 null，应先向用户展示将删除的内容。第二步确认：用户同意后只提交 layer_id 和该令牌。令牌一次性有效并会过期，绑定图层和预览要素的属性与几何，期间有变化须重新预览。单次最多 10000 个要素。只给 feature_ids 时不存在的 id 会报错，同时给出 filter_expression 时要素须两者都满足。删除写入图层编辑缓冲，成功后返回 staged=true、committed=false、requires_user_commit=true，用户在 QGIS 中保存图层编辑后数据源才会改变，回滚编辑即可撤销。仅高亮要素请用 set_vector_selection，移除整个图层请用 remove_map_layers。",
+          "description": "分两步删除矢量要素。第一步预览：提交 layer_id 以及 feature_ids、filter_expression 或两者，不删除任何要素，返回 matched_count、最多 100 个要素 id 和 confirmation_token，无匹配时令牌为 null，应先向用户展示将删除的内容。第二步确认：用户同意后只提交 layer_id 和该令牌。令牌一次性有效并会过期，绑定图层和预览要素的属性与几何，期间有变化须重新预览。单次最多 10000 个要素。只给 feature_ids 时不存在的 id 会报错，同时给出 filter_expression 时要素须两者都满足。删除写入图层编辑缓冲，成功后返回 staged=true、committed=false、requires_user_commit=true，并重绘显示该图层的地图视图。用户在 QGIS 中保存图层编辑后数据源才会改变，回滚编辑即可撤销。仅高亮要素请用 set_vector_selection，移除整个图层请用 remove_map_layers。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -538,7 +538,7 @@
         },
         {
           "name": "set_project_crs",
-          "description": "用权威代码（如 EPSG:4326、EPSG:32633）或 WKT 设置当前工程 CRS，返回修改前后的 CRS。设置后地图画布按新 CRS 显示，图层实时重投影，但图层数据和各图层自身的 CRS 不变。适合以其他投影显示地图，例如网络地图用 EPSG:3857，局部米制地图用 UTM 分带。需要真正重投影数据时，请用 start_vector_processing_algorithm 运行 native:reprojectlayer 等处理算法。CRS 无效时报错且不做修改。工程文件不会自动保存，需要保留时调用 save_project。",
+          "description": "用权威代码（如 EPSG:4326、EPSG:32633）或 WKT 设置当前工程 CRS，返回修改前后的 CRS。主地图视图采用新的 CRS，其他二维地图视图保留各自的 CRS，并按更新后的工程设置重绘。图层数据和图层自身的 CRS 保持不变。适合以其他投影显示地图，例如网络地图用 EPSG:3857，局部米制地图用 UTM 分带。需要真正重投影数据时，请用 start_vector_processing_algorithm 运行 native:reprojectlayer 等处理算法。CRS 无效时报错且不做修改。工程文件不会自动保存，需要保留时调用 save_project。",
           "status": "restricted",
           "risk_level": "R1",
           "requires_qgis_bridge": true,
@@ -635,7 +635,7 @@
         },
         {
           "name": "add_vector_features",
-          "description": "把新要素作为暂存编辑加入已有矢量图层的编辑缓冲区。图层在需要时自动进入编辑模式，不会写入数据源。成功结果报告 staged=true、committed=false、requires_user_commit=true，并返回 added_count、added_feature_ids 和 feature_ids_verified。用户需要在 QGIS 中检查并保存图层编辑，保存时 QGIS 可能重新编号新增要素的 id。每个要素的 geometry_wkt 使用图层 CRS，attributes 按已有字段名填写，未知字段会被拒绝。所有要素作为一个可撤销步骤整体加入，要么全部成功要么全部不加。新建图层用 create_vector_layer，修改已有要素用 update_vector_features。",
+          "description": "把新要素作为暂存编辑加入已有矢量图层的编辑缓冲区。图层在需要时自动进入编辑模式，不会写入数据源。成功结果报告 staged=true、committed=false、requires_user_commit=true，并返回 added_count、added_feature_ids 和 feature_ids_verified。用户需要在 QGIS 中检查并保存图层编辑，保存时 QGIS 可能重新编号新增要素的 id。每个要素的 geometry_wkt 使用图层 CRS，attributes 按已有字段名填写，未知字段会被拒绝。所有要素作为一个可撤销步骤整体加入，要么全部成功要么全部不加。成功后重绘显示该图层的地图视图。新建图层用 create_vector_layer，修改已有要素用 update_vector_features。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,
@@ -646,7 +646,7 @@
         },
         {
           "name": "update_vector_features",
-          "description": "以暂存编辑的方式修改矢量图层中已有要素的属性值或几何。updates 中每一项都必须包含 feature_id（例如 query_vector_features 返回的 feature_id），并提供按已有字段名填写的 attributes、图层 CRS 下的 geometry_wkt 或两者。成功结果报告 staged=true、committed=false、requires_user_commit=true，并返回 updated_feature_ids 和 updated_count。在用户于 QGIS 中保存图层编辑之前不会写入数据源。所有更新作为一个可撤销步骤整体生效或全部不生效，未知字段、不存在的要素或重复的 feature_id 会使整个调用被拒绝。新增要素用 add_vector_features，删除要素用 delete_vector_features。",
+          "description": "以暂存编辑的方式修改矢量图层中已有要素的属性值或几何。updates 中每一项都必须包含 feature_id（例如 query_vector_features 返回的 feature_id），并提供按已有字段名填写的 attributes、图层 CRS 下的 geometry_wkt 或两者。成功结果报告 staged=true、committed=false、requires_user_commit=true，并返回 updated_feature_ids 和 updated_count。在用户于 QGIS 中保存图层编辑之前不会写入数据源。所有更新作为一个可撤销步骤整体生效或全部不生效，未知字段、不存在的要素或重复的 feature_id 会使整个调用被拒绝。成功后重绘显示该图层的地图视图。新增要素用 add_vector_features，删除要素用 delete_vector_features。",
           "status": "restricted",
           "risk_level": "R2",
           "requires_qgis_bridge": true,

@@ -22,8 +22,8 @@ import uuid
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
-
 
 _QGIS_DLL_DIRECTORY_HANDLES = []
 
@@ -39,9 +39,26 @@ def _prepare_windows_qgis_dll_search_path():
     if bin_root is None or not bin_root.is_dir():
         return
 
-    for candidate in sorted(bin_root.iterdir()):
-        if not (candidate / "qgis_core.dll").is_file():
-            continue
+    requested = Path(prefix_path)
+    configuration = os.environ.get("QCOPILOTS_TEST_CONFIGURATION", "")
+    if configuration:
+        requested = bin_root / configuration
+        if not (requested / "qgis_core.dll").is_file():
+            raise RuntimeError(f"QGIS test configuration is not built: {configuration}")
+    candidates = (
+        [requested] if (requested / "qgis_core.dll").is_file()
+        else [
+            path for path in bin_root.iterdir()
+            if (path / "qgis_core.dll").is_file()
+        ]
+    )
+    if len(candidates) > 1:
+        raise RuntimeError(
+            "Multiple QGIS build configurations are available. Set QGIS_PREFIX_PATH "
+            "to the configuration being tested."
+        )
+    for candidate in candidates:
+        os.environ["QGIS_PREFIX_PATH"] = candidate.as_posix()
         os.environ["PATH"] = f"{candidate}{os.pathsep}{os.environ.get('PATH', '')}"
         if hasattr(os, "add_dll_directory"):
             _QGIS_DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(candidate)))
@@ -51,6 +68,14 @@ def _prepare_windows_qgis_dll_search_path():
 _prepare_windows_qgis_dll_search_path()
 
 from processing.core.Processing import Processing
+from qcopilots_common.async_jobs import (
+    PUBLIC_JOB_STATES,
+    AsyncJobStore,
+    IdempotencyConflictError,
+    InvalidJobTransitionError,
+    JobNotFoundError,
+)
+from qcopilots_common.processing_jobs import ProcessingJobManager, json_safe_value
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -58,6 +83,7 @@ from qgis.core import (
     QgsFeature,
     QgsFeatureSink,
     QgsFields,
+    QgsFillSymbol,
     QgsGeometry,
     QgsPointXY,
     QgsProcessingAlgorithm,
@@ -65,19 +91,15 @@ from qgis.core import (
     QgsProcessingParameterFeatureSink,
     QgsProcessingProvider,
     QgsProject,
+    QgsRectangle,
+    QgsSingleSymbolRenderer,
+    QgsVectorLayer,
 )
+from qgis.gui import QgsLayerTreeMapCanvasBridge, QgsMapCanvas
 from qgis.PyQt.QtCore import QCoreApplication, QThread
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtTest import QSignalSpy, QTest
 from qgis.testing import QgisTestCase, start_app
-
-from qcopilots_common.async_jobs import (
-    AsyncJobStore,
-    IdempotencyConflictError,
-    InvalidJobTransitionError,
-    JobNotFoundError,
-    PUBLIC_JOB_STATES,
-)
-from qcopilots_common.processing_jobs import ProcessingJobManager, json_safe_value
-
 
 QGIS_APP = start_app()
 
@@ -1112,6 +1134,17 @@ class TestProcessingJobManager(unittest.TestCase):
         self.assertIn("project query failed", query_receipt["errors"][0])
         self.assertEqual(query_failure.postprocess_initial_layer_ids, {"initial"})
 
+        with mock.patch.object(
+            processing_jobs,
+            "_processing_project_layer_ids",
+            side_effect=[{"initial", "added"}, {"initial"}],
+        ), mock.patch.object(
+            processing_jobs, "_remove_processing_project_layers"
+        ) as remove:
+            processing_jobs._cleanup_processing_runtime_outputs(query_failure)
+        remove.assert_called_once_with({"added"})
+        self.assertTrue(processing_jobs._processing_cleanup_receipt(query_failure)["complete"])
+
         removal_failure = runtime()
         with mock.patch.object(
             processing_jobs,
@@ -1127,12 +1160,22 @@ class TestProcessingJobManager(unittest.TestCase):
         self.assertFalse(removal_receipt["complete"])
         self.assertEqual(removal_receipt["residual_layer_ids"], ["added"])
         self.assertTrue(removal_receipt["retry_recommended"])
-        self.assertEqual(removal_failure.postprocess_initial_layer_ids, {"initial"})
+        self.assertIsNone(removal_failure.postprocess_initial_layer_ids)
 
         with mock.patch.object(
             processing_jobs,
             "_processing_project_layer_ids",
-            side_effect=[{"initial", "added"}, {"initial"}],
+            side_effect=RuntimeError("retry project query failed"),
+        ):
+            processing_jobs._cleanup_processing_runtime_outputs(removal_failure)
+        retry_receipt = processing_jobs._processing_cleanup_receipt(removal_failure)
+        self.assertFalse(retry_receipt["complete"])
+        self.assertEqual(retry_receipt["residual_layer_ids"], ["added"])
+
+        with mock.patch.object(
+            processing_jobs,
+            "_processing_project_layer_ids",
+            side_effect=[{"initial", "added", "user-layer"}, {"initial", "user-layer"}],
         ), mock.patch.object(
             processing_jobs,
             "_remove_processing_project_layers",
@@ -3450,7 +3493,8 @@ class TestProcessingJobManager(unittest.TestCase):
             project_layer_ids.difference_update(layer_ids)
 
         dependencies["post_processor"] = partial_postprocess
-        manager = ProcessingJobManager(dependencies=dependencies)
+        iface = object()
+        manager = ProcessingJobManager(iface, dependencies=dependencies)
         with mock.patch.object(
             processing_jobs,
             "_processing_project_layer_ids",
@@ -3459,7 +3503,11 @@ class TestProcessingJobManager(unittest.TestCase):
             processing_jobs,
             "_remove_processing_project_layers",
             side_effect=remove_layers,
-        ):
+        ), mock.patch.object(
+            processing_jobs,
+            "refresh_map_canvases",
+            side_effect=RuntimeError("Canvas is unavailable"),
+        ) as refresh, self.assertLogs(processing_jobs.__name__, level="WARNING"):
             started = manager.start(
                 {
                     "category": "vector",
@@ -3474,6 +3522,9 @@ class TestProcessingJobManager(unittest.TestCase):
 
         failed = manager.get(started["job_id"])
         self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["error"]["code"], "output_postprocessing_failed")
+        self.assertTrue(failed["cleanup"]["complete"])
+        refresh.assert_called_once_with(iface)
         self.assertEqual(removed, ["job-output-a", "job-output-b"])
         self.assertEqual(project_layer_ids, {"preexisting"})
 
@@ -4174,10 +4225,62 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
             in {"succeeded", "failed", "cancelled"},
         )
 
+    def _make_canvas_pair(self):
+        main = QgsMapCanvas()
+        secondary = QgsMapCanvas()
+        bridge = QgsLayerTreeMapCanvasBridge(self.project.layerTreeRoot(), main, main)
+        bridge.setAutoSetupOnFirstLayer(False)
+        bridge.canvasLayersChanged.connect(secondary.setLayers)
+        secondary.setLayers(main.layers())
+        canvases = [main, secondary]
+        self.manager.iface = SimpleNamespace(mapCanvases=lambda: canvases)
+        spies = [QSignalSpy(canvas.mapCanvasRefreshed) for canvas in canvases]
+        for canvas in canvases:
+            self.addCleanup(canvas.deleteLater)
+            self.addCleanup(canvas.close)
+            canvas.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:4326"))
+            canvas.resize(160, 160)
+            canvas.setExtent(QgsRectangle(-1, -1, 3, 3))
+            canvas.show()
+        # Let the resize debounce finish before capturing the baseline.
+        QTest.qWait(550)
+        self._wait_for_canvas_frames(spies)
+        return canvases
+
+    def _wait_for_canvas_frames(self, spies, ready=lambda: True):
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            if all(len(spy) for spy in spies) and ready():
+                return
+            QTest.qWait(10)
+        self.fail("Both canvases did not render the expected frame")
+
+    def _add_solid_layer(self, name, color):
+        extent = QgsRectangle(-10, -10, 10, 10)
+        layer = QgsVectorLayer("Polygon?crs=EPSG:4326", name, "memory")
+        feature = QgsFeature(layer.fields())
+        feature.setGeometry(QgsGeometry.fromRect(extent))
+        self.assertTrue(layer.dataProvider().addFeatures([feature])[0])
+        symbol = QgsFillSymbol.createSimple({"color": color, "outline_style": "no"})
+        layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+        self.project.addMapLayer(layer)
+        return layer.id()
+
+    def _canvas_centers_are(self, canvases, color):
+        expected = QColor(color)
+        for canvas in canvases:
+            image = canvas.grab().toImage()
+            if image.pixelColor(image.width() // 2, image.height() // 2) != expected:
+                return False
+        return True
+
     def test_real_qgs_task_progress_and_output_ownership(self):
         algorithm_id = (
             f"{QCopilotsProcessingJobsProvider.PROVIDER_ID}:vector_progress"
         )
+        canvases = self._make_canvas_pair()
+        initial_images = [canvas.grab().toImage() for canvas in canvases]
+        spies = [QSignalSpy(canvas.mapCanvasRefreshed) for canvas in canvases]
         project_before = set(self.project.mapLayers())
         with_outputs = self.manager.start(
             {
@@ -4209,9 +4312,17 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
         loaded_layer = self.project.mapLayer(next(iter(added_layer_ids)))
         self.assertIsNotNone(loaded_layer)
         self.assertEqual(loaded_layer.featureCount(), 3)
+        self._wait_for_canvas_frames(
+            spies,
+            lambda: all(
+                loaded_layer in canvas.layers() and canvas.grab().toImage() != before
+                for canvas, before in zip(canvases, initial_images)
+            ),
+        )
+        published_images = [canvas.grab().toImage() for canvas in canvases]
 
-        self.project.removeMapLayers(list(added_layer_ids))
         project_without_outputs = set(self.project.mapLayers())
+        spies = [QSignalSpy(canvas.mapCanvasRefreshed) for canvas in canvases]
         QCopilotsProgressAlgorithm.reset_events()
         without_outputs = self.manager.start(
             {
@@ -4234,11 +4345,90 @@ class TestProcessingJobManagerQgisIntegration(QgisTestCase):
         retained = self._wait_for_terminal(without_outputs["job_id"])
         self.assertEqual(retained["state"], "succeeded")
         self.assertEqual(set(self.project.mapLayers()), project_without_outputs)
+        self.assertEqual(
+            [canvas.grab().toImage() for canvas in canvases], published_images
+        )
+        self.assertFalse(any(len(spy) for spy in spies))
         retained_runtime = self.manager.store.get_runtime(
             without_outputs["job_id"], "vector"
         )
         self.assertIs(retained_runtime.context, retained_context)
         self.assertGreaterEqual(retained_context.temporaryLayerStore().count(), 1)
+
+    def test_real_partial_postprocessing_rollback_and_retry_refresh_both_canvases(self):
+        import qcopilots_common.processing_jobs as processing_jobs
+
+        baseline = self._add_solid_layer("Processing rollback baseline", "#00ff00")
+        canvases = self._make_canvas_pair()
+        self.assertTrue(self._canvas_centers_are(canvases, "#00ff00"))
+        spies = [QSignalSpy(canvas.mapCanvasRefreshed) for canvas in canvases]
+        added = {}
+
+        def fail_after_adding_outputs(*_arguments):
+            added["hidden"] = self._add_solid_layer("Hidden output", "#0000ff")
+            hidden_node = self.project.layerTreeRoot().findLayer(added["hidden"])
+            hidden_node.setItemVisibilityChecked(False)
+            added["visible"] = self._add_solid_layer("Visible output", "#ff0000")
+            return False
+
+        remove_layers = processing_jobs._remove_processing_project_layers
+
+        def remove_only_hidden(layer_ids):
+            if added["hidden"] in layer_ids:
+                remove_layers({added["hidden"]})
+            raise RuntimeError("Forced partial rollback")
+
+        algorithm_id = f"{QCopilotsProcessingJobsProvider.PROVIDER_ID}:vector_progress"
+        with mock.patch.dict(
+            self.manager._dependencies, {"post_processor": fail_after_adding_outputs}
+        ), mock.patch.object(
+            processing_jobs,
+            "refresh_map_canvases",
+            wraps=processing_jobs.refresh_map_canvases,
+        ) as refresh:
+            with mock.patch.object(
+                processing_jobs,
+                "_remove_processing_project_layers",
+                side_effect=remove_only_hidden,
+            ):
+                started = self.manager.start(
+                    {
+                        "category": "vector",
+                        "algorithm_id": algorithm_id,
+                        "parameters": {"OUTPUT": "memory:"},
+                    }
+                )
+                job_id = started["job_id"]
+                QCopilotsProgressAlgorithm.release.set()
+                failed = self._wait_for_terminal(job_id)
+                self.assertEqual(failed["state"], "failed")
+                self.assertEqual(failed["error"]["code"], "output_state_indeterminate")
+                self.assertFalse(failed["cleanup"]["complete"])
+                self.assertEqual(
+                    failed["cleanup"]["residual_layer_ids"], [added["visible"]]
+                )
+                self._wait_for_canvas_frames(
+                    spies, lambda: self._canvas_centers_are(canvases, "#ff0000")
+                )
+                refresh.assert_called_once_with(self.manager.iface)
+
+            user_layer_id = self._add_solid_layer("Layer added between retries", "#ffff00")
+            user_node = self.project.layerTreeRoot().findLayer(user_layer_id)
+            user_node.setItemVisibilityChecked(False)
+            spies = [QSignalSpy(canvas.mapCanvasRefreshed) for canvas in canvases]
+            recovered = self.manager.get(job_id)
+            self.assertEqual(recovered["state"], "failed")
+            self.assertTrue(recovered["cleanup"]["complete"])
+            self.assertEqual(recovered["cleanup"]["residual_layer_ids"], [])
+            self.assertEqual(
+                set(self.project.mapLayers()),
+                self.initial_layer_ids | {baseline, user_layer_id},
+            )
+            self._wait_for_canvas_frames(
+                spies, lambda: self._canvas_centers_are(canvases, "#00ff00")
+            )
+            self.manager.get(job_id)
+            self.assertEqual(refresh.call_count, 2)
 
     def test_real_native_algorithm_rejects_gdal_virtual_destination(self):
         algorithm = self.registry.createAlgorithmById("native:extractbyattribute")

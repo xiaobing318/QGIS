@@ -72,9 +72,9 @@ def build_interactive_layer_tools() -> list[McpTool]:
                 "a plain service URL, WMS needs uri_options.layers and WCS needs "
                 "uri_options.identifier. Relative local paths, also inside "
                 "file: URIs and provider URIs, are rejected. An invalid "
-                "source returns an error and adds nothing. Loading "
-                "does not zoom, call zoom_to_layer with the returned layer id to "
-                "show it."
+                "source returns an error and adds nothing. QGIS may zoom when "
+                "the first valid spatial layer is added. To frame any loaded "
+                "layer, call zoom_to_layer with its id."
             ),
             _load_layer_schema(),
             "interactive_layer_load_layer",
@@ -102,7 +102,8 @@ def build_interactive_layer_tools() -> list[McpTool]:
                 "removal. Layers in an edit session follow editable_changes, "
                 "chosen at preview time. Editable changes are rejected by "
                 "default and are never silently discarded. Returns removed, "
-                "removed_count and editable_layers_processed. Use "
+                "removed_count and editable_layers_processed, and schedules a "
+                "redraw of all 2D map views after removal. Use "
                 "delete_vector_features to delete features inside a layer and "
                 "set_layer_visibility to only hide a layer."
             ),
@@ -213,7 +214,8 @@ def build_interactive_layer_tools() -> list[McpTool]:
                 "confirmed deletion reports staged=true, committed=false and "
                 "requires_user_commit=true: the data source changes only when "
                 "the user saves the layer edits in QGIS, and rolling back the "
-                "edits undoes it. Use set_vector_selection to only highlight "
+                "edits undoes it. Map views that show the layer redraw after "
+                "confirmation. Use set_vector_selection to only highlight "
                 "features and remove_map_layers to remove a whole layer."
             ),
             _delete_vector_features_schema(),
@@ -238,10 +240,10 @@ def build_interactive_layer_tools() -> list[McpTool]:
             "set_project_crs",
             (
                 "Set the current QGIS project CRS from an authority id or WKT and "
-                "return previous_crs and crs. The map canvas is then drawn in "
-                "this CRS and layers are reprojected on the fly, but layer data "
-                "and each layer's own CRS do not change. Use it when the user "
-                "wants the map shown in another projection, for example "
+                "return previous_crs and crs. The main map view uses the new "
+                "CRS. Other 2D views redraw with their own CRS, using the updated "
+                "project settings. Layer data and layer CRS are preserved. Use it "
+                "to show the map in another projection, for example "
                 "EPSG:3857 for web maps or a UTM zone for a local map in metres. "
                 "To reproject the data itself, run a Processing algorithm such "
                 "as native:reprojectlayer with start_vector_processing_algorithm. "

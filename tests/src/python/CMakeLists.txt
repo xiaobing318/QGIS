@@ -478,6 +478,7 @@ if (WITH_GUI)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerBuiltinTools test_qcopilots_mcp_server_builtin_tools.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerDiscovery test_qcopilots_mcp_server_discovery.py TEST_TIMEOUT=120)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerInteractiveTools test_qcopilots_mcp_server_interactive_tools.py TEST_TIMEOUT=60)
+  ADD_PYTHON_TEST(PyQCopilotsMcpServerCanvasUpdates test_qcopilots_canvas_updates.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerMcpHttp test_qcopilots_mcp_server_mcp_http.py TEST_TIMEOUT=60)
   set_tests_properties(PyQCopilotsMcpServerMcpHttp PROPERTIES RUN_SERIAL TRUE)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerLiveAcceptance test_qcopilots_mcp_live_acceptance.py TEST_TIMEOUT=60)
@@ -487,10 +488,23 @@ if (WITH_GUI)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerProcessingJobs test_qcopilots_processing_jobs.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerWorkspacePaths test_qcopilots_workspace_paths.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerLayerStyles test_qcopilots_layer_styles.py TEST_TIMEOUT=60)
+  ADD_PYTHON_TEST(PyQCopilotsMcpServerMapExport test_qcopilots_map_export.py TEST_TIMEOUT=60)
+  ADD_PYTHON_TEST(PyQCopilotsMcpServerMapExportOverlays test_qcopilots_map_export_overlays.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerScreenshot test_qcopilots_screenshot.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerAsyncNamespaces test_qcopilots_async_namespaces.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerProcessingInputCache test_qcopilots_processing_input_cache.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerProcessingAsyncFiles test_qcopilots_processing_async_files.py TEST_TIMEOUT=120)
+  if (WIN32 AND CMAKE_CONFIGURATION_TYPES)
+    # Pass the selected configuration independently of the generic Python
+    # wrapper's unexpanded QGIS_PREFIX_PATH, without changing that wrapper.
+    set_tests_properties(
+      PyQCopilotsMcpServerInteractiveTools PyQCopilotsMcpServerCanvasUpdates
+      PyQCopilotsMcpServerProcessingJobs PyQCopilotsMcpServerMapExport
+      PyQCopilotsMcpServerMapExportOverlays PyQCopilotsMcpServerScreenshot
+      PyQCopilotsMcpServerWorkspacePaths PyQCopilotsMcpServerProcessingAsyncFiles
+      PROPERTIES ENVIRONMENT "QCOPILOTS_TEST_CONFIGURATION=$<CONFIG>"
+    )
+  endif()
   ADD_PYTHON_TEST(PyQCopilotsMcpServerProcessingPublication test_qcopilots_processing_publication.py TEST_TIMEOUT=60)
   ADD_PYTHON_TEST(PyQCopilotsProcessingTaskChain test_qcopilots_processing_task_chain.py TEST_TIMEOUT=120)
   ADD_PYTHON_TEST(PyQCopilotsMcpServerProcessingTools test_qcopilots_mcp_server_processing_tools.py TEST_TIMEOUT=60)

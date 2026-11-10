@@ -12,14 +12,15 @@ __copyright__ = "Copyright 2026, The QGIS Project"
 
 import base64
 import os
+import queue
 import random
 import re
 import sys
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
-
 
 PLUGINS_ROOT = Path(__file__).resolve().parents[3] / "python" / "plugins"
 sys.path.insert(0, str(PLUGINS_ROOT))
@@ -38,9 +39,26 @@ def _prepare_windows_qgis_dll_search_path():
     if bin_root is None or not bin_root.is_dir():
         return
 
-    for candidate in sorted(bin_root.iterdir()):
-        if not (candidate / "qgis_core.dll").is_file():
-            continue
+    requested = Path(prefix_path)
+    configuration = os.environ.get("QCOPILOTS_TEST_CONFIGURATION", "")
+    if configuration:
+        requested = bin_root / configuration
+        if not (requested / "qgis_core.dll").is_file():
+            raise RuntimeError(f"QGIS test configuration is not built: {configuration}")
+    candidates = (
+        [requested] if (requested / "qgis_core.dll").is_file()
+        else [
+            path for path in bin_root.iterdir()
+            if (path / "qgis_core.dll").is_file()
+        ]
+    )
+    if len(candidates) > 1:
+        raise RuntimeError(
+            "Multiple QGIS build configurations are available. Set QGIS_PREFIX_PATH "
+            "to the configuration being tested."
+        )
+    for candidate in candidates:
+        os.environ["QGIS_PREFIX_PATH"] = candidate.as_posix()
         os.environ["PATH"] = f"{candidate}{os.pathsep}{os.environ.get('PATH', '')}"
         if hasattr(os, "add_dll_directory"):
             _QGIS_DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(candidate)))
@@ -616,10 +634,20 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
 
         start_app()
 
-    def _iface(self, canvas=None, main_window=None, designers=()):
+    def _iface(
+        self, canvas=None, main_window=None, designers=(), additional_canvases=(),
+        tree_bridge=None,
+    ):
         class FakeIface:
             def mapCanvas(self):
                 return canvas
+
+            def mapCanvases(self):
+                primary = [canvas] if canvas is not None else []
+                return primary + list(additional_canvases)
+
+            def layerTreeCanvasBridge(self):
+                return tree_bridge
 
             def mainWindow(self):
                 return main_window
@@ -651,6 +679,20 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         QCoreApplication.processEvents()
         canvas.waitWhileRendering()
         return canvas
+
+    def _show_settled_canvas(self, canvas):
+        from qcopilots_common.screenshot import _canvas_render_pending
+        from qgis.PyQt.QtCore import QCoreApplication
+        from qgis.PyQt.QtTest import QSignalSpy
+
+        refreshed = QSignalSpy(canvas.mapCanvasRefreshed)
+        canvas.show()
+        QCoreApplication.processEvents()
+        deadline = time.monotonic() + 3
+        while _canvas_render_pending(canvas):
+            remaining = deadline - time.monotonic()
+            self.assertGreater(remaining, 0)
+            self.assertTrue(refreshed.wait(max(1, int(remaining * 1000))))
 
     def _capture(self, iface, arguments):
         from qcopilots_common.bridge import QgisBridgeTools
@@ -936,6 +978,7 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         from qcopilots_common.screenshot import encode_image
 
         canvas = self._canvas()
+        self._show_settled_canvas(canvas)
         iface = self._iface(canvas=canvas)
         png = self._capture(iface, {"format": "png"})
         self._decode(png)
@@ -1122,12 +1165,14 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         from qcopilots_common.screenshot import capture_screenshot_via_bridge
 
         class DrawingCanvas(QgsMapCanvas):
-            drawing = True
+            drawing = False
 
             def isDrawing(self):
-                return self.drawing
+                return self.drawing or super().isDrawing()
 
         canvas = self._canvas(canvas_class=DrawingCanvas)
+        self._show_settled_canvas(canvas)
+        canvas.drawing = True
         iface = self._iface(canvas=canvas)
 
         pending = self._capture(iface, {})
@@ -1144,6 +1189,10 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         canvas.setParent(None)
         window.setCentralWidget(canvas)
         window.resize(500, 300)
+        window.show()
+        canvas.drawing = False
+        self._show_settled_canvas(canvas)
+        canvas.drawing = True
         iface = self._iface(canvas=canvas, main_window=window)
         self.assertTrue(self._capture(iface, {"target": "main_window"})["pending_render"])
 
@@ -1168,6 +1217,330 @@ class TestQCopilotsScreenshotCapture(unittest.TestCase):
         self.assertFalse(result["structuredContent"]["canvas"]["is_drawing"])
         self.assertEqual(result["content"][1]["type"], "image")
         _assert_plain_text(self, result["content"][0]["text"])
+
+    def test_queued_render_waits_before_the_renderer_job_starts(self):
+        from qgis.PyQt.QtTest import QSignalSpy
+
+        canvas = self._canvas()
+        self._show_settled_canvas(canvas)
+        iface = self._iface(canvas=canvas)
+
+        for schedule in (canvas.refresh, lambda: canvas.resize(440, 220)):
+            refreshed = QSignalSpy(canvas.mapCanvasRefreshed)
+            schedule()
+            self.assertFalse(canvas.isDrawing())
+
+            pending = self._capture(iface, {})
+            self.assertTrue(pending["pending_render"])
+            self.assertFalse(pending["canvas"]["is_drawing"])
+            forced = self._capture(iface, {"wait_for_render_ms": 0})
+            self._decode(forced)
+            self.assertIn("canvas_still_rendering", forced["warnings"])
+
+            self.assertTrue(refreshed.wait(3000))
+            complete = self._capture(iface, {})
+            self._decode(complete)
+            self.assertNotIn("canvas_still_rendering", complete["warnings"])
+
+    def test_http_capture_yields_to_the_layer_tree_update_from_an_earlier_request(self):
+        from qcopilots_common import screenshot
+        from qcopilots_common.bridge import BridgeClient, QgisBridgeController
+        from qgis.core import QgsProject, QgsVectorLayer
+        from qgis.gui import QgsLayerTreeMapCanvasBridge
+        from qgis.PyQt.QtCore import QCoreApplication, Qt
+
+        canvas = self._canvas()
+        project = QgsProject.instance()
+        layer = QgsVectorLayer("Point?crs=EPSG:3035", "screenshot", "memory")
+        layer_id = layer.id()
+        project.addMapLayer(layer)
+        self.addCleanup(project.removeMapLayer, layer_id)
+        tree_bridge = QgsLayerTreeMapCanvasBridge(project.layerTreeRoot(), canvas)
+        tree_bridge.setAutoSetupOnFirstLayer(False)
+        self._show_settled_canvas(canvas)
+        self.assertIn(layer, canvas.layers())
+
+        auth_token = "qcopilots-screenshot-test-token"
+        controller = QgisBridgeController(
+            self._iface(canvas=canvas, tree_bridge=tree_bridge),
+            port=0,
+            auth_token=auth_token,
+        )
+        controller.start()
+        self.addCleanup(controller.stop)
+        client = BridgeClient(controller.url, auth_token=auth_token)
+        deliveries = queue.Queue()
+        controller._dispatcher._object.request.connect(
+            lambda _payload: deliveries.put(None), Qt.ConnectionType.DirectConnection
+        )
+        outcomes = queue.Queue()
+
+        def call(tool, arguments):
+            try:
+                outcomes.put((tool, client.call(tool, arguments)))
+            except Exception as err:
+                outcomes.put((tool, err))
+
+        change = threading.Thread(
+            target=call,
+            args=("set_layer_visibility", {"layer_id": layer_id, "visible": False}),
+            daemon=True,
+        )
+        capture = threading.Thread(
+            target=call, args=(OPERATION, {"wait_for_render_ms": 0}), daemon=True
+        )
+        seen_layers = []
+        original_grab = screenshot.grab_image
+
+        def observe_grab(widget, geometry):
+            seen_layers.append([item.id() for item in canvas.layers()])
+            return original_grab(widget, geometry)
+
+        with mock.patch.object(screenshot, "grab_image", side_effect=observe_grab):
+            # Queue both HTTP requests before delivering either on the GUI
+            # thread. The visibility handler posts its tree sync behind capture.
+            change.start()
+            deliveries.get(timeout=3)
+            capture.start()
+            deliveries.get(timeout=3)
+            deadline = time.monotonic() + 3
+            while change.is_alive() or capture.is_alive():
+                self.assertLess(time.monotonic(), deadline)
+                QCoreApplication.processEvents()
+                change.join(0.01)
+                capture.join(0.01)
+
+        results = dict(outcomes.get_nowait() for _ in range(2))
+        for outcome in results.values():
+            if isinstance(outcome, Exception):
+                raise outcome
+        self.assertFalse(results["set_layer_visibility"]["visible"])
+        self._decode(results[OPERATION])
+        self.assertEqual(len(seen_layers), 1)
+        self.assertNotIn(layer_id, seen_layers[0])
+
+    def test_screenshot_wait_budget_survives_continuous_layer_tree_changes(self):
+        from qcopilots_common.bridge import QgisBridgeController
+        from qcopilots_common.screenshot import (
+            DEFAULT_WAIT_FOR_RENDER_MS,
+            capture_screenshot_via_bridge,
+        )
+        from qgis.core import QgsLayerTree, QgsVectorLayer
+        from qgis.gui import QgsLayerTreeMapCanvasBridge
+        from qgis.PyQt.QtCore import QCoreApplication, QObject, Qt, pyqtSignal
+
+        class Changes(QObject):
+            requested = pyqtSignal()
+
+        canvas = self._canvas()
+        root = QgsLayerTree()
+        # Toggling a table still queues a tree sync, but leaves canvas layers
+        # unchanged so a paint job cannot account for a pending response.
+        table = QgsVectorLayer("None?field=id:integer", "screenshot table", "memory")
+        self.assertTrue(table.isValid())
+        node = root.addLayer(table)
+        bridge = QgsLayerTreeMapCanvasBridge(root, canvas)
+        bridge.setAutoSetupOnFirstLayer(False)
+        self._show_settled_canvas(canvas)
+        self.assertFalse(canvas.layers())
+        controller = QgisBridgeController(self._iface(canvas=canvas, tree_bridge=bridge))
+        self.addCleanup(controller.stop)
+
+        changes = Changes()
+        changes.requested.connect(
+            lambda: node.setItemVisibilityChecked(not node.itemVisibilityChecked()),
+            Qt.ConnectionType.QueuedConnection,
+        )
+        # Put another change behind every GUI delivery of a screenshot.
+        controller._dispatcher._object.request.connect(
+            lambda _payload: changes.requested.emit(), Qt.ConnectionType.DirectConnection
+        )
+
+        for arguments, expected_wait in (
+            ({"wait_for_render_ms": 0}, 0),
+            ({}, DEFAULT_WAIT_FOR_RENDER_MS / 1000),
+        ):
+            with self.subTest(arguments=arguments):
+                clock = _FakeClock()
+                outcomes = queue.Queue()
+                pending = []
+
+                def call(tool, arguments):
+                    reply = controller.dispatch(tool, arguments)
+                    pending.append(bool(reply.get("pending_render")))
+                    return reply
+
+                def capture():
+                    try:
+                        outcomes.put(
+                            capture_screenshot_via_bridge(
+                                call, arguments, clock=clock, sleep=clock.sleep
+                            )
+                        )
+                    except Exception as err:
+                        outcomes.put(err)
+
+                worker = threading.Thread(target=capture, daemon=True)
+                worker.start()
+                deadline = time.monotonic() + 3
+                while worker.is_alive():
+                    self.assertLess(time.monotonic(), deadline)
+                    QCoreApplication.processEvents()
+                    worker.join(0.005)
+                outcome = outcomes.get_nowait()
+                if isinstance(outcome, Exception):
+                    raise outcome
+
+                self.assertEqual(outcome["content"][1]["type"], "image")
+                self.assertIn(
+                    "canvas_still_rendering", outcome["structuredContent"]["warnings"]
+                )
+                self.assertAlmostEqual(sum(clock.sleeps), expected_wait)
+                if expected_wait == 0:
+                    self.assertEqual(pending, [False])
+                else:
+                    self.assertGreater(len(pending), 1)
+                    self.assertTrue(all(pending[:-1]))
+                    self.assertFalse(pending[-1])
+
+    def test_layer_tree_barrier_requeues_if_a_new_update_overtakes_it(self):
+        from qcopilots_common.canvas import LayerTreeUpdateBarrier
+        from qgis.core import QgsLayerTree, QgsVectorLayer
+        from qgis.gui import QgsLayerTreeMapCanvasBridge
+        from qgis.PyQt.QtCore import QEventLoop, QObject, Qt, QTimer, pyqtSignal
+
+        class QueuedSteps(QObject):
+            change = pyqtSignal()
+            check = pyqtSignal()
+
+        canvas = self._canvas()
+        root = QgsLayerTree()
+        layer = QgsVectorLayer("Point?crs=EPSG:3035", "screenshot", "memory")
+        node = root.addLayer(layer)
+        bridge = QgsLayerTreeMapCanvasBridge(root, canvas)
+        bridge.setAutoSetupOnFirstLayer(False)
+        self.assertIn(layer, canvas.layers())
+
+        node.setItemVisibilityChecked(False)
+        barrier = LayerTreeUpdateBarrier(self._iface(canvas=canvas, tree_bridge=bridge))
+        self.addCleanup(barrier.close)
+        self.assertFalse(barrier.is_settled())
+        steps = QueuedSteps()
+        loop = QEventLoop()
+        observed = []
+
+        def check():
+            settled = barrier.is_settled()
+            observed.append((settled, layer in canvas.layers()))
+            if settled:
+                loop.quit()
+            else:
+                steps.check.emit()
+
+        steps.change.connect(
+            lambda: node.setItemVisibilityChecked(True), Qt.ConnectionType.QueuedConnection
+        )
+        steps.check.connect(check, Qt.ConnectionType.QueuedConnection)
+        # The first tree sync precedes change, which posts a second sync after
+        # the first check. The first check must wait for that second sync.
+        steps.change.emit()
+        steps.check.emit()
+        timer = QTimer(loop)
+        timer.setSingleShot(True)
+        timer.timeout.connect(loop.quit)
+        timer.start(3000)
+        loop.exec()
+        self.assertEqual(observed, [(False, False), (True, True)])
+
+    def test_wait_uses_only_canvases_visible_in_the_capture_region(self):
+        from qcopilots_common.screenshot import _captured_canvases
+        from qgis.core import QgsCoordinateReferenceSystem
+        from qgis.gui import QgsMapCanvas
+        from qgis.PyQt.QtCore import QPoint, QRect, Qt
+        from qgis.PyQt.QtWidgets import QWidget
+
+        class TestCanvas(QgsMapCanvas):
+            pending = False
+
+            def isDrawing(self):
+                return self.pending or super().isDrawing()
+
+        window = self._dispose(QWidget())
+        window.resize(480, 240)
+        primary = self._canvas(200, 160, TestCanvas)
+        primary.setParent(window)
+        primary.move(10, 10)
+        secondary = self._canvas(200, 160, TestCanvas)
+        secondary.setParent(window)
+        secondary.move(250, 10)
+        secondary.setDestinationCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
+        secondary.pending = True
+        floating = self._canvas(200, 160, TestCanvas)
+        floating.setParent(window, Qt.WindowType.Window)
+        floating.pending = True
+        window.show()
+        self._show_settled_canvas(primary)
+        floating.show()
+        floating.move(window.mapToGlobal(QPoint(250, 10)))
+        iface = self._iface(
+            canvas=primary, main_window=window, additional_canvases=(secondary, floating)
+        )
+
+        self.assertTrue(self._capture(iface, {"target": "main_window"})["pending_render"])
+        self.assertTrue(
+            self._capture(iface, {"target": "main_window", "region": [260, 20, 20, 20]})[
+                "pending_render"
+            ]
+        )
+        forced = self._capture(
+            iface,
+            {"target": "main_window", "region": [260, 20, 20, 20], "wait_for_render_ms": 0},
+        )
+        self.assertEqual(forced["canvas"]["crs"], "EPSG:3857")
+        self.assertIn("canvas_still_rendering", forced["warnings"])
+        primary_only = self._capture(
+            iface, {"target": "main_window", "region": [20, 20, 20, 20]}
+        )
+        self._decode(primary_only)
+        self.assertEqual(primary_only["canvas"]["crs"], "EPSG:3035")
+
+        overlap = QRect(secondary.mapToGlobal(QPoint()), secondary.size()).intersected(
+            QRect(floating.mapToGlobal(QPoint()), floating.size())
+        )
+        self.assertFalse(overlap.isEmpty())
+        screen_origin = overlap.topLeft() - QPoint(30, 15)
+        self.assertEqual(
+            _captured_canvases(
+                iface, window, {"method": "screen", "origin": screen_origin}, [30, 15, 1, 1]
+            ),
+            [secondary, floating],
+        )
+        secondary.hide()
+        full = self._capture(iface, {"target": "main_window"})
+        self._decode(full)
+        self.assertNotIn("canvas_still_rendering", full["warnings"])
+
+    def test_paused_render_warns_without_waiting_or_changing_state(self):
+        canvas = self._canvas()
+        iface = self._iface(canvas=canvas)
+        with mock.patch(
+            "qcopilots_common.screenshot._canvas_render_pending",
+            side_effect=AssertionError("a paused canvas must not block a screenshot"),
+        ):
+            canvas.freeze(True)
+            frozen = self._capture(iface, {})
+            self._decode(frozen)
+            self.assertIn("canvas_frozen", frozen["warnings"])
+            self.assertTrue(canvas.isFrozen())
+            self.assertTrue(canvas.renderFlag())
+
+            canvas.freeze(False)
+            canvas.setRenderFlag(False)
+            disabled = self._capture(iface, {})
+            self._decode(disabled)
+            self.assertIn("canvas_rendering_disabled", disabled["warnings"])
+            self.assertFalse(canvas.isFrozen())
+            self.assertFalse(canvas.renderFlag())
 
     def test_screen_capture_method_reports_the_privacy_warning(self):
         from qgis.PyQt.QtCore import QCoreApplication

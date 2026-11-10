@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import math
 import os
 import re
@@ -20,24 +21,35 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, time as datetime_time, timezone
+from datetime import date, datetime, timezone
+from datetime import time as datetime_time
 from enum import Enum
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
 from qcopilots_common.async_jobs import (
-    AsyncJobStore,
     PUBLIC_JOB_STATES,
     TERMINAL_JOB_STATES,
+    AsyncJobStore,
     utc_now_rfc3339,
 )
-from qcopilots_common.security_policy import FilesystemPolicy
+from qcopilots_common.canvas import refresh_map_canvases
 from qcopilots_common.processing_file_worker import (
-    ProcessingFileCancelled, file_work_context as _processing_file_work_context,
-    in_file_work, check_file_cancelled, report_file_progress, make_file_task,
+    ProcessingFileCancelled,
+    check_file_cancelled,
+    in_file_work,
+    make_file_task,
+    report_file_progress,
 )
-from qcopilots_common.processing_input_cache import capture_input_cache, compare_input_cache
+from qcopilots_common.processing_file_worker import (
+    file_work_context as _processing_file_work_context,
+)
+from qcopilots_common.processing_input_cache import (
+    capture_input_cache,
+    compare_input_cache,
+)
+from qcopilots_common.security_policy import FilesystemPolicy
 
 
 def json_safe_value(value: Any, _seen: set[int] | None = None) -> Any:
@@ -1176,7 +1188,16 @@ class ProcessingJobManager:
     def _recover_runtime(self, job_id, category, runtime):
         if runtime.file_task is not None or runtime.scheduling_algorithm or runtime.pending_callbacks:
             return
-        _cleanup_processing_project_layers(runtime)
+        if _cleanup_processing_project_layers(runtime) and self.iface is not None:
+            try:
+                refresh_map_canvases(self.iface)
+            except Exception:
+                # Refresh is independent of the project and file cleanup receipt.
+                logging.getLogger(__name__).warning(
+                    "Could not refresh map canvases after Processing rollback",
+                    exc_info=True,
+                )
+
         def recovered(_):
             receipt = _processing_cleanup_receipt(runtime)
             snapshot = self.store.get(job_id, category)
@@ -3100,28 +3121,39 @@ def _remove_processing_project_layers(layer_ids: set[str]) -> None:
         ) from err
 
 
-def _cleanup_processing_project_layers(runtime: _ProcessingRuntime) -> None:
+def _cleanup_processing_project_layers(runtime: _ProcessingRuntime) -> set[str]:
+    """Remove failed job outputs and return the IDs removed by this attempt."""
     initial = runtime.postprocess_initial_layer_ids
-    runtime.cleanup_residual_layer_ids = []
+    previously_remaining = set(runtime.cleanup_residual_layer_ids)
     runtime.cleanup_errors = []
-    if initial is None:
-        return
+    if initial is None and not previously_remaining:
+        return set()
     try:
         current = _processing_project_layer_ids()
     except Exception as err:
         runtime.cleanup_errors = [str(err)]
-        return
-    added = current - initial
-    if not added:
+        return set()
+    # Capture the layer delta once. A later retry may run after the user has
+    # added unrelated layers, so it can only revisit known residual IDs.
+    if initial is None:
+        added = previously_remaining & current
+    else:
+        added = current - initial
         runtime.postprocess_initial_layer_ids = None
-        return
+    runtime.cleanup_residual_layer_ids = sorted(added)
+    if not added:
+        return set()
     residual = set(added)
+    removed = set()
     try:
         _remove_processing_project_layers(added)
     except Exception as err:
         runtime.cleanup_errors.append(str(err))
+    else:
+        removed = added
     try:
         residual &= _processing_project_layer_ids()
+        removed = added - residual
     except Exception as err:
         runtime.cleanup_errors.append(str(err))
     runtime.cleanup_residual_layer_ids = sorted(str(item) for item in residual)
@@ -3130,8 +3162,7 @@ def _cleanup_processing_project_layers(runtime: _ProcessingRuntime) -> None:
             "QGIS project layers remain after cleanup: "
             + ", ".join(runtime.cleanup_residual_layer_ids)
         )
-    if not runtime.cleanup_residual_layer_ids and not runtime.cleanup_errors:
-        runtime.postprocess_initial_layer_ids = None
+    return removed
 
 
 def _processing_definition_is_destination(definition: Any) -> bool:

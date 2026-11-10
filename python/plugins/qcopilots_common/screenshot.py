@@ -52,6 +52,8 @@ MAX_VISIBLE_WINDOWS = 20
 MAX_SUMMARY_TITLE_CHARS = 120
 
 CANVAS_STILL_RENDERING = "canvas_still_rendering"
+CANVAS_FROZEN = "canvas_frozen"
+CANVAS_RENDERING_DISABLED = "canvas_rendering_disabled"
 
 _ARGUMENT_NAMES = frozenset(
     {
@@ -179,12 +181,15 @@ def capture_qgis_screenshot(
     iface: Any,
     arguments: Mapping[str, Any] | None,
     application: Any = None,
+    *,
+    layer_tree_pending: bool = False,
 ) -> dict[str, Any]:
     """Capture a QGIS window and return the base64 image with its metadata.
 
-    While the map canvas shown in the target is still rendering and
-    wait_for_render_ms is positive, return a pending_render result at once so
-    the caller can poll without blocking the GUI thread.
+    When a canvas in the captured area has a pending update and the wait
+    budget is positive, return a pending_render result so the caller can poll
+    without blocking the GUI thread. The bridge yields once to earlier
+    layer-tree updates before checking whether another update is pending.
     """
 
     options = normalize_screenshot_arguments(arguments)
@@ -204,21 +209,6 @@ def capture_qgis_screenshot(
         application,
         warnings,
     )
-    canvas = _map_canvas(iface)
-    shows_canvas = canvas is not None and (
-        widget is canvas or bool(widget.isAncestorOf(canvas))
-    )
-    canvas_meta = canvas_metadata(canvas) if shows_canvas else None
-    if canvas_meta is not None and canvas_meta["is_drawing"]:
-        if options["wait_for_render_ms"] > 0:
-            return {
-                "pending_render": True,
-                "target": options["target"],
-                "wait_for_render_ms": options["wait_for_render_ms"],
-                "canvas": canvas_meta,
-            }
-        warnings.append(CANVAS_STILL_RENDERING)
-
     geometry = capture_geometry(
         widget,
         options["capture_method"],
@@ -229,6 +219,21 @@ def capture_qgis_screenshot(
     if region is not None:
         validate_region(region, geometry["logical_size"])
     capture_rect = region or [0, 0, logical_width, logical_height]
+
+    canvases = _captured_canvases(iface, widget, geometry, capture_rect)
+    canvas = _map_canvas(iface)
+    if canvas not in canvases:
+        canvas = canvases[0] if canvases else None
+    canvas_meta = canvas_metadata(canvas) if canvas is not None else None
+    if _canvas_update_pending(canvases, warnings, layer_tree_pending):
+        if options["wait_for_render_ms"] > 0:
+            return {
+                "pending_render": True,
+                "target": options["target"],
+                "wait_for_render_ms": options["wait_for_render_ms"],
+                "canvas": canvas_meta,
+            }
+        warnings.append(CANVAS_STILL_RENDERING)
 
     image, device_pixel_ratio = grab_image(widget, geometry)
     panel_rect = qcopilots_panel_rect(iface, widget, geometry)
@@ -276,6 +281,66 @@ def capture_qgis_screenshot(
     if canvas_meta is not None:
         result["canvas"] = canvas_meta
     return result
+
+
+def _captured_canvases(
+    iface: Any, widget: Any, geometry: Mapping[str, Any], capture_rect: list[int]
+) -> list[Any]:
+    from qgis.PyQt.QtCore import QPoint, QRect
+
+    area = QRect(*capture_rect)
+    window = widget.window()
+    screen_capture = geometry["method"] == "screen"
+    if screen_capture:
+        area.translate(geometry["origin"])
+
+    canvases = []
+    for canvas in iface.mapCanvases():
+        if screen_capture:
+            if not canvas.isVisible() or canvas.window().isMinimized():
+                continue
+            origin = canvas.mapToGlobal(QPoint())
+        else:
+            if canvas.window() is not window:
+                continue
+            if canvas is not widget and (
+                not widget.isAncestorOf(canvas) or not canvas.isVisibleTo(widget)
+            ):
+                continue
+            origin = QPoint() if canvas is widget else canvas.mapTo(widget, QPoint())
+        if area.intersects(QRect(origin, canvas.size())):
+            canvases.append(canvas)
+    return canvases
+
+
+def _canvas_update_pending(
+    canvases: list[Any], warnings: list[str], layer_tree_pending: bool
+) -> bool:
+    if any(canvas.isFrozen() for canvas in canvases):
+        warnings.append(CANVAS_FROZEN)
+    if any(not canvas.renderFlag() for canvas in canvases):
+        warnings.append(CANVAS_RENDERING_DISABLED)
+    return any(
+        layer_tree_pending or _canvas_render_pending(canvas)
+        for canvas in canvases
+        if not canvas.isFrozen() and canvas.renderFlag()
+    )
+
+
+def _canvas_render_pending(canvas: Any) -> bool:
+    from qgis.PyQt.QtCore import Qt, QTimer
+
+    if canvas.isDrawing():
+        return True
+    # QGIS uses direct single-shot timer children for scheduled refreshes and
+    # resize refreshes. Count other single-shot children conservatively and
+    # let the screenshot caller's wait budget bound the polling.
+    return any(
+        timer.isSingleShot() and timer.isActive()
+        for timer in canvas.findChildren(
+            QTimer, options=Qt.FindChildOption.FindDirectChildrenOnly
+        )
+    )
 
 
 def assert_gui_thread() -> None:

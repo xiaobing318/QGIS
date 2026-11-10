@@ -17,11 +17,10 @@ import sys
 import tempfile
 import threading
 import unittest
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from unittest import mock
 from urllib.request import Request, urlopen
-
 
 PLUGINS_ROOT = Path(__file__).resolve().parents[3] / "python" / "plugins"
 sys.path.insert(0, str(PLUGINS_ROOT))
@@ -157,6 +156,224 @@ NORMALIZED_SCHEMA_TOOLS = {
     "list_raster_processing_algorithms",
     "list_general_processing_algorithms",
 }
+
+
+@dataclass(frozen=True)
+class _CanvasBehavior:
+    category: str
+    tools: tuple[str, ...]
+    expectation: str
+    regression_suites: tuple[str, ...]
+
+
+# Audit every public tool, including operations whose GUI effects happen later
+# in a Processing completion or recovery callback. These are behavioral review
+# requirements, not a claim that the recording bridge below verifies rendering.
+# The named suites exercise the relevant native QGIS and lifecycle paths.
+# A new registration must be classified explicitly rather than inheriting a
+# default "read only" assumption. Files and subprocesses retain QGIS's native
+# behavior: these wrappers do not monitor arbitrary external data changes.
+CANVAS_BEHAVIOR_MATRIX = (
+    _CanvasBehavior(
+        "project_change",
+        ("load_map_layer", "create_vector_layer"),
+        "When added to the project, native layer-tree updates reach relevant 2D "
+        "canvases. The first spatial layer can establish the initial extent. "
+        "Hidden groups and independent themes retain their native visibility "
+        "rules. load_map_layer's optional refresh_canvas also requests an extra "
+        "main-canvas refresh, independently of add_to_project.",
+        ("test_qcopilots_canvas_updates.py",),
+    ),
+    _CanvasBehavior(
+        "project_change",
+        ("remove_map_layers",),
+        "Actual removals request lightweight refresh on all 2D canvases, including "
+        "the last layer and batch removals. Preview, rejected confirmation and "
+        "no-op removal do not refresh. Frozen and disabled render states persist.",
+        ("test_qcopilots_canvas_updates.py", "test_qcopilots_mcp_server_interactive_tools.py"),
+    ),
+    _CanvasBehavior(
+        "project_change",
+        ("set_project_crs",),
+        "An actual CRS change invalidates all 2D canvas caches so project "
+        "expressions are reevaluated. Additional views keep their independent CRS.",
+        ("test_qcopilots_canvas_updates.py",),
+    ),
+    _CanvasBehavior(
+        "project_change",
+        (
+            "start_vector_processing_algorithm",
+            "start_raster_processing_algorithm",
+            "start_general_processing_algorithm",
+        ),
+        "Successful asynchronous result loading uses native Processing "
+        "postprocessing. File-only outputs and add_outputs_to_project=false "
+        "do not add layers. Postprocessing failure can roll back already drawn "
+        "outputs and must refresh after actual removals.",
+        ("test_qcopilots_processing_jobs.py", "test_qcopilots_processing_task_chain.py"),
+    ),
+    _CanvasBehavior(
+        "project_change",
+        (
+            "get_vector_processing_job", "get_raster_processing_job",
+            "get_general_processing_job", "cancel_vector_processing_job",
+            "cancel_raster_processing_job", "cancel_general_processing_job",
+        ),
+        "Get may retry incomplete terminal cleanup. Cancel may initiate immediate "
+        "or asynchronous recovery. Refresh only after actual project-layer "
+        "removal, including partial removal and retry, without masking file "
+        "recovery errors. Reading an ordinary job state does not refresh.",
+        ("test_qcopilots_processing_jobs.py", "test_qcopilots_processing_task_chain.py"),
+    ),
+    _CanvasBehavior(
+        "project_change",
+        ("create_print_layout",),
+        "Adds or replaces a layout in the project using native layout APIs. "
+        "It does not change the 2D canvas view or require a canvas refresh.",
+        ("test_qcopilots_mcp_server_interactive_tools.py",),
+    ),
+    _CanvasBehavior(
+        "layer_change",
+        ("set_layer_visibility",),
+        "Native layer-tree visibility propagation honors hidden parents and "
+        "independent map themes without overwriting additional view settings.",
+        ("test_qcopilots_canvas_updates.py",),
+    ),
+    _CanvasBehavior(
+        "layer_change",
+        ("set_vector_selection",),
+        "Selection signals update canvases showing the layer without changing "
+        "their extents or requiring the caller to request an explicit refresh.",
+        ("test_qcopilots_canvas_updates.py", "test_qcopilots_mcp_server_interactive_tools.py"),
+    ),
+    _CanvasBehavior(
+        "layer_change",
+        ("apply_layer_style", "set_vector_renderer", "configure_vector_labels"),
+        "Layer repaint notifications invalidate affected cached images in all "
+        "relevant canvases. Theme overrides retain native precedence.",
+        ("test_qcopilots_layer_styles.py", "test_qcopilots_canvas_updates.py"),
+    ),
+    _CanvasBehavior(
+        "layer_change",
+        ("add_vector_features", "update_vector_features", "delete_vector_features"),
+        "Successful edits notify every canvas showing the layer. Cover ordinary "
+        "editing and GeoPackage automatic transactions with cached rendering, "
+        "attribute-driven colors, geometry changes, addition and confirmed deletion. "
+        "Preserve edit buffers, undo and confirmation semantics.",
+        ("test_qcopilots_canvas_updates.py", "test_qcopilots_mcp_server_interactive_tools.py"),
+    ),
+    _CanvasBehavior(
+        "view_change",
+        (
+            "zoom_to_layer", "zoom_to_extent", "zoom_in", "zoom_out", "zoom_full",
+            "zoom_to_selection", "zoom_to_native_resolution", "zoom_to_last_extent",
+            "zoom_to_next_extent",
+        ),
+        "Operate on the main canvas, with additional views following their native "
+        "synchronization settings. Native-resolution zoom accounts for raster CRS, "
+        "provider resolution levels and device pixel ratio. Keep the public "
+        "single-point selection zoom fallback.",
+        ("test_qcopilots_canvas_updates.py", "test_qcopilots_mcp_server_interactive_tools.py"),
+    ),
+    _CanvasBehavior(
+        "view_change",
+        ("refresh_canvas",),
+        "Request the native Refresh/F5 action across all 2D canvases, including "
+        "source reload and cache invalidation. The response acknowledges an "
+        "asynchronous request rather than completion of rendering.",
+        ("test_qcopilots_canvas_updates.py",),
+    ),
+    _CanvasBehavior(
+        "image_read",
+        ("capture_qgis_screenshot",),
+        "Wait for queued tree updates and pending renders of canvases actually "
+        "included in the capture. Respect crop, floating windows, frozen and "
+        "disabled render states. Zero wait and timeout return current pixels with "
+        "feedback, without forcing refresh or blocking the GUI event loop.",
+        ("test_qcopilots_screenshot.py",),
+    ),
+    _CanvasBehavior(
+        "image_read",
+        ("export_map_image",),
+        "Render an independent current-settings snapshot so pixels and the world "
+        "file agree even before interactive rendering starts. Preserve rotation, "
+        "DPI, themes, selection and annotations. Timeout, shutdown and late task "
+        "completion must not publish abandoned output.",
+        ("test_qcopilots_map_export.py",),
+    ),
+    _CanvasBehavior(
+        "image_read",
+        ("export_print_layout",),
+        "Use the native layout exporter and layout map settings, independently "
+        "of any stale interactive canvas frame. Keep existing output contracts.",
+        ("test_qcopilots_mcp_server_interactive_tools.py",),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        (
+            "list_layers", "describe_layer_sources", "get_layer_metadata",
+            "query_vector_features", "get_project_crs", "get_raster_statistics",
+            "list_print_layouts", "save_project",
+        ),
+        "Read current project or layer state, or serialize the project. No "
+        "automatic view changes or additional canvas redraws are required.",
+        ("test_qcopilots_mcp_server_interactive_tools.py",),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        (
+            "list_vector_processing_algorithms", "get_vector_processing_algorithm_details",
+            "list_vector_processing_jobs", "list_raster_processing_algorithms",
+            "get_raster_processing_algorithm_details", "list_raster_processing_jobs",
+            "list_general_processing_algorithms", "get_general_processing_algorithm_details",
+            "list_general_processing_jobs",
+        ),
+        "Algorithm discovery and job-list summaries do not load outputs or retry "
+        "recovery. Unlike get-job, list-jobs has no project cleanup side effect.",
+        ("test_qcopilots_processing_jobs.py", "test_qcopilots_mcp_server_processing_tools.py"),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        (
+            "read_file", "get_file_metadata", "copy_file", "file_glob_search",
+            "grep_search", "exec_shell_command", "write_file", "edit_file",
+        ),
+        "Filesystem and shell tools do not inject canvas refreshes or monitor "
+        "arbitrary external file modifications. QGIS retains its native provider "
+        "behavior when external data changes.",
+        ("test_qcopilots_mcp_server_builtin_tools.py",),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        ("list_skills", "read_skill", "list_skill_resources", "read_skill_resource", "qgis-skills-creator"),
+        "Skill discovery and resource reads do not execute the described QGIS "
+        "operations or require canvas synchronization.",
+        ("test_qcopilots_mcp_server_skills.py",),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        (
+            "file_transfer_get_config", "file_transfer_update_config",
+            "file_transfer_test_connection", "file_transfer_trust_host_key",
+            "file_transfer_start_upload", "file_transfer_start_download",
+            "file_transfer_get_job", "file_transfer_list_jobs",
+            "file_transfer_cancel_job", "file_transfer_resume_job", "file_transfer_discard",
+        ),
+        "Transfer configuration and asynchronous file operations do not load "
+        "project layers or install external-file monitoring.",
+        ("test_qcopilots_mcp_server_file_transfer_service.py",),
+    ),
+    _CanvasBehavior(
+        "no_canvas_effect",
+        (
+            "list_qgis_binaries", "get_qgis_binary_details", "start_qgis_binary",
+            "get_qgis_binary_job", "list_qgis_binary_jobs", "cancel_qgis_binary_job",
+        ),
+        "Binary discovery and subprocess jobs do not automatically add their "
+        "outputs to the project or install external-file monitoring.",
+        ("test_qcopilots_qgis_binary_tools.py", "test_qcopilots_qgis_binary_jobs.py"),
+    ),
+)
 
 
 class _RecordingBridge:
@@ -336,6 +553,22 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
 
             self.assertEqual(len(all_names), 82)
             self.assertEqual(len(all_names), len(set(all_names)))
+
+    def test_every_registered_tool_has_one_explicit_canvas_behavior(self):
+        """Require a visual-effects review when a public tool is added or removed."""
+        with tempfile.TemporaryDirectory(prefix="qcopilots-canvas-inventory-") as workspace:
+            surfaces = self._build_surfaces(Path(workspace))
+        actual_names = {tool.name for tools in surfaces.values() for tool in tools}
+        classified_names = [name for row in CANVAS_BEHAVIOR_MATRIX for name in row.tools]
+        self.assertCountEqual(classified_names, actual_names)
+        self.assertEqual(len(classified_names), len(set(classified_names)))
+        for row in CANVAS_BEHAVIOR_MATRIX:
+            with self.subTest(tools=row.tools):
+                self.assertIn(row.category, {
+                    "project_change", "layer_change", "view_change", "image_read", "no_canvas_effect",
+                })
+                for suite in row.regression_suites:
+                    self.assertTrue(Path(__file__).with_name(suite).is_file(), suite)
 
     def test_minimal_arguments_supports_any_of_array_items(self):
         schema = {
