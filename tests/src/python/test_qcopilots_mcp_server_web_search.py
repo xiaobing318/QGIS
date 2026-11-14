@@ -37,6 +37,8 @@ class _Handler(BaseHTTPRequestHandler):
         status, content_type = 200, "application/json"
         if mode == "unauthorized":
             status, value = 401, {"error": {"code": "unauthorized", "message": "backend-secret"}}
+        elif mode == "error":
+            status, value = 502, {"error": self.server.error}
         elif mode == "bool_version":
             value["contract_version"] = True
         elif mode == "missing_version":
@@ -187,6 +189,22 @@ class TestQCopilotsMcpServerWebSearch(unittest.TestCase):
                     with self.subTest(mode=mode):
                         self.error(code, client.call, "search", {"query": "test"})
                         self.assertEqual(len(backend.records), before + 1)
+
+    def test_preserves_backend_retryable_with_safe_fallback(self):
+        with _backend() as backend:
+            backend.mode = "error"
+            with _client(BackendConfig(backend.url, "backend-secret")) as client:
+                for code in ("upstream_http_error", "provider_unavailable"):
+                    for retryable in (True, False):
+                        with self.subTest(code=code, retryable=retryable):
+                            backend.error = {"code": code, "message": "backend-secret", "retryable": retryable}
+                            error = self.error(code, client.call, "open", {"url": "https://example.invalid"})
+                            self.assertIs(error.retryable, retryable)
+                for invalid in (None, 0, 1, "true", [], {}):
+                    backend.error = {"code": "upstream_http_error", "retryable": invalid}
+                    self.assertIs(self.error("upstream_http_error", client.call, "open", {}).retryable, False)
+                backend.error = {"code": "unknown", "retryable": False}
+                self.assertIs(self.error("backend_unavailable", client.call, "open", {}).retryable, True)
 
     def test_deadline_closes_slow_response(self):
         with _backend() as backend:

@@ -37,10 +37,10 @@ _RETRYABLE = {"busy", "rate_limited", "timeout", "provider_unavailable", "backen
 
 
 class BackendError(Exception):
-    def __init__(self, code):
+    def __init__(self, code, retryable=None):
         self.code = code if code in _MESSAGES else "backend_unavailable"
         self.safe_message = _MESSAGES[self.code]
-        self.retryable = self.code in _RETRYABLE
+        self.retryable = retryable if code in _MESSAGES and type(retryable) is bool else self.code in _RETRYABLE
         super().__init__(self.safe_message)
 
 
@@ -219,9 +219,11 @@ class BackendClient:
             if response.status >= 400 or "error" in value:
                 error = value.get("error")
                 code = error.get("code") if isinstance(error, dict) else None
+                retryable = error.get("retryable") if isinstance(error, dict) else None
                 if not isinstance(code, str) or code not in _MESSAGES:
+                    retryable = None
                     code = {401: "unauthorized", 403: "forbidden", 429: "busy", 408: "timeout", 504: "timeout"}.get(response.status, "backend_unavailable")
-                raise BackendError(code)
+                raise BackendError(code, retryable)
             if response.status != 200 or type(value.get("contract_version")) is not int or value["contract_version"] != 1:
                 raise BackendError("backend_unavailable")
             return value
