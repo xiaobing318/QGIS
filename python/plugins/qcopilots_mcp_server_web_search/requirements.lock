@@ -1,0 +1,2 @@
+# This service currently uses only the Python standard library.
+# Keep this file for future dependencies; manager uv run adds --with-requirements only for non-comment entries.

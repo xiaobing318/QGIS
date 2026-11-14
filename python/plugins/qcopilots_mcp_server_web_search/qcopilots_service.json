@@ -1,0 +1,21 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_web_search",
+  "plugin_name": "QCopilots MCP Server Web Search",
+  "display_name": "QCopilots MCP Server Web Search",
+  "description": "提供网页搜索、网页阅读和页内查找能力，通过固定 REST 地址连接独立运行的 QCopilots-WebSearch 原生服务，使用单独后端令牌。适合 QCopilots 或其它 MCP 客户端获取可引用的公网资料，由 QCopilots MCP Servers Manager 管理本地适配进程，不负责启动或停止原生后端。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "advertised_host": "127.0.0.1",
+  "default_port": 48218,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": [
+    "tools"
+  ],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "cors_origins": []
+}

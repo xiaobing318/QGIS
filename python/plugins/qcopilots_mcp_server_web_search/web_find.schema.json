@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "page_id": {
+      "type": "string",
+      "description": "Cached page identifier. Accepts a page ID issued to this client. Unknown or expired IDs return page_unavailable.",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Literal text to find. Accepts 1–1024 Unicode characters. No regular expressions are evaluated.",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "case_sensitive": {
+      "type": "boolean",
+      "description": "Case matching mode. Accepts false or true, default false. false uses Unicode case-insensitive matching, true requires the exact case.",
+      "default": false
+    },
+    "start_line": {
+      "type": "integer",
+      "description": "First line to search. Accepts 1–10000, default 1. Use next_start_line to continue a truncated result.",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "max_matches": {
+      "type": "integer",
+      "description": "Maximum matching lines. Accepts 1–100, default 20. More matching lines are reported through truncated.",
+      "default": 20,
+      "minimum": 1,
+      "maximum": 100
+    }
+  },
+  "required": [
+    "page_id",
+    "pattern"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "web_find"
+}

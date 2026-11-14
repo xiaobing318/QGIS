@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "url": {
+      "type": "string",
+      "description": "Page address. Accepts a public HTTP or HTTPS URL up to 8192 characters. Supply this or page_id, never both.",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "page_id": {
+      "type": "string",
+      "description": "Previously read page identifier. Accepts an identifier returned to this client. Reuses its cached snapshot without a network request.",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "start_line": {
+      "type": "integer",
+      "description": "First returned line. Accepts 1–10000, default 1. Larger numbers page through the same snapshot.",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "max_lines": {
+      "type": "integer",
+      "description": "Page size. Accepts 1–500, default 200. Larger values return more numbered lines.",
+      "default": 200,
+      "minimum": 1,
+      "maximum": 500
+    }
+  },
+  "required": [],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "required": [
+        "url"
+      ],
+      "not": {
+        "required": [
+          "page_id"
+        ]
+      }
+    },
+    {
+      "required": [
+        "page_id"
+      ],
+      "not": {
+        "required": [
+          "url"
+        ]
+      }
+    }
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "web_open"
+}

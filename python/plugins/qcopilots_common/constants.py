@@ -41,6 +41,7 @@ DEFAULT_SERVICE_PORTS = {
     "qcopilots.mcp_server_processing_raster": 48215,
     "qcopilots.mcp_server_qgis_binary": 48216,
     "qcopilots.mcp_server_processing_general": 48217,
+    "qcopilots.mcp_server_web_search": 48218,
 }
 
 MAX_FILE_READ_BYTES = 256 * 1024

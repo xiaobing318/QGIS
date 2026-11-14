@@ -24,6 +24,7 @@ from unittest import mock
 
 
 SERVICE_PLUGIN_DIR_NAMES = (
+    "qcopilots_mcp_server_web_search",
     "qcopilots_mcp_server_builtin_tools",
     "qcopilots_mcp_server_interactive_tools",
     "qcopilots_mcp_server_processing_general",
@@ -34,6 +35,7 @@ SERVICE_PLUGIN_DIR_NAMES = (
 )
 
 SERVICE_SCHEMA_DESCRIPTION_LOCALIZED_DIR_NAMES = (
+    "qcopilots_mcp_server_web_search",
     "qcopilots_mcp_server_builtin_tools",
     "qcopilots_mcp_server_interactive_tools",
     "qcopilots_mcp_server_processing_general",
@@ -101,6 +103,7 @@ def _manager_config(
     }
 
 SERVICE_DESCRIPTION_REQUIRED_TERMS = {
+    "qcopilots.mcp_server_web_search": ("搜索", "网页", "QCopilots-WebSearch", "MCP 客户端"),
     "qcopilots.mcp_server_builtin_tools": (
         "本机工具",
         "文件读取",
@@ -309,6 +312,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "qcopilots.mcp_server_processing_vector",
                 "qcopilots.mcp_server_qgis_binary",
                 "qcopilots.mcp_server_skills",
+                "qcopilots.mcp_server_web_search",
             ],
         )
         self.assertEqual(
@@ -321,13 +325,14 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 "QCopilots MCP Server Processing Vector",
                 "QCopilots MCP Server QGIS Binary",
                 "QCopilots MCP Server Skills",
+                "QCopilots MCP Server Web Search",
             ],
         )
         self.assertTrue(all(manifest.enabled for manifest in discovered))
-        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * 7)
+        self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * len(SERVICE_PLUGIN_DIR_NAMES))
         self.assertEqual(
             [manifest.default_port for manifest in discovered],
-            [48211, 48213, 48217, 48215, 48214, 48216, 48212],
+            [48211, 48213, 48217, 48215, 48214, 48216, 48212, 48218],
         )
         for manifest in discovered:
             self.assertTrue(_contains_cjk(manifest.description), manifest.description)
@@ -376,6 +381,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots.mcp_server_processing_vector": True,
             "qcopilots.mcp_server_qgis_binary": True,
             "qcopilots.mcp_server_skills": False,
+            "qcopilots.mcp_server_web_search": False,
         }
 
         self.assertEqual(set(manifests), set(expected_bridge_services))
@@ -1810,7 +1816,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                     )
                     self.assertEqual(plugin.browser_access_snapshot(), snapshot)
 
-    def test_manager_browser_access_applies_all_origins_to_all_seven_services(self):
+    def test_manager_browser_access_applies_all_origins_to_all_services(self):
         _install_manager_import_stubs()
 
         import qcopilots_mcp_servers_manager.plugin as manager_plugin
@@ -1830,7 +1836,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         manifests = plugin._discover_services()
         self.assertEqual(
             {manifest.service_id for manifest in manifests},
-            set(DEFAULT_STARTUP_SERVICE_IDS),
+            set(DEFAULT_STARTUP_SERVICE_IDS) | {"qcopilots.mcp_server_web_search"},
         )
         for manifest in manifests:
             with self.subTest(service_id=manifest.service_id):
@@ -5035,6 +5041,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_server_processing_vector",
             "qcopilots_mcp_server_qgis_binary",
             "qcopilots_mcp_server_skills",
+            "qcopilots_mcp_server_web_search",
         ]
 
         for plugin_dir_name in plugin_dirs:
@@ -5082,6 +5089,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             "qcopilots_mcp_server_processing_raster": "48215",
             "qcopilots_mcp_server_qgis_binary": "48216",
             "qcopilots_mcp_server_processing_general": "48217",
+            "qcopilots_mcp_server_web_search": "48218",
         }
 
         for plugin_dir_name in SERVICE_PLUGIN_DIR_NAMES:
