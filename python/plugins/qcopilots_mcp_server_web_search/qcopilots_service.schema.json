@@ -75,7 +75,7 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 65535,
-      "description": "字段作用是在未设置 transport.port 时指定 MCP HTTP 端口。候选值是 1 到 65535 的整数，内置约定端口为 Web Search 48211、Skills 48212、Interactive Tools 48213、Processing Vector 48214、Processing Raster 48215。选择稳定且唯一的端口便于客户端重连，端口冲突时进程控制器会向后查找最多 100 个候选端口，范围耗尽或无权限端口会导致服务启动失败。"
+      "description": "字段作用是在未设置 transport.port 时指定 MCP HTTP 端口。候选值是 1 到 65535 的整数，内置约定端口为 Web Search 48218、Skills 48212、Interactive Tools 48213、Processing Vector 48214、Processing Raster 48215。选择稳定且唯一的端口便于客户端重连，端口冲突时进程控制器会向后查找最多 100 个候选端口，范围耗尽或无权限端口会导致服务启动失败。"
     },
     "mcp_path": {
       "type": "string",
