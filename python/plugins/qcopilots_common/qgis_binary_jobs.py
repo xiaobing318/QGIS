@@ -41,6 +41,11 @@ MAX_BINARY_STDIN_BYTES = 1024 * 1024
 MAX_BINARY_OUTPUT_BYTES = 16 * 1024 * 1024
 MAX_BINARY_TIMEOUT_SECONDS = 24 * 60 * 60
 
+_BINARY_RUNTIME_MODE_ENV = "QCOPILOTS_QGIS_BINARY_RUNTIME_MODE"
+_BINARY_BUILD_DIR_ENV = "QCOPILOTS_QGIS_BINARY_BUILD_DIR"
+_BINARY_CONFIGURATION_ENV = "QCOPILOTS_QGIS_BINARY_CONFIGURATION"
+_BINARY_OSGEO4W_ROOT_ENV = "QCOPILOTS_QGIS_BINARY_OSGEO4W_ROOT"
+
 _WINDOWS_DEVICE_PATH_PREFIXES = (
     "\\\\?\\",
     "\\\\.\\",
@@ -549,6 +554,41 @@ class _BinaryRuntime:
             self.task = None
 
 
+@dataclass(frozen=True)
+class _BinaryRuntimeLayout:
+    """Trusted executable locations, separate from job and filesystem policy."""
+
+    package_root: Path
+    working_directory: Path
+    build_output: Path | None = None
+    configuration: str | None = None
+
+    @property
+    def development(self) -> bool:
+        return self.build_output is not None
+
+    def resolve_executable(self, relative_path: str) -> Path:
+        normalized = _normalize_relative_executable_path(relative_path)
+        if self.build_output is not None:
+            build_paths = {
+                "apps/qgis-qt6/bin/qgis_process.exe": (
+                    f"bin/{self.configuration}/qgis_process.exe"
+                ),
+                "apps/qgis-qt6/pdal_wrench.exe": (
+                    f"{self.configuration}/pdal_wrench.exe"
+                ),
+                "apps/qgis-qt6/untwine.exe": f"{self.configuration}/untwine.exe",
+            }
+            build_path = build_paths.get(normalized.casefold())
+            if build_path is not None:
+                return _resolve_catalog_executable(self.build_output, build_path)
+            if normalized.casefold().startswith("apps/qgis-qt6/"):
+                raise FileNotFoundError(
+                    f"No development build mapping for QGIS binary: {normalized}"
+                )
+        return _resolve_catalog_executable(self.package_root, normalized)
+
+
 class QGISBinaryJobManager:
     """Catalog, task, and job owner for QGIS binary MCP tools."""
 
@@ -571,14 +611,16 @@ class QGISBinaryJobManager:
         self.catalog_path = Path(catalog_path) if catalog_path else _default_catalog_path()
         self._raw_catalog = self._load_catalog_document(self.catalog_path)
         _validate_catalog_header(self._raw_catalog)
-        self.package_root = _resolve_package_root(
+        self._runtime_layout = _resolve_binary_runtime_layout(
             package_root,
             self._raw_catalog,
             self._dependencies,
         )
+        self.package_root = self._runtime_layout.package_root
         self._catalog, self._configured_binaries = _validate_catalog(
             self._raw_catalog,
             self.package_root,
+            development=self._runtime_layout.development,
         )
 
     @property
@@ -604,7 +646,11 @@ class QGISBinaryJobManager:
     def _refresh_inventory(self) -> dict[str, dict[str, Any]]:
         # Build a fresh snapshot for each public lookup. Policy and running job
         # snapshots stay immutable when package files are added or removed.
-        return _binary_inventory(self.package_root, self._configured_binaries)
+        return _binary_inventory(
+            self.package_root,
+            self._configured_binaries,
+            runtime_layout=self._runtime_layout,
+        )
 
     def list_binaries(self, arguments: dict[str, Any]) -> dict[str, Any]:
         cursor = arguments.get("cursor", "0")
@@ -730,7 +776,7 @@ class QGISBinaryJobManager:
             )
         working_directory = _resolve_working_directory(
             working_directory_value,
-            self.package_root,
+            self._runtime_layout.working_directory,
             filesystem_policy,
         )
         _validate_binary_argument_paths(
@@ -776,7 +822,7 @@ class QGISBinaryJobManager:
                 "qgis_binary_risk_confirmation_required: confirmed_risk must be true"
             )
 
-        executable = _resolve_catalog_executable(self.package_root, binary["path"])
+        executable = self._runtime_layout.resolve_executable(binary["path"])
         stdin_bytes = stdin_value.encode("utf-8") if stdin_value is not None else None
         if stdin_bytes is not None and len(stdin_bytes) > binary["max_stdin_bytes"]:
             raise ValueError(
@@ -1278,7 +1324,9 @@ class QGISBinaryJobManager:
             else:
                 environment = {}
             setup_scripts = profile.get("setup_scripts", [])
-            if setup_scripts:
+            # Materials imports the complete development environment before
+            # starting QGIS. Published setup scripts would replace those paths.
+            if setup_scripts and not self._runtime_layout.development:
                 environment = self._capture_environment(setup_scripts, environment)
             for name, value in profile.get("variables", {}).items():
                 environment[str(name)] = _expand_package_root(
@@ -1362,7 +1410,7 @@ class QGISBinaryJobManager:
 
 
 def _validate_catalog(
-    document: dict[str, Any], package_root: Path
+    document: dict[str, Any], package_root: Path, *, development: bool = False
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     profiles = document.get("environment_profiles")
     groups = document.get("groups")
@@ -1383,7 +1431,10 @@ def _validate_catalog(
         if not isinstance(scripts, list) or any(not isinstance(item, str) for item in scripts):
             raise BinaryCatalogError(f"Invalid setup_scripts for profile: {profile_id}")
         for script in scripts:
-            _resolve_trusted_setup_script(package_root, script, require_exists=False)
+            if development:
+                _normalize_trusted_setup_script(script)
+            else:
+                _resolve_trusted_setup_script(package_root, script, require_exists=False)
         variables = raw_profile.get("variables", {})
         if not isinstance(variables, dict):
             raise BinaryCatalogError(f"Invalid variables for profile: {profile_id}")
@@ -1525,6 +1576,86 @@ def _default_catalog_path() -> Path:
         / "qcopilots_mcp_server_qgis_binary"
         / "qgis_binaries.json"
     )
+
+
+def _resolve_binary_runtime_layout(
+    configured: str | Path | None,
+    document: dict[str, Any],
+    dependencies: dict[str, Any],
+) -> _BinaryRuntimeLayout:
+    # Explicit callers retain the existing package contract, independently of
+    # the environment of a shell which may itself be running a development QGIS.
+    if configured is not None or dependencies.get("package_root_resolver"):
+        root = _resolve_package_root(configured, document, dependencies)
+        return _BinaryRuntimeLayout(root, root)
+
+    environment = dict(os.environ)
+    mode = environment.get(_BINARY_RUNTIME_MODE_ENV, "")
+    if mode in ("", "package"):
+        root = _resolve_package_root(configured, document, dependencies)
+        return _BinaryRuntimeLayout(root, root)
+    if mode != "development":
+        raise BinaryCatalogError(
+            f"{_BINARY_RUNTIME_MODE_ENV} must be development or package"
+        )
+
+    build_root = _development_directory(
+        environment.get(_BINARY_BUILD_DIR_ENV), _BINARY_BUILD_DIR_ENV
+    )
+    configuration = environment.get(_BINARY_CONFIGURATION_ENV)
+    if configuration not in ("RelWithDebInfo", "Release"):
+        raise BinaryCatalogError(
+            f"{_BINARY_CONFIGURATION_ENV} must be RelWithDebInfo or Release"
+        )
+    osgeo_root = _development_directory(
+        environment.get(_BINARY_OSGEO4W_ROOT_ENV), _BINARY_OSGEO4W_ROOT_ENV
+    )
+    osgeo_markers = ["bin/o4w_env.bat", "apps/Python312/python.exe"]
+    if not _root_matches_markers(osgeo_root, osgeo_markers):
+        raise BinaryCatalogError(
+            "Development OSGeo4W root is missing or has unsafe runtime files: "
+            + ", ".join(osgeo_markers)
+        )
+
+    build_output = _development_directory(build_root / "output", "build output")
+    build_bin = _development_directory(
+        build_output / "bin" / configuration, "build configuration directory"
+    )
+    try:
+        build_output.relative_to(build_root)
+        build_bin.relative_to(build_output)
+    except ValueError as err:
+        raise BinaryCatalogError("Development output escapes the build root") from err
+    if not _root_matches_markers(build_output, ["bin/qgisbuildpath.txt"]):
+        raise BinaryCatalogError(
+            "Development build requires a safe output/bin/qgisbuildpath.txt"
+        )
+    marker_path = build_output / "bin" / "qgisbuildpath.txt"
+    try:
+        lines = marker_path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as err:
+        raise BinaryCatalogError(
+            f"Cannot read development build marker: {err}"
+        ) from err
+    if len(lines) < 2 or any(line.strip() for line in lines[2:]):
+        raise BinaryCatalogError(
+            "Development build marker must identify source and output"
+        )
+    _development_directory(lines[0].strip(), "build marker source directory")
+    marked_output = _development_directory(
+        lines[1].strip(), "build marker output directory"
+    )
+    if marked_output != build_output:
+        raise BinaryCatalogError(
+            "Development build marker does not match the selected build"
+        )
+    return _BinaryRuntimeLayout(osgeo_root, build_bin, build_output, configuration)
+
+
+def _development_directory(value: str | Path | None, name: str) -> Path:
+    if value is None or not str(value).strip() or not Path(value).is_absolute():
+        raise BinaryCatalogError(f"{name} must be an existing absolute directory")
+    return _existing_directory(value, name)
 
 
 def _resolve_package_root(
@@ -1674,9 +1805,15 @@ def _actual_executable_paths(package_root: Path) -> dict[str, str]:
 
 
 def _binary_inventory(
-    package_root: Path, configured: dict[str, dict[str, Any]]
+    package_root: Path,
+    configured: dict[str, dict[str, Any]],
+    *,
+    runtime_layout: _BinaryRuntimeLayout | None = None,
 ) -> dict[str, dict[str, Any]]:
-    actual_paths = _actual_executable_paths(package_root)
+    development = runtime_layout is not None and runtime_layout.development
+    # Build trees contain test programs and other developer utilities. They are
+    # not part of the reviewed catalog and must not become discovered tools.
+    actual_paths = {} if development else _actual_executable_paths(package_root)
     binaries = {}
     configured_paths = set()
     for binary_id, policy in configured.items():
@@ -1687,20 +1824,32 @@ def _binary_inventory(
             "configured_enabled": policy["enabled"],
             "availability": "available",
         }
+        if development:
+            binary["resolved_path"] = None
         try:
-            resolved = _resolve_catalog_executable(package_root, policy["path"])
+            resolved = (
+                runtime_layout.resolve_executable(policy["path"])
+                if runtime_layout is not None
+                else _resolve_catalog_executable(package_root, policy["path"])
+            )
             binary["resolved_path"] = str(resolved)
         except FileNotFoundError:
             binary.update(
                 availability="missing",
                 enabled=False,
-                disabled_reason=f"Package executable is missing: {policy['path']}",
+                disabled_reason=(
+                    f"{'Development' if development else 'Package'} executable "
+                    f"is missing: {policy['path']}"
+                ),
             )
         except (OSError, RuntimeError, ValueError) as error:
             binary.update(
                 availability="unavailable",
                 enabled=False,
-                disabled_reason=f"Package executable is unavailable: {error}",
+                disabled_reason=(
+                    f"{'Development' if development else 'Package'} executable "
+                    f"is unavailable: {error}"
+                ),
             )
         binaries[binary_id] = binary
 
@@ -2245,9 +2394,7 @@ def _strip_argument_path_quotes(value: str) -> str:
     return value
 
 
-def _resolve_trusted_setup_script(
-    package_root: Path, value: Any, *, require_exists: bool = True
-) -> Path:
+def _normalize_trusted_setup_script(value: Any) -> PurePosixPath:
     path_text = _required_string(value, "environment setup script").replace("\\", "/")
     posix = PurePosixPath(path_text)
     if posix.is_absolute() or PureWindowsPath(path_text).is_absolute() or ".." in posix.parts:
@@ -2257,6 +2404,14 @@ def _resolve_trusted_setup_script(
         "bin/o4w_env.bat",
     }:
         raise BinaryCatalogError(f"Untrusted environment setup script: {path_text}")
+    return posix
+
+
+def _resolve_trusted_setup_script(
+    package_root: Path, value: Any, *, require_exists: bool = True
+) -> Path:
+    posix = _normalize_trusted_setup_script(value)
+    path_text = posix.as_posix()
     candidate = package_root.joinpath(*posix.parts).resolve(strict=require_exists)
     try:
         candidate.relative_to(package_root)

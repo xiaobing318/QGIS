@@ -393,6 +393,131 @@ class BinaryFixture:
         self.temporary.cleanup()
 
 
+class DevelopmentBinaryFixture:
+    def __init__(self, test_case, *, configuration="RelWithDebInfo"):
+        self.test_case = test_case
+        self.configuration = configuration
+        self.document = _catalog_document()
+        self.document["environment_profiles"]["qgis"]["inherit_environment"] = True
+        self.document["environment_profiles"]["osgeo4w"] = {
+            "inherit_environment": True,
+            "setup_scripts": ["bin/o4w_env.bat"],
+            "variables": {"PYTHONUTF8": "1"},
+        }
+        self.qgis_paths = {
+            "qgis_process": "apps/qgis-qt6/bin/qgis_process.exe",
+            "pdal_wrench": "apps/qgis-qt6/pdal_wrench.exe",
+            "untwine": "apps/qgis-qt6/untwine.exe",
+        }
+        for binary_id, path in self.qgis_paths.items():
+            self.document["binaries"].append(
+                {
+                    "id": binary_id,
+                    "path": path,
+                    "group": "cli",
+                    "environment": "qgis",
+                    "risk": "R2",
+                }
+            )
+        self.document["binaries"].append(
+            {
+                "id": "unmapped_qgis",
+                "path": "apps/qgis-qt6/old_tool.exe",
+                "group": "blocked",
+                "enabled": False,
+                "disabled_reason": "No development mapping",
+                "risk": "R3",
+                "probe": _static_probe(),
+            }
+        )
+        # A complete old package deliberately remains available. Development
+        # resolution must not use it, including when a build tool goes missing.
+        self.package = BinaryFixture(
+            test_case, document=self.document, unicode_root=True
+        )
+        self.root = self.package.root
+        self.source = self.root / "source"
+        self.source.mkdir()
+        self.build = self.root / "build output"
+        self.output = self.build / "output"
+        self.build_bin = self.output / "bin" / configuration
+        self.build_bin.mkdir(parents=True)
+        self.marker = self.output / "bin" / "qgisbuildpath.txt"
+        self.marker.write_text(
+            f"{self.source.as_posix()}\n{self.output.as_posix()}\n", encoding="utf-8"
+        )
+        self.osgeo = self.root / "OSGeo4W"
+        self.executables = {}
+        for item in self.document["binaries"]:
+            source = self.osgeo.joinpath(*item["path"].split("/"))
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"MZ OSGeo executable")
+            self.executables[item["id"]] = source
+        for binary_id in self.qgis_paths:
+            directory = (
+                self.build_bin
+                if binary_id == "qgis_process"
+                else self.output / configuration
+            )
+            directory.mkdir(parents=True, exist_ok=True)
+            source = directory / f"{binary_id}.exe"
+            source.write_bytes(b"MZ current build executable")
+            self.executables[binary_id] = source
+        (self.osgeo / "bin" / "o4w_env.bat").write_text("@echo off\n", encoding="utf-8")
+        python = self.osgeo / "apps" / "Python312" / "python.exe"
+        python.parent.mkdir(parents=True)
+        python.write_bytes(b"MZ python")
+        self.environment = {
+            "QCOPILOTS_QGIS_BINARY_RUNTIME_MODE": "development",
+            "QCOPILOTS_QGIS_BINARY_BUILD_DIR": str(self.build),
+            "QCOPILOTS_QGIS_BINARY_CONFIGURATION": configuration,
+            "QCOPILOTS_QGIS_BINARY_OSGEO4W_ROOT": str(self.osgeo),
+            "QGIS_PACKAGE_ROOT": str(self.root),
+            "QCOPILOTS_TEST_PACKAGE_ROOT": str(self.root),
+        }
+        self.child_environment = {
+            "QGIS_PREFIX_PATH": self.build_bin.as_posix(),
+            "PYTHONHOME": str(python.parent),
+            "PATH": str(self.build_bin) + os.pathsep + str(self.osgeo / "bin"),
+            "PARENT_ONLY": "development environment",
+        }
+        self.task_manager = FakeTaskManager()
+        self.executions = []
+        self.capture = mock.Mock(
+            side_effect=AssertionError("must not run an environment BAT")
+        )
+
+        def execution_factory(**values):
+            execution = ControlledExecution(**values)
+            self.executions.append(execution)
+            return execution
+
+        self.dependencies = {
+            "task_manager": self.task_manager,
+            "task_factory": FakeTask,
+            "execution_factory": execution_factory,
+            "environment": self.child_environment,
+            "run_factory": self.capture,
+        }
+
+    def manager(self, *, environment=None, package_root=None, dependencies=None):
+        variables = dict(self.environment)
+        for name, value in (environment or {}).items():
+            if value is None:
+                variables.pop(name, None)
+            else:
+                variables[name] = value
+        manager_dependencies = {**self.dependencies, **(dependencies or {})}
+        with mock.patch.dict(os.environ, variables, clear=True):
+            manager = QGISBinaryJobManager(
+                catalog_path=self.package.catalog_path,
+                package_root=package_root,
+                dependencies=manager_dependencies,
+            )
+        self.test_case.addCleanup(manager.shutdown, 0)
+        return manager
+
+
 class TestQCopilotsQGISBinaryCatalogLoader(unittest.TestCase):
     def _assert_invalid(self, mutate, message):
         document = _catalog_document()
@@ -2118,6 +2243,223 @@ class TestQCopilotsQGISBinaryManager(unittest.TestCase):
                 for result in results
             )
         )
+
+
+class TestQCopilotsQGISBinaryDevelopmentRuntime(unittest.TestCase):
+    def test_direct_sources_and_no_generated_runtime_files(self):
+        for configuration in ("RelWithDebInfo", "Release"):
+            with self.subTest(configuration=configuration):
+                fixture = DevelopmentBinaryFixture(self, configuration=configuration)
+                before = {
+                    str(path.relative_to(fixture.root)): path.read_bytes()
+                    for path in fixture.root.rglob("*")
+                    if path.is_file()
+                }
+                manager = fixture.manager()
+                self.assertEqual(manager.package_root, fixture.osgeo.resolve())
+                for binary_id in ("alpha", "qgis_process", "pdal_wrench", "untwine"):
+                    manager.start({"binary_id": binary_id, "confirmed_risk": True})
+                    self.assertEqual(
+                        Path(fixture.executions[-1].values["executable"]),
+                        fixture.executables[binary_id].resolve(),
+                    )
+                    self.assertNotIn(
+                        "resolved_path", manager.get_binary_details(binary_id)
+                    )
+                manager.load_catalog()
+                after = {
+                    str(path.relative_to(fixture.root)): path.read_bytes()
+                    for path in fixture.root.rglob("*")
+                    if path.is_file()
+                }
+                self.assertEqual(before, after)
+                self.assertFalse((fixture.osgeo / "bin" / "qgis-qt6-env.bat").exists())
+                fixture.capture.assert_not_called()
+
+    def test_package_mode_and_explicit_roots_keep_package_contract(self):
+        fixture = DevelopmentBinaryFixture(self)
+        cases = (
+            {"environment": {"QCOPILOTS_QGIS_BINARY_RUNTIME_MODE": "package"}},
+            {"environment": {"QCOPILOTS_QGIS_BINARY_RUNTIME_MODE": None}},
+            {
+                "package_root": fixture.root,
+                "environment": {"QCOPILOTS_QGIS_BINARY_CONFIGURATION": "invalid"},
+            },
+            {
+                "dependencies": {"package_root_resolver": lambda *_: fixture.root},
+                "environment": {"QCOPILOTS_QGIS_BINARY_RUNTIME_MODE": "invalid"},
+            },
+        )
+        for arguments in cases:
+            with self.subTest(arguments=arguments):
+                manager = fixture.manager(**arguments)
+                self.assertFalse(manager._runtime_layout.development)
+                manager.start({"binary_id": "qgis_process", "confirmed_risk": True})
+                self.assertEqual(
+                    Path(fixture.executions[-1].values["executable"]),
+                    (fixture.root / fixture.qgis_paths["qgis_process"]).resolve(),
+                )
+        (fixture.root / "bin" / "qgis-qt6-env.bat").unlink()
+        with self.assertRaisesRegex(BinaryCatalogError, "does not satisfy"):
+            fixture.manager(package_root=fixture.root)
+
+    def test_invalid_development_settings_do_not_fall_back_to_package(self):
+        fixture = DevelopmentBinaryFixture(self)
+        cases = (
+            {"QCOPILOTS_QGIS_BINARY_RUNTIME_MODE": "developmnt"},
+            {"QCOPILOTS_QGIS_BINARY_BUILD_DIR": None},
+            {"QCOPILOTS_QGIS_BINARY_BUILD_DIR": "relative-build"},
+            {"QCOPILOTS_QGIS_BINARY_CONFIGURATION": None},
+            {"QCOPILOTS_QGIS_BINARY_CONFIGURATION": "../Release"},
+            {"QCOPILOTS_QGIS_BINARY_CONFIGURATION": "Debug"},
+            {"QCOPILOTS_QGIS_BINARY_OSGEO4W_ROOT": None},
+            {"QCOPILOTS_QGIS_BINARY_OSGEO4W_ROOT": str(fixture.root / "missing")},
+        )
+        for environment in cases:
+            with self.subTest(environment=environment):
+                with self.assertRaises(BinaryCatalogError):
+                    fixture.manager(environment=environment)
+        self.assertTrue((fixture.root / "bin" / "qgis-qt6-env.bat").is_file())
+
+    def test_development_marker_and_osgeo_files_are_required(self):
+        for missing in ("marker", "source", "python", "environment"):
+            with self.subTest(missing=missing):
+                fixture = DevelopmentBinaryFixture(self)
+                if missing == "marker":
+                    fixture.marker.unlink()
+                elif missing == "source":
+                    fixture.source.rmdir()
+                elif missing == "python":
+                    (fixture.osgeo / "apps" / "Python312" / "python.exe").unlink()
+                else:
+                    (fixture.osgeo / "bin" / "o4w_env.bat").unlink()
+                with self.assertRaises(BinaryCatalogError):
+                    fixture.manager()
+        fixture = DevelopmentBinaryFixture(self)
+        fixture.marker.write_text(
+            f"{fixture.source.as_posix()}\n{fixture.osgeo.as_posix()}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(BinaryCatalogError, "does not match"):
+            fixture.manager()
+
+    def test_catalog_only_inventory_refreshes_without_old_qgis_fallback(self):
+        fixture = DevelopmentBinaryFixture(self)
+        (fixture.build_bin / "test_unsafe.exe").write_bytes(b"MZ")
+        (fixture.osgeo / "bin" / "unreviewed.exe").write_bytes(b"MZ")
+        manager = fixture.manager()
+        entries = manager.load_catalog()["binaries"]
+        self.assertEqual(
+            {entry["id"] for entry in entries},
+            {entry["id"] for entry in fixture.document["binaries"]},
+        )
+        self.assertTrue(
+            all(entry["policy_status"] == "configured" for entry in entries)
+        )
+        self.assertEqual(
+            manager.get_binary_details("unmapped_qgis")["availability"], "missing"
+        )
+        first = manager.list_binaries({"limit": 1})
+        source = fixture.executables["qgis_process"]
+        source.unlink()
+        self.assertEqual(
+            manager.get_binary_details("qgis_process")["availability"], "missing"
+        )
+        self.assertTrue(manager.get_binary_details("alpha")["enabled"])
+        with self.assertRaisesRegex(ValueError, "qgis_binary_cursor_stale"):
+            manager.list_binaries({"cursor": first["next_cursor"], "limit": 1})
+        with self.assertRaisesRegex(BinaryExecutionError, "unavailable"):
+            manager.start({"binary_id": "qgis_process", "confirmed_risk": True})
+        source.write_bytes(b"MZ rebuilt tool")
+        self.assertTrue(manager.get_binary_details("qgis_process")["enabled"])
+        manager.start({"binary_id": "qgis_process", "confirmed_risk": True})
+        self.assertEqual(
+            Path(fixture.executions[-1].values["executable"]), source.resolve()
+        )
+
+    def test_development_executable_escape_is_unavailable(self):
+        fixture = DevelopmentBinaryFixture(self)
+        manager = fixture.manager()
+        source = fixture.executables["qgis_process"].resolve()
+        outside = (fixture.root / fixture.qgis_paths["qgis_process"]).resolve()
+        original_resolve = Path.resolve
+
+        def escaped_resolve(candidate, strict=False):
+            if candidate == source:
+                return outside
+            return original_resolve(candidate, strict=strict)
+
+        with mock.patch.object(Path, "resolve", escaped_resolve):
+            details = manager.get_binary_details("qgis_process")
+            self.assertEqual(details["availability"], "unavailable")
+            self.assertIn("escapes", details["disabled_reason"])
+            with self.assertRaisesRegex(BinaryExecutionError, "unavailable"):
+                manager.start({"binary_id": "qgis_process", "confirmed_risk": True})
+        self.assertEqual(fixture.executions, [])
+
+    def test_environment_uses_imported_paths_and_preserves_noninheritance(self):
+        fixture = DevelopmentBinaryFixture(self)
+        manager = fixture.manager()
+        for profile in ("qgis", "osgeo4w"):
+            environment = manager._environment_for(profile)
+            for name, value in fixture.child_environment.items():
+                self.assertEqual(environment[name], value)
+        qgis_environment = manager._environment_for("qgis")
+        self.assertEqual(
+            Path(qgis_environment["EXPANDED"]), fixture.osgeo.resolve() / "profile"
+        )
+        qgis_environment["PATH"] = "caller mutation"
+        self.assertEqual(
+            manager._environment_for("qgis")["PATH"], fixture.child_environment["PATH"]
+        )
+        self.assertEqual(
+            manager._environment_for("direct"), {"PACKAGE": str(fixture.osgeo.resolve())}
+        )
+        fixture.capture.assert_not_called()
+        fixture.document["environment_profiles"]["qgis"]["setup_scripts"] = [
+            "bin/arbitrary.bat"
+        ]
+        fixture.package.catalog_path.write_text(
+            json.dumps(fixture.document), encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            BinaryCatalogError, "Untrusted environment setup script"
+        ):
+            fixture.manager()
+
+    def test_development_cwd_and_execution_policy_are_preserved(self):
+        fixture = DevelopmentBinaryFixture(self)
+        relative = fixture.build_bin / "relative"
+        relative.mkdir()
+        manager = fixture.manager()
+        for value, expected in ((None, fixture.build_bin), ("relative", relative)):
+            manager.start({"binary_id": "alpha", "working_directory": value})
+            self.assertEqual(
+                Path(fixture.executions[-1].values["working_directory"]),
+                expected.resolve(),
+            )
+        with self.assertRaisesRegex(BinaryExecutionError, "risk_confirmation_required"):
+            manager.start({"binary_id": "qgis_process"})
+        with self.assertRaisesRegex(BinaryExecutionError, "risk_blocked"):
+            manager.start({"binary_id": "blocked", "confirmed_risk": True})
+        manager._dependencies["filesystem_policy"] = filesystem_policy_from_config(
+            {
+                "mode": "formal_restricted",
+                "shell": {"enabled": False, "executables": []},
+                "network": {"enabled": False, "allowed_origins": []},
+            }
+        )
+        original_is_symlink = Path.is_symlink
+        build_bin = fixture.build_bin.resolve()
+
+        def replaced_build_bin(candidate):
+            return candidate == build_bin or original_is_symlink(candidate)
+
+        with mock.patch.object(Path, "is_symlink", replaced_build_bin):
+            with self.assertRaisesRegex(
+                PermissionError, "symbolic links and junctions"
+            ):
+                manager.start({"binary_id": "alpha"})
 
 
 class TestBinarySubprocessExecution(unittest.TestCase):
