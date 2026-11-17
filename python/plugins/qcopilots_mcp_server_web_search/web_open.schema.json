@@ -3,55 +3,32 @@
   "properties": {
     "url": {
       "type": "string",
-      "description": "Page address. Accepts a public HTTP or HTTPS URL up to 8192 characters. Supply this or page_id, never both.",
+      "description": "Page address, usually a web_search result url. Accepts a public HTTP or HTTPS URL up to 8192 characters. Supply exactly one of url or page_id.",
       "minLength": 1,
       "maxLength": 8192
     },
     "page_id": {
       "type": "string",
-      "description": "Previously read page identifier. Accepts an identifier returned to this client. Reuses its cached snapshot without a network request.",
+      "description": "Snapshot identifier returned to this client by an earlier web_open. Rereads the cached snapshot without a network request. Supply exactly one of url or page_id. Unknown or expired IDs return page_unavailable. Then open the url again.",
       "minLength": 1,
       "maxLength": 64
     },
     "start_line": {
       "type": "integer",
-      "description": "First returned line. Accepts 1–10000, default 1. Larger numbers page through the same snapshot.",
+      "description": "First line to return, 1-based. Accepts 1–10000, default 1. To continue reading, pass the previous next_start_line together with the same page_id.",
       "default": 1,
       "minimum": 1,
       "maximum": 10000
     },
     "max_lines": {
       "type": "integer",
-      "description": "Page size. Accepts 1–500, default 200. Larger values return more numbered lines.",
+      "description": "Maximum lines to return. Accepts 1–500, default 200. Fewer lines may return to fit the response budget. Then next_start_line points to the first omitted line.",
       "default": 200,
       "minimum": 1,
       "maximum": 500
     }
   },
-  "required": [],
   "additionalProperties": false,
-  "oneOf": [
-    {
-      "required": [
-        "url"
-      ],
-      "not": {
-        "required": [
-          "page_id"
-        ]
-      }
-    },
-    {
-      "required": [
-        "page_id"
-      ],
-      "not": {
-        "required": [
-          "url"
-        ]
-      }
-    }
-  ],
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "web_open"
 }

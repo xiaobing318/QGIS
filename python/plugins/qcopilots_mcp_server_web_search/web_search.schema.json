@@ -3,13 +3,13 @@
   "properties": {
     "query": {
       "type": "string",
-      "description": "Search text. Accepts nonempty Unicode text of up to 2048 characters. More specific text narrows upstream results.",
+      "description": "Search text. Accepts nonempty Unicode text of up to 2048 characters. Specific keywords work best. Restrict sites with domains rather than site: operators.",
       "minLength": 1,
       "maxLength": 2048
     },
     "limit": {
       "type": "integer",
-      "description": "Maximum results. Accepts 1–20, default 10. Higher values may require more upstream pages.",
+      "description": "Maximum results. Accepts 1–20, default 10. Fewer results may return, especially with domains.",
       "default": 10,
       "minimum": 1,
       "maximum": 20
@@ -22,10 +22,11 @@
     },
     "time_range": {
       "type": "string",
-      "description": "Upstream date hint. Accepts any, day, month or year. Narrower choices ask the provider for newer results without guaranteeing dates.",
+      "description": "Recency hint for the provider. Accepts any, day, week, month or year, default any. It is not a strict publication-date filter.",
       "enum": [
         "any",
         "day",
+        "week",
         "month",
         "year"
       ],
@@ -33,7 +34,7 @@
     },
     "domains": {
       "type": "array",
-      "description": "Allowed result domains. Accepts zero to ten DNS names without schemes. Empty allows all domains, otherwise only each name and its subdomains are returned.",
+      "description": "Restrict results to these hosts and their subdomains. Accepts up to ten DNS names without scheme or path. For example [\"qgis.org\"] matches qgis.org and docs.qgis.org but not notqgis.org. Empty allows all domains. Filtering happens after the search, so fewer than limit results may return.",
       "items": {
         "type": "string",
         "description": "Domain name. Accepts Unicode or ASCII DNS hostname. IDNA normalization makes equivalent hostnames match.",

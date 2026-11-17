@@ -171,8 +171,19 @@ class TestQCopilotsMcpServerWebSearch(unittest.TestCase):
         next(t for t in tools if t.name == "web_find").handler(arguments)
         client.call.assert_called_once_with("find", arguments)
         rpc = McpJsonRpcServer("test", "1", tools)
-        reply = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "web_open", "arguments": {"url": "https://example.invalid", "page_id": "page"}}})
-        self.assertEqual(reply["error"]["code"], -32602)
+        # The url/page_id choice is enforced by the adapter, not by a top-level
+        # oneOf, and is reported as a tool error so the model can correct it.
+        for request_id, arguments in enumerate(({"url": "https://example.invalid", "page_id": "page"}, {}), 1):
+            reply = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": request_id, "method": "tools/call", "params": {"name": "web_open", "arguments": arguments}})
+            self.assertTrue(reply["result"]["isError"])
+            self.assertEqual(reply["result"]["structuredContent"]["error"]["code"], "invalid_argument")
+        self.assertEqual(client.call.call_count, 1)  # only the earlier web_find reached the backend
+        listed = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": 9, "method": "tools/list"})["result"]["tools"]
+        catalog = json.loads((PLUGINS_ROOT / "qcopilots_mcp_server_web_search" / "tools.json").read_text(encoding="utf-8"))
+        self.assertEqual([t["name"] for t in listed], [t["name"] for t in catalog["tools"]])
+        self.assertEqual([t["description"] for t in listed], [t["description"] for t in catalog["tools"]])
+        for tool in listed:
+            self.assertFalse({"oneOf", "anyOf", "allOf", "not"} & set(tool["inputSchema"]))
 
     def test_transport_routes_auth_no_proxy_and_bad_responses(self):
         with _backend() as backend:

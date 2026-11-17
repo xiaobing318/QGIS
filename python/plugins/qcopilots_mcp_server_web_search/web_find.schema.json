@@ -3,13 +3,13 @@
   "properties": {
     "page_id": {
       "type": "string",
-      "description": "Cached page identifier. Accepts a page ID issued to this client. Unknown or expired IDs return page_unavailable.",
+      "description": "Snapshot identifier returned to this client by web_open. Unknown or expired IDs return page_unavailable. Then call web_open with the url again.",
       "minLength": 1,
       "maxLength": 64
     },
     "pattern": {
       "type": "string",
-      "description": "Literal text to find. Accepts 1–1024 Unicode characters. No regular expressions are evaluated.",
+      "description": "Literal text to find. Accepts 1–1024 Unicode characters. Regular expressions and wildcards are not evaluated.",
       "minLength": 1,
       "maxLength": 1024
     },
@@ -20,14 +20,14 @@
     },
     "start_line": {
       "type": "integer",
-      "description": "First line to search. Accepts 1–10000, default 1. Use next_start_line to continue a truncated result.",
+      "description": "First line to search, 1-based. Accepts 1–10000, default 1. To continue a truncated result, pass the previous next_start_line.",
       "default": 1,
       "minimum": 1,
       "maximum": 10000
     },
     "max_matches": {
       "type": "integer",
-      "description": "Maximum matching lines. Accepts 1–100, default 20. More matching lines are reported through truncated.",
+      "description": "Maximum matching lines. Accepts 1–100, default 20. Fewer may return to fit the response budget. Then truncated and next_start_line report the rest.",
       "default": 20,
       "minimum": 1,
       "maximum": 100

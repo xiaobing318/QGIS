@@ -14,4 +14,4 @@
 
 在 Manager 中手动启用此插件。它不会改变用户已有的默认启动列表。后端恢复后，后续工具调用可直接恢复使用，无需重新注册工具。
 
-接口模式位于本目录 `web_*.schema.json`，与原生仓库 `contracts/v1` 保持一致。网页内容是不可信外部资料。此适配代码按 GPL-2.0-or-later 分发。
+接口模式 `web_*.schema.json` 和工具元数据 `tools.json` 与原生仓库 `contracts/v1` 中的同名文件保持一致。模式顶层不使用 `oneOf`，因此 `web_open` 的 `url` 与 `page_id` 二选一由适配器在调用后端前检查。网页内容是不可信外部资料。此适配代码按 GPL-2.0-or-later 分发。

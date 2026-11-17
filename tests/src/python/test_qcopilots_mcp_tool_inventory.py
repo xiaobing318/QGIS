@@ -146,7 +146,6 @@ BRIDGE_SERVICES = {
 }
 
 NORMALIZED_SCHEMA_TOOLS = {
-    "web_open",
     "edit_file",
     "read_skill",
     "list_skill_resources",
