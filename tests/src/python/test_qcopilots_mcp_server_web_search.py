@@ -118,6 +118,21 @@ class TestQCopilotsMcpServerWebSearch(unittest.TestCase):
         self.assertNotIn("backend-secret", str(caught.exception))
         return caught.exception
 
+    def test_public_default_and_backend_config_overrides(self):
+        with mock.patch.dict(os.environ, {"QCOPILOTS_HOME": str(self.root)}):
+            os.environ.pop("QCOPILOTS_WEBSEARCH_CONFIG", None)
+            self.assertEqual(load_config().backend_url, "https://web-search.vastarmorai.com")
+
+            user_config = self.root / "web_search" / "config.json"
+            user_config.parent.mkdir()
+            user_config.write_text(json.dumps(self.value), encoding="utf-8")
+            self.assertEqual(load_config().backend_url, "http://127.0.0.1:8088")
+
+            override = dict(self.value, backend_url="https://custom.example.invalid")
+            self.path.write_text(json.dumps(override), encoding="utf-8")
+            os.environ["QCOPILOTS_WEBSEARCH_CONFIG"] = str(self.path)
+            self.assertEqual(load_config().backend_url, override["backend_url"])
+
     def test_config_tokens_and_policy(self):
         self.assertEqual(self.config().token, "backend-secret")
         self.assertNotIn("backend-secret", repr(self.config()))
