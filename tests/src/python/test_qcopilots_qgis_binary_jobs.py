@@ -2741,7 +2741,10 @@ class TestQGISBinaryBridgeLifetime(unittest.TestCase):
             self.assertIs(controller._get_qgis_binary_job_manager(), first)
             self.assertIs(first.dependencies["filesystem_policy"], policy)
             self.assertEqual(len(instances), 1)
-            controller.stop(timeout_seconds=0.25)
+            with mock.patch(
+                "qcopilots_common.bridge.time.monotonic", return_value=100.0
+            ):
+                controller.stop(timeout_seconds=0.25)
             self.assertEqual(first.shutdown_calls, [0.25])
             with self.assertRaisesRegex(
                 RuntimeError, "^service_stopping: .*bridge is stopping"

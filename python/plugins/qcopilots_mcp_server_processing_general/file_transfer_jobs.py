@@ -202,8 +202,31 @@ class FileTransferJobManager:
                 files = [self._file_result(item) for item in values[files_offset:files_offset + files_limit]]
                 total = len(values)
             elif record["latest_job_id"] == job_id and record.get("manifest_ready"):
-                values, total = self._disk.read_manifest_page(record, files_offset, files_limit)
-                files = [self._file_result(item) for item in values]
+                try:
+                    values, total = self._disk.read_manifest_page(record, files_offset, files_limit)
+                except FileTransferError as error:
+                    # Another manager may archive this attempt after we read its
+                    # active header. Only missing retired data permits one read
+                    # of a newer committed receipt. Corruption is still an error.
+                    if (error.code != "invalid_checkpoint"
+                            or not isinstance(error.__cause__, FileNotFoundError)):
+                        raise
+                    archived = self._fresh_record(record)
+                    completed = self._latest(archived)
+                    if (archived["transfer_id"] != record["transfer_id"]
+                            or archived.get("revision", 0) <= record.get("revision", 0)
+                            or archived.get("archived") is not True
+                            or archived["latest_job_id"] != job_id
+                            or completed["job_id"] != job_id
+                            or completed["state"] not in TERMINAL_JOB_STATES
+                            or completed.get("files_receipt") is not True):
+                        raise
+                    files, total = self._disk.read_receipt_page(job_id, files_offset, files_limit)
+                    self._records[archived["transfer_id"]] = archived
+                    self._index_record(archived)
+                    result = self._public_summary(archived, completed)
+                else:
+                    files = [self._file_result(item) for item in values]
             else:
                 files, total = [], 0
             result.update(files=files, files_offset=files_offset, files_limit=files_limit,

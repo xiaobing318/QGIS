@@ -38,6 +38,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Launcher.ps1 `
 
 其他协议、主机或端口不自动获准。修改 Configure QCopilots URL 后，重新启动 QGIS 以更新外部浏览器允许来源。MCP 服务始终只监听本机 `127.0.0.1` 地址。
 
+## 服务授权
+
+MCP Servers 对所有服务使用同一组 Server URL、Authorization 和 Bearer 字段，每个服务可以保存自己的 Bearer 值，页面重载和服务自动注册不会把它替换成其他服务的授权码，由 Manager 认证的本机服务使用管理器提供的 Token。由外部服务认证的转接服务使用该服务部署者提供的 Bearer，不能使用 Manager 的 Token。直接添加公网 MCP 地址时，同样填写该公网服务的 Bearer 值，并由公网服务允许当前页面来源。
+
 ## 连接失败排查
 
 | 表现                           | 检查内容                                                   |

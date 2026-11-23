@@ -40,7 +40,7 @@ from qcopilots_common.constants import (
     services_state_root,
 )
 from qcopilots_common.logging import rotate_log_file, service_log_file
-from qcopilots_common.manifest import ServiceManifest, ServiceTransport, manifest_to_dict
+from qcopilots_common.manifest import AUTHORIZATION_MODES, ServiceManifest, ServiceTransport, manifest_to_dict
 from qcopilots_common.service_id import is_safe_service_id, safe_service_state_name
 from qcopilots_common.subprocess_utils import hidden_subprocess_kwargs, service_creationflags
 from qcopilots_common.uv_runtime import UvRuntime
@@ -1366,6 +1366,8 @@ def _validate_service_manifest_security(
     manifest: ServiceManifest,
     cors_origins: list[str],
 ) -> None:
+    if manifest.authorization_mode not in AUTHORIZATION_MODES:
+        raise ValueError("QCopilots MCP services require a supported authorization mode.")
     if manifest.host != DEFAULT_HOST:
         raise ValueError(
             "QCopilots MCP services require the literal IPv4 loopback host "
@@ -1420,6 +1422,8 @@ def _service_configuration_matches_state(
         return False
     if str(stored.get("mcp_path") or DEFAULT_MCP_PATH) != manifest.mcp_path:
         return False
+    if stored.get("authorization_mode", "manager") != manifest.authorization_mode:
+        return False
 
     stored_entry_point = stored.get("entry_point")
     if stored_entry_point:
@@ -1462,6 +1466,9 @@ def _manifest_from_state(path: Path, data: dict[str, Any]) -> ServiceManifest | 
     service_id = str(data.get("service_id") or path.stem.replace("_", ".")).strip()
     if not is_safe_service_id(service_id):
         return None
+    authorization_mode = data.get("authorization_mode", "manager")
+    if not isinstance(authorization_mode, str) or authorization_mode not in AUTHORIZATION_MODES:
+        return None
 
     plugin_dir = Path(data.get("plugin_dir") or path.parent)
     entry_point = str(data.get("entry_point") or "server.py")
@@ -1497,6 +1504,7 @@ def _manifest_from_state(path: Path, data: dict[str, Any]) -> ServiceManifest | 
         capabilities=list(data.get("capabilities") or []),
         cors_origins=_state_cors_origins(data.get("cors_origins")),
         enabled=True,
+        authorization_mode=authorization_mode,
     )
 
 

@@ -108,7 +108,14 @@
   }
 
   function validPublicService(service) {
-    if (!exactObjectKeys(service, ['id', 'displayName', 'state', 'virtualUrl'])) {
+    const fields = ['id', 'displayName', 'state', 'virtualUrl'];
+    if (service && Object.prototype.hasOwnProperty.call(service, 'authorizationMode')) {
+      fields.push('authorizationMode');
+      if (!['manager', 'request'].includes(service.authorizationMode)) {
+        return false;
+      }
+    }
+    if (!exactObjectKeys(service, fields)) {
       return false;
     }
     if (typeof service.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(service.id)) {
@@ -212,6 +219,34 @@
     }
   }
 
+  function normalizedBearer(value) {
+    if (typeof value !== 'string' || value.length < 8 || value.length > 8192 + 7
+        || value.slice(0, 7).toLowerCase() !== 'bearer '
+        || /[^\x21-\x7e]/.test(value.slice(7))) {
+      return null;
+    }
+    return 'Bearer ' + value.slice(7);
+  }
+
+  function storedAuthorization(serialized) {
+    if (typeof serialized !== 'string') {
+      return null;
+    }
+    let headers;
+    try {
+      headers = JSON.parse(serialized);
+    } catch (_error) {
+      return null;
+    }
+    if (!headers || typeof headers !== 'object' || Array.isArray(headers)) {
+      return null;
+    }
+    const names = Object.keys(headers).filter(function (name) {
+      return name.toLowerCase() === 'authorization';
+    });
+    return names.length === 1 ? normalizedBearer(headers[names[0]]) : null;
+  }
+
   function mergeConfigValue(serialized, catalog) {
     let config;
     try {
@@ -266,6 +301,12 @@
       const previous = managedById.get(service.id) || managedByUrl.get(service.virtualUrl);
       const merged = previous && typeof previous === 'object' ? Object.assign({}, previous) : {};
       delete merged.headers;
+      if (previous) {
+        const authorization = storedAuthorization(previous.headers);
+        if (authorization) {
+          merged.headers = JSON.stringify({Authorization: authorization});
+        }
+      }
       merged.id = service.id;
       merged.displayName = service.displayName;
       merged.enabled = service.state === 'running';
@@ -648,6 +689,11 @@
     for (const pair of request.headers.entries()) {
       const name = pair[0].toLowerCase();
       if (name === 'authorization') {
+        const authorization = normalizedBearer(pair[1]);
+        if (!authorization) {
+          throw new TypeError('The MCP authorization header must contain a valid Bearer credential.');
+        }
+        forwardedHeaders[name] = authorization;
         continue;
       }
       if (!ALLOWED_REQUEST_HEADERS.has(name)) {

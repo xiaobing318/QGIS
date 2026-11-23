@@ -53,7 +53,7 @@ from qcopilots_common.constants import (
 )
 from qcopilots_common.discovery import discover_service_manifests
 from qcopilots_common.logging import configure_logger, qgis_log, service_log_file
-from qcopilots_common.manifest import ServiceManifest
+from qcopilots_common.manifest import AUTHORIZATION_MODES, ServiceManifest
 from qcopilots_common.menu import add_qcopilots_menu_action, remove_qcopilots_menu_action
 from qcopilots_common.process_controller import ProcessController
 from qcopilots_common.security_policy import (
@@ -523,8 +523,12 @@ class QCopilotsMCPServersManagerPlugin:
                 self._starting_service_ids.clear()
                 self._owned_manifests.clear()
                 self._service_auth_tokens.clear()
-                self._catalog_manifests.clear()
-                self._catalog_states.clear()
+                # Keep service identities so a Manager reload does not remove
+                # their saved page configuration and per-service Bearer values.
+                # Stopped entries expose neither a target nor native credentials.
+                self._catalog_states = {
+                    service_id: "stopped" for service_id in self._catalog_manifests
+                }
                 self._catalog_statuses.clear()
                 self._catalog_startup_complete = True
             self._shutdown_completed = True
@@ -1234,6 +1238,7 @@ class QCopilotsMCPServersManagerPlugin:
                     "virtualUrl": f"https://qcopilots.localmachine/mcp/{quote(service_id, safe='')}",
                     "targetUrl": "",
                     "authToken": "",
+                    "authorizationMode": getattr(manifest, "authorization_mode", "manager"),
                 }
                 if state == "running":
                     item["targetUrl"] = _runtime_target_url(manifest, status)
@@ -1433,6 +1438,8 @@ def _runtime_catalog_manifest_error(manifest: ServiceManifest) -> str:
 
     if getattr(manifest, "mcp_path", None) != "/mcp":
         return "MCP path must be exactly /mcp for the native catalog"
+    if getattr(manifest, "authorization_mode", "manager") not in AUTHORIZATION_MODES:
+        return "authorization mode does not match the native catalog contract"
     return ""
 
 
@@ -1780,7 +1787,8 @@ class BrowserAccessPanel(QFrame):
         if snapshot["available"]:
             self.status_label.setText(
                 self.plugin.tr(
-                    "Use Authorization: Bearer <Token> for all seven 127.0.0.1 MCP endpoints. "
+                    "Use Authorization: Bearer <Token> for local services authenticated by Manager. "
+                    "For services authenticated externally, enter the Bearer issued by that service. "
                     "Keep Use llama-server proxy turned off. The Token is stored as plaintext "
                     "in the current user configuration. Chrome may ask for Local Network Access permission."
                 )

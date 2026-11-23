@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Offline WebSearch adapter contract, transport and lifecycle tests."""
+"""Offline MCP relay transport, credential isolation and lifecycle tests."""
+
+import base64
+import http.client
 import json
 import os
 import ssl
 import sys
-import tempfile
 import threading
 import time
 import unittest
@@ -13,52 +15,98 @@ from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
+
 PLUGINS_ROOT = Path(__file__).resolve().parents[3] / "python" / "plugins"
 sys.path.insert(0, str(PLUGINS_ROOT))
-from qcopilots_common.mcp_http import McpJsonRpcServer
 from qcopilots_mcp_server_web_search import backend_client
 from qcopilots_mcp_server_web_search.backend_client import BackendClient, BackendError
-from qcopilots_mcp_server_web_search.config_store import BackendConfig, ConfigError, load_config
-from qcopilots_mcp_server_web_search.tools import build_web_search_tools
+from qcopilots_mcp_server_web_search.config_store import BackendConfig, ConfigError
+from qcopilots_mcp_server_web_search.relay_server import WebSearchRelayServer
 
 
-class _Handler(BaseHTTPRequestHandler):
+_BUSINESS_HEADERS = {
+    "Authorization": "Bearer business-secret",
+    "Accept": "application/json, text/event-stream",
+    "Content-Type": "application/json",
+}
+_INITIALIZE = b'{ "jsonrpc": "2.0", "id": 7, "method": "initialize", "params": {"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}} }'
+_ICON = {
+    "src": "data:image/svg+xml;base64," + base64.b64encode(
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/></svg>'
+    ).decode("ascii"),
+    "mimeType": "image/svg+xml",
+    "sizes": ["any"],
+}
+# Keep noncanonical whitespace so byte equality also catches response rewriting.
+_RESULT = (
+    b'{ "jsonrpc": "2.0", "id": 7, "result": { "protocolVersion": "2025-06-18", "capabilities": {"tools":{}}, "serverInfo":{"name":"upstream","version":"1","icons":'
+    + json.dumps([_ICON], separators=(",", ":")).encode("ascii")
+    + b'} } }'
+)
+
+
+class _UpstreamHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
     def do_GET(self):
         self.do_POST()
 
+    def do_DELETE(self):
+        self.do_POST()
+
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
-        self.server.records.append((self.command, self.path, self.headers.get("Authorization"), body))
+        self.server.records.append((self.command, self.path, dict(self.headers.items()), body))
+        try:
+            message = json.loads(body) if body else {}
+        except ValueError:
+            message = {}
+        method = message.get("method") if isinstance(message, dict) else None
         mode = self.server.mode
-        value = {"contract_version": 1, "service": "ready"}
-        status, content_type = 200, "application/json"
-        if mode == "unauthorized":
-            status, value = 401, {"error": {"code": "unauthorized", "message": "backend-secret"}}
+        status, data, content_type = 200, _RESULT, "application/json"
+        if self.headers.get("Authorization") not in {"Bearer business-secret", "Bearer replacement-secret"}:
+            status, data = 401, b'{"error":{"code":"unauthorized"}}'
+        elif self.command == "GET":
+            status, data = 405, b""
+        elif self.command == "DELETE":
+            status, data = 204, b""
+        elif method and method.startswith("notifications/"):
+            status, data = 202, b""
+            if method == "notifications/cancelled":
+                self.server.release.set()
+        elif mode == "unauthorized":
+            status, data = 401, b'{ "error": {"code":"unauthorized","retryable":false} }'
         elif mode == "error":
-            status, value = 502, {"error": self.server.error}
-        elif mode == "bool_version":
-            value["contract_version"] = True
-        elif mode == "missing_version":
-            value.pop("contract_version")
+            status, data = 429, b'{ "error": {"code":"rate_limited","retry_after_seconds":75} }'
+        elif mode == "empty_error":
+            status, data = 503, b""
         elif mode == "large":
-            value["padding"] = "x" * 2048
+            data = json.dumps({"padding": "x" * 2048}).encode()
         elif mode == "redirect":
             status = 302
-        elif mode == "wrong_type":
-            content_type = "text/html"
-        data = b"{" if mode == "invalid_json" else json.dumps(value).encode()
+        elif mode == "html":
+            content_type, data = "text/html", b"<html>upstream diagnostic</html>"
+        elif mode == "sse":
+            content_type, data = "text/event-stream", b"data: {}\n\n"
         self.send_response(status)
-        self.send_header("Content-Type", content_type)
+        if data:
+            self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data) + (1 if mode == "short" else 0)))
         self.send_header("Connection", "close")
+        self.send_header("Set-Cookie", "upstream-cookie=private")
+        if status == 200:
+            self.send_header("Mcp-Session-Id", "opaque-upstream-session")
+            self.send_header("MCP-Protocol-Version", "2025-06-18")
+        if status == 405:
+            self.send_header("Allow", "POST, DELETE")
+        if status == 429:
+            self.send_header("Retry-After", "75")
         if mode == "redirect":
-            self.send_header("Location", "/v1/status")
+            self.send_header("Location", "/other")
         self.end_headers()
         try:
-            if mode == "slow":
+            if mode == "slow" and status == 200:
                 self.wfile.write(data[:1])
                 self.wfile.flush()
                 self.server.started.set()
@@ -71,13 +119,13 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def _backend():
-    server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+def _upstream():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _UpstreamHandler)
     server.mode, server.records = "ok", []
     server.started, server.release = threading.Event(), threading.Event()
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server.url = f"http://127.0.0.1:{server.server_address[1]}/mcp"
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
     thread.start()
-    server.url = f"http://127.0.0.1:{server.server_address[1]}"
     try:
         yield server
     finally:
@@ -97,184 +145,277 @@ def _client(config):
         client.close()
 
 
+@contextmanager
+def _relay(client, origins=()):
+    relay = WebSearchRelayServer(host="127.0.0.1", port=0, path="/mcp",
+        auth_token="manager-secret", cors_origins=list(origins), client=client)
+    server = relay.create_http_server()
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
+    thread.start()
+    try:
+        yield server.server_address[1]
+    finally:
+        server.shutdown()
+        relay.close()
+        server.server_close()
+        thread.join(5)
+        assert not thread.is_alive()
+
+
+def _request(port, method="POST", path="/mcp", headers=None, body=_INITIALIZE):
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    try:
+        connection.request(method, path, body=body, headers=headers or {})
+        with connection.getresponse() as response:
+            return response.status, dict(response.headers.items()), response.read()
+    finally:
+        connection.close()
+
+
+def _header(headers, name):
+    return next((value for key, value in headers.items() if key.lower() == name.lower()), None)
+
+
 class TestQCopilotsMcpServerWebSearch(unittest.TestCase):
-    def setUp(self):
-        temp = tempfile.TemporaryDirectory(prefix="qcopilots-websearch-")
-        self.addCleanup(temp.cleanup)
-        self.root, self.path = Path(temp.name), Path(temp.name) / "config.json"
-        self.value = {"backend_url": "http://127.0.0.1:8088", "auth": {"token_env": "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN"}}
-        patch = mock.patch.dict(os.environ, {"QCOPILOTS_SECURITY_POLICY": "", "QCOPILOTS_MCP_AUTH_TOKEN": "local-secret", "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN": "backend-secret"})
-        patch.start()
-        self.addCleanup(patch.stop)
-
-    def config(self):
-        self.path.write_text(json.dumps(self.value), encoding="utf-8")
-        return load_config(self.path)
-
-    def error(self, code, function, *args):
+    def error(self, code, function, *args, **kwargs):
         with self.assertRaises(BackendError) as caught:
-            function(*args)
+            function(*args, **kwargs)
         self.assertEqual(caught.exception.code, code)
-        self.assertNotIn("backend-secret", str(caught.exception))
+        self.assertNotIn("business-secret", str(caught.exception))
         return caught.exception
 
-    def test_config_tokens_and_policy(self):
-        self.assertEqual(self.config().token, "backend-secret")
-        self.assertNotIn("backend-secret", repr(self.config()))
-        token = self.root / "token"
-        token.write_text("backend-secret\n")
-        token.chmod(0o600)
-        self.value["auth"] = {"token_file": "token"}
-        self.assertEqual(self.config().token, "backend-secret")
-        self.value["auth"]["token_env"] = "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN"
-        with self.assertRaises(ConfigError):
-            self.config()
-        self.value["auth"] = {"token_env": "QCOPILOTS_MCP_AUTH_TOKEN"}
-        with self.assertRaises(ConfigError):
-            self.config()
-        self.value["auth"] = {"token_env": "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN"}
-        self.value["backend_url"] = "https://backend.example.invalid"
-        self.assertEqual(self.config().backend_url, self.value["backend_url"])
-        policy = {"mode": "formal_restricted", "shell": {"enabled": False, "executables": []},
-                  "network": {"enabled": True, "allowed_origins": ["http://127.0.0.1:8088"]}}
-        with mock.patch.dict(os.environ, {"QCOPILOTS_SECURITY_POLICY": json.dumps(policy)}):
-            with self.assertRaises(PermissionError):
-                self.config()
-            self.value["backend_url"] = "http://127.0.0.1:8088"
-            self.assertEqual(self.config().backend_url, self.value["backend_url"])
+    def test_transport_keeps_mcp_bytes_sessions_and_request_credentials(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client:
+            with mock.patch.dict(os.environ, {
+                "HTTP_PROXY": "http://127.0.0.1:1", "http_proxy": "http://127.0.0.1:1",
+                "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN": "must-not-be-used",
+            }):
+                headers = dict(_BUSINESS_HEADERS)
+                headers.update({"Mcp-Session-Id": "from-client", "MCP-Protocol-Version": "2025-06-18",
+                                "Last-Event-ID": "opaque-event"})
+                reply = client.exchange("POST", headers, _INITIALIZE)
+                self.assertEqual((reply.status, reply.body), (200, _RESULT))
+                self.assertEqual(_header(reply.headers, "Mcp-Session-Id"), "opaque-upstream-session")
+                self.assertEqual(_header(reply.headers, "MCP-Protocol-Version"), "2025-06-18")
+                self.assertIsNone(_header(reply.headers, "Set-Cookie"))
+                method, path, received, body = upstream.records[0]
+                self.assertEqual((method, path, body), ("POST", "/mcp", _INITIALIZE))
+                for name, value in headers.items():
+                    self.assertEqual(_header(received, name), value)
+                headers["Authorization"] = "Bearer replacement-secret"
+                self.assertEqual(client.exchange("POST", headers, _INITIALIZE).status, 200)
+                self.assertEqual(_header(upstream.records[-1][2], "Authorization"), "Bearer replacement-secret")
 
-    def test_rejects_unsafe_configuration(self):
-        for url in ("http://backend.example.invalid", "https://user:pass@example.invalid", "https://example.invalid/path", "https://example.invalid/?token=x", "https://example.invalid/#fragment"):
-            with self.subTest(url=url):
-                self.value["backend_url"] = url
-                with self.assertRaises(ConfigError):
-                    self.config()
+    def test_http_status_and_empty_notifications_are_not_reinterpreted(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client:
+            cases = [("POST", b'{"jsonrpc":"2.0","method":"notifications/initialized"}', 202),
+                     ("DELETE", b"", 204), ("GET", b"", 405)]
+            for method, body, expected in cases:
+                with self.subTest(method=method):
+                    reply = client.exchange(method, _BUSINESS_HEADERS, body)
+                    self.assertEqual((reply.status, reply.body), (expected, b""))
+            upstream.mode = "unauthorized"
+            reply = client.exchange("POST", _BUSINESS_HEADERS, _INITIALIZE)
+            self.assertEqual(reply.status, 401)
+            self.assertEqual(reply.body, b'{ "error": {"code":"unauthorized","retryable":false} }')
+            upstream.mode = "error"
+            reply = client.exchange("POST", _BUSINESS_HEADERS, _INITIALIZE)
+            self.assertEqual(reply.status, 429)
+            self.assertEqual(_header(reply.headers, "Retry-After"), "75")
+            upstream.mode = "empty_error"
+            self.assertEqual(client.exchange("POST", _BUSINESS_HEADERS, _INITIALIZE).body, b"")
 
-    def test_discovery_offline_and_safe_errors(self):
-        loader = mock.Mock(side_effect=ConfigError("sensitive detail"))
-        client = BackendClient(loader)
-        self.addCleanup(client.close)
-        rpc = McpJsonRpcServer("test", "1", build_web_search_tools(client))
-        listed = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
-        self.assertEqual(len(listed["result"]["tools"]), 4)
-        loader.assert_not_called()
-        reply = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "web_search", "arguments": {"query": "QGIS"}}})
-        self.assertTrue(reply["result"]["isError"])
-        self.assertEqual(reply["result"]["structuredContent"]["error"]["code"], "invalid_configuration")
-        self.assertNotIn("sensitive detail", json.dumps(reply))
+    def test_relay_forwards_lifecycle_and_rejects_local_manager_credentials(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client, _relay(client) as port:
+            status, headers, body = _request(port, headers=_BUSINESS_HEADERS)
+            self.assertEqual((status, body), (200, _RESULT))
+            self.assertEqual(json.loads(body)["result"]["serverInfo"]["icons"], [_ICON])
+            self.assertEqual(_header(headers, "Mcp-Session-Id"), "opaque-upstream-session")
+            session_headers = dict(_BUSINESS_HEADERS, **{
+                "Mcp-Session-Id": "opaque-upstream-session", "MCP-Protocol-Version": "2025-06-18"})
+            for method, payload, expected in (
+                ("POST", b'{"jsonrpc":"2.0","method":"notifications/initialized"}', 202),
+                ("GET", b"", 405), ("DELETE", b"", 204)):
+                self.assertEqual(_request(port, method, headers=session_headers, body=payload)[0], expected)
+                self.assertEqual(_header(upstream.records[-1][2], "Mcp-Session-Id"), "opaque-upstream-session")
+            count = len(upstream.records)
+            self.assertEqual(_request(port, headers={"Authorization": "Bearer manager-secret"})[0], 401)
+            self.assertEqual(len(upstream.records), count)
+            with mock.patch.dict(os.environ, {"QCOPILOTS_WEBSEARCH_BACKEND_TOKEN": "business-secret"}):
+                self.assertEqual(_request(port, headers={"Content-Type": "application/json"})[0], 401)
+            bad_headers = dict(_BUSINESS_HEADERS, Authorization="Bearer wrong-secret")
+            self.assertEqual(_request(port, headers=bad_headers)[0], 401)
+            self.assertEqual(_header(upstream.records[-1][2], "Authorization"), "Bearer wrong-secret")
 
-    def test_find_pagination_and_open_exclusivity(self):
+    def test_health_is_independent_and_cannot_accept_business_credentials(self):
         client = mock.Mock()
-        client.call.return_value = {"contract_version": 1}
-        tools = build_web_search_tools(client)
-        arguments = {"page_id": "page", "pattern": "地图", "start_line": 17}
-        next(t for t in tools if t.name == "web_find").handler(arguments)
-        client.call.assert_called_once_with("find", arguments)
-        rpc = McpJsonRpcServer("test", "1", tools)
-        # The url/page_id choice is enforced by the adapter, not by a top-level
-        # oneOf, and is reported as a tool error so the model can correct it.
-        for request_id, arguments in enumerate(({"url": "https://example.invalid", "page_id": "page"}, {}), 1):
-            reply = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": request_id, "method": "tools/call", "params": {"name": "web_open", "arguments": arguments}})
-            self.assertTrue(reply["result"]["isError"])
-            self.assertEqual(reply["result"]["structuredContent"]["error"]["code"], "invalid_argument")
-        self.assertEqual(client.call.call_count, 1)  # only the earlier web_find reached the backend
-        listed = rpc.handle_json_rpc({"jsonrpc": "2.0", "id": 9, "method": "tools/list"})["result"]["tools"]
-        catalog = json.loads((PLUGINS_ROOT / "qcopilots_mcp_server_web_search" / "tools.json").read_text(encoding="utf-8"))
-        self.assertEqual([t["name"] for t in listed], [t["name"] for t in catalog["tools"]])
-        self.assertEqual([t["description"] for t in listed], [t["description"] for t in catalog["tools"]])
-        for tool in listed:
-            self.assertFalse({"oneOf", "anyOf", "allOf", "not"} & set(tool["inputSchema"]))
+        with _relay(client) as port:
+            for headers, expected in (({}, 401), (_BUSINESS_HEADERS, 401),
+                                      ({"Authorization": "Bearer manager-secret"}, 200)):
+                self.assertEqual(_request(port, "GET", "/health", headers, b"")[0], expected)
+            client.exchange.assert_not_called()
 
-    def test_transport_routes_auth_no_proxy_and_bad_responses(self):
-        with _backend() as backend:
-            config = BackendConfig(backend.url, "backend-secret", max_response_bytes=128)
-            with _client(config) as client, mock.patch.dict(os.environ, {"HTTP_PROXY": "http://127.0.0.1:1", "http_proxy": "http://127.0.0.1:1"}):
-                self.assertEqual(client.call("search", {"query": "地图"})["contract_version"], 1)
-                self.assertEqual(client.call("status", {})["service"], "ready")
-                self.assertEqual(backend.records[0][:3], ("POST", "/v1/search", "Bearer backend-secret"))
-                self.assertEqual(json.loads(backend.records[0][3]), {"query": "地图"})
-                self.assertEqual(backend.records[1][:2], ("GET", "/v1/status"))
-                for mode, code in {"redirect": "backend_unavailable", "invalid_json": "backend_unavailable", "bool_version": "backend_unavailable", "missing_version": "backend_unavailable", "wrong_type": "backend_unavailable", "large": "response_too_large", "short": "backend_unavailable", "unauthorized": "unauthorized"}.items():
-                    backend.mode = mode
-                    before = len(backend.records)
-                    with self.subTest(mode=mode):
-                        self.error(code, client.call, "search", {"query": "test"})
-                        self.assertEqual(len(backend.records), before + 1)
-
-    def test_preserves_backend_retryable_with_safe_fallback(self):
-        with _backend() as backend:
-            backend.mode = "error"
-            with _client(BackendConfig(backend.url, "backend-secret")) as client:
-                for code in ("upstream_http_error", "provider_unavailable"):
-                    for retryable in (True, False):
-                        with self.subTest(code=code, retryable=retryable):
-                            backend.error = {"code": code, "message": "backend-secret", "retryable": retryable}
-                            error = self.error(code, client.call, "open", {"url": "https://example.invalid"})
-                            self.assertIs(error.retryable, retryable)
-                for invalid in (None, 0, 1, "true", [], {}):
-                    backend.error = {"code": "upstream_http_error", "retryable": invalid}
-                    self.assertIs(self.error("upstream_http_error", client.call, "open", {}).retryable, False)
-                backend.error = {"code": "unknown", "retryable": False}
-                self.assertIs(self.error("backend_unavailable", client.call, "open", {}).retryable, True)
-
-    def test_deadline_closes_slow_response(self):
-        with _backend() as backend:
-            backend.mode = "slow"
-            with _client(BackendConfig(backend.url, "backend-secret", timeout_seconds=0.15)) as client:
-                start = time.monotonic()
-                self.error("timeout", client.call, "search", {"query": "test"})
-                self.assertLess(time.monotonic() - start, 1.5)
-                self.assertTrue(backend.started.is_set())
-
-    def test_capacity_and_independent_status(self):
-        entered, release = threading.Barrier(6), threading.Event()
-        class BlockingClient(BackendClient):
-            def _exchange(self, job, config, operation, body):
-                if operation != "status":
-                    entered.wait(5)
-                    release.wait(5)
-                job.remaining()
-                return {"contract_version": 1}
-        client = BlockingClient(lambda: BackendConfig("http://127.0.0.1:1", "secret"))
-        self.addCleanup(client.close)
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            futures = [pool.submit(client.call, "search", {"query": str(i)}) for i in range(5)]
+    def test_ambiguous_credentials_and_request_framing_do_not_reach_upstream(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client, _relay(client) as port:
+            for authorization in ("Basic business-secret", "Bearer ", "Bearer two words"):
+                with self.subTest(authorization=authorization):
+                    headers = dict(_BUSINESS_HEADERS, Authorization=authorization)
+                    self.assertEqual(_request(port, headers=headers)[0], 401)
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
             try:
-                entered.wait(5)
-                self.error("busy", client.call, "search", {"query": "sixth"})
-                self.assertEqual(client.call("status", {})["contract_version"], 1)
+                connection.putrequest("POST", "/mcp")
+                connection.putheader("Authorization", "Bearer business-secret")
+                connection.putheader("Authorization", "Bearer replacement-secret")
+                connection.putheader("Content-Type", "application/json")
+                connection.putheader("Content-Length", str(len(_INITIALIZE)))
+                connection.endheaders(_INITIALIZE)
+                with connection.getresponse() as response:
+                    self.assertEqual(response.status, 400)
+                    response.read()
             finally:
-                release.set()
-            for future in futures:
-                self.assertEqual(future.result(5)["contract_version"], 1)
+                connection.close()
+            oversized = dict(_BUSINESS_HEADERS, **{"Content-Length": str(1024 * 1024 + 1)})
+            self.assertEqual(_request(port, headers=oversized, body=b"")[0], 413)
+            self.assertFalse(upstream.records)
 
-    def test_timed_out_dns_retains_capacity(self):
+    def test_origin_preflight_host_and_header_boundaries(self):
+        origin = "http://127.0.0.1:8282"
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client, _relay(client, [origin]) as port:
+            status, headers, body = _request(port, "OPTIONS", headers={
+                "Origin": origin, "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type,mcp-session-id,mcp-protocol-version",
+            }, body=b"")
+            self.assertEqual(status, 204)
+            self.assertEqual(_header(headers, "Access-Control-Allow-Origin"), origin)
+            self.assertFalse(upstream.records)
+            valid = dict(_BUSINESS_HEADERS, Origin=origin, Cookie="private-cookie",
+                         **{"X-Extra": "private-header", "User-Agent": "untrusted-user-agent"})
+            status, headers, body = _request(port, headers=valid)
+            self.assertEqual(status, 200)
+            self.assertEqual(_header(headers, "Access-Control-Allow-Origin"), origin)
+            self.assertIn("mcp-session-id", _header(headers, "Access-Control-Expose-Headers").lower())
+            received = upstream.records[-1][2]
+            for name in ("Origin", "Cookie", "X-Extra"):
+                self.assertIsNone(_header(received, name))
+            self.assertEqual(_header(received, "User-Agent"), "QCopilots-WebSearch-Relay/0.3.0")
+            count = len(upstream.records)
+            for extra in ({"Origin": "https://untrusted.invalid"}, {"Host": "untrusted.invalid"}):
+                self.assertEqual(_request(port, headers=dict(_BUSINESS_HEADERS, **extra))[0], 403)
+            self.assertEqual(len(upstream.records), count)
+            self.assertEqual(_request(port, path="/mcp?url=https://other.invalid", headers=_BUSINESS_HEADERS)[0], 404)
+            self.assertEqual(len(upstream.records), count)
+
+    def test_bounded_json_only_transport_rejects_sse_html_redirects_and_large_responses(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url, max_response_bytes=1024)) as client:
+            for mode in ("sse", "html", "redirect", "short", "large"):
+                upstream.mode = mode
+                before = len(upstream.records)
+                with self.subTest(mode=mode), self.assertRaises(BackendError) as caught:
+                    client.exchange("POST", _BUSINESS_HEADERS, _INITIALIZE)
+                self.assertEqual(caught.exception.status, 502)
+                self.assertEqual(len(upstream.records), before + 1)
+                self.assertNotIn("upstream diagnostic", caught.exception.safe_message)
+
+    def test_relay_maps_unsupported_upstream_to_safe_502(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url)) as client, _relay(client) as port:
+            for mode in ("sse", "html", "redirect"):
+                upstream.mode = mode
+                with self.subTest(mode=mode):
+                    status, headers, body = _request(port, headers=_BUSINESS_HEADERS)
+                    self.assertEqual(status, 502)
+                    self.assertEqual(_header(headers, "Content-Type").split(";")[0], "application/json")
+                    self.assertNotIn(b"upstream diagnostic", body)
+                    self.assertNotIn(b"business-secret", body)
+
+    def test_deadline_and_disconnect_release_slow_response(self):
+        with _upstream() as upstream:
+            upstream.mode = "slow"
+            with _client(BackendConfig(upstream.url, timeout_seconds=0.15)) as client:
+                start = time.monotonic()
+                error = self.error("timeout", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+                self.assertEqual(error.status, 504)
+                self.assertLess(time.monotonic() - start, 2)
+                self.assertTrue(upstream.started.is_set())
+            upstream.started.clear()
+            disconnected = threading.Event()
+            with _client(BackendConfig(upstream.url, timeout_seconds=3)) as client, ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE,
+                                     disconnected=disconnected.is_set)
+                try:
+                    self.assertTrue(upstream.started.wait(2))
+                    disconnected.set()
+                    self.error("cancelled", future.result, 2)
+                finally:
+                    upstream.release.set()
+
+    def test_busy_requests_leave_cancellation_and_health_capacity(self):
+        with _upstream() as upstream, _client(BackendConfig(upstream.url, max_concurrency=1)) as client, _relay(client) as port:
+            upstream.mode = "slow"
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_request, port, headers=_BUSINESS_HEADERS)
+                try:
+                    self.assertTrue(upstream.started.wait(2))
+                    error = self.error("busy", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+                    self.assertEqual(error.status, 429)
+                    self.assertEqual(_request(port, "GET", "/health", {"Authorization": "Bearer manager-secret"}, b"")[0], 200)
+                    reply = _request(port, headers=_BUSINESS_HEADERS,
+                        body=b'{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":7}}')
+                    self.assertEqual(reply[0], 202)
+                    self.assertEqual(future.result(2)[0], 200)
+                finally:
+                    upstream.release.set()
+
+    def test_timed_out_dns_retains_capacity_until_worker_finishes(self):
         entered, release = threading.Event(), threading.Event()
         def connect(*_args, **_kwargs):
             entered.set()
             release.wait(5)
-            raise OSError("fake DNS failure")
-        client = BackendClient(lambda: BackendConfig("http://127.0.0.1:1", "secret", timeout_seconds=0.05, max_concurrency=1))
-        with mock.patch.object(backend_client.socket, "create_connection", connect):
-            try:
-                self.error("timeout", client.call, "search", {"query": "first"})
-                self.assertTrue(entered.is_set())
-                self.error("busy", client.call, "search", {"query": "second"})
-            finally:
-                release.set()
-                client.close()
-        with client._lock:
-            self.assertFalse(client._active)
+            raise OSError("private DNS detail")
+        with _client(BackendConfig("http://127.0.0.1:1/mcp", timeout_seconds=0.1, max_concurrency=1)) as client:
+            with mock.patch.object(backend_client.socket, "create_connection", connect):
+                try:
+                    self.error("timeout", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+                    self.assertTrue(entered.is_set())
+                    self.error("busy", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+                finally:
+                    release.set()
 
-    def test_tls_failure_is_not_disabled_or_exposed(self):
-        with _backend() as backend:
-            config = BackendConfig(backend.url.replace("http:", "https:"), "backend-secret")
+    def test_tls_validation_and_safe_configuration_errors(self):
+        with _upstream() as upstream:
             context = mock.Mock()
-            context.wrap_socket.side_effect = ssl.SSLCertVerificationError("private detail")
-            with _client(config) as client, mock.patch.object(backend_client.ssl, "create_default_context", return_value=context):
-                error = self.error("backend_unavailable", client.call, "search", {"query": "test"})
-                self.assertNotIn("private detail", str(error))
-                context.wrap_socket.assert_called_once()
+            context.wrap_socket.side_effect = ssl.SSLCertVerificationError("private certificate detail")
+            with _client(BackendConfig(upstream.url.replace("http:", "https:"))) as client:
+                with mock.patch.object(backend_client.ssl, "create_default_context", return_value=context) as factory:
+                    error = self.error("backend_unavailable", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+                    self.assertNotIn("private certificate detail", error.safe_message)
+                    factory.assert_called_once()
+                    context.wrap_socket.assert_called_once()
+        client = BackendClient(mock.Mock(side_effect=ConfigError("private config detail")))
+        self.addCleanup(client.close)
+        error = self.error("invalid_configuration", client.exchange, "POST", _BUSINESS_HEADERS, _INITIALIZE)
+        self.assertNotIn("private config detail", error.safe_message)
+
+    def test_close_stops_controller_serving_from_another_thread(self):
+        controller = WebSearchRelayServer(auth_token="manager-secret", client=mock.Mock())
+        failures = []
+        def run():
+            try:
+                controller.serve_forever()
+            except Exception as error:
+                failures.append(error)
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        try:
+            deadline = time.monotonic() + 2
+            while not controller.port and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertEqual(_request(controller.port, "GET", "/health",
+                {"Authorization": "Bearer manager-secret"}, b"")[0], 200)
+        finally:
+            controller.close()
+            thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(failures, [])
 
 
 if __name__ == "__main__":

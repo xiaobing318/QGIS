@@ -124,6 +124,12 @@
       "default": "qcopilots",
       "description": "字段作用是声明管理器逻辑分组。候选值只有 qcopilots，不同值会被 schema 拒绝。"
     },
+    "authorization_mode": {
+      "type": "string",
+      "enum": ["manager", "request"],
+      "default": "manager",
+      "description": "字段作用是声明所有服务统一使用的 Authorization 传输策略。候选值 manager 在未配置页面 Bearer 时使用 Manager 内部令牌，候选值 request 仅使用请求携带的 Bearer，不回退到内部令牌。修改取值会改变缺少页面凭据时的行为，不保存授权码，健康检查仍使用 Manager 凭据。"
+    },
     "capabilities": {
       "type": "array",
       "minItems": 1,

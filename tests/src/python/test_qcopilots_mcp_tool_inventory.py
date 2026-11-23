@@ -1,4 +1,7 @@
-"""Contract and loopback HTTP tests for the complete QCopilots MCP tool inventory.
+"""Contract and loopback HTTP tests for locally implemented QCopilots MCP tools.
+
+The WebSearch relay exposes the remote server's inventory dynamically and is
+covered by test_qcopilots_mcp_server_web_search.py.
 
 .. note:: This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,7 +30,6 @@ sys.path.insert(0, str(PLUGINS_ROOT))
 
 
 EXPECTED_TOOLS = {
-    "qcopilots_mcp_server_web_search": ["web_search", "web_open", "web_find", "web_search_status"],
     "qcopilots_mcp_server_builtin_tools": [
         "read_file",
         "get_file_metadata",
@@ -127,7 +129,6 @@ EXPECTED_TOOLS = {
 }
 
 EXPECTED_COUNTS = {
-    "qcopilots_mcp_server_web_search": 4,
     "qcopilots_mcp_server_builtin_tools": 8,
     "qcopilots_mcp_server_skills": 5,
     "qcopilots_mcp_server_interactive_tools": 34,
@@ -375,12 +376,6 @@ CANVAS_BEHAVIOR_MATRIX = (
         "outputs to the project or install external-file monitoring.",
         ("test_qcopilots_qgis_binary_tools.py", "test_qcopilots_qgis_binary_jobs.py"),
     ),
-    _CanvasBehavior(
-        "no_canvas_effect",
-        ("web_search", "web_open", "web_find", "web_search_status"),
-        "WebSearch reads public material through an independent service and does not modify the QGIS canvas.",
-        ("test_qcopilots_mcp_server_web_search.py",),
-    ),
 )
 
 
@@ -487,9 +482,6 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
         from qcopilots_common.security_policy import filesystem_policy_from_config
         from qcopilots_mcp_server_processing_general.server import build_general_tools
 
-        from qcopilots_mcp_server_web_search.tools import build_web_search_tools
-        fake_websearch = mock.Mock()
-        fake_websearch.call.return_value = {"contract_version": 1}
         self.file_transfer_manager = _RecordingFileTransferManager()
         policy = filesystem_policy_from_config(
             {
@@ -508,7 +500,6 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
             interactive_layer_tools, "BridgeClient", _RecordingBridge
         ), mock.patch.object(qgis_binary_tools, "BridgeClient", _RecordingBridge):
             return {
-                "qcopilots_mcp_server_web_search": build_web_search_tools(client=fake_websearch),
                 "qcopilots_mcp_server_builtin_tools": builtin_tools.build_builtin_tools(
                     workspace,
                     allowed_roots=[workspace],
@@ -975,13 +966,6 @@ def _conflicting_tool_arguments(name, valid_arguments):
 
 
 def _tool_call_arguments(plugin_name, tool, workspace):
-    if plugin_name == "qcopilots_mcp_server_web_search":
-        return {
-            "web_search": {"query": "QGIS"},
-            "web_open": {"url": "https://example.invalid"},
-            "web_find": {"page_id": "inventory-page", "pattern": "QGIS", "start_line": 1},
-            "web_search_status": {},
-        }[tool.name]
     if plugin_name == "qcopilots_mcp_server_builtin_tools":
         return _builtin_call_arguments(workspace)[tool.name]
     if plugin_name == "qcopilots_mcp_server_skills":

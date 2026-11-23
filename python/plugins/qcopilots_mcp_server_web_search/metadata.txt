@@ -1,8 +1,8 @@
 [general]
 name=QCopilots MCP Server Web Search
-description=Expose web search, reading and find tools as an MCP service.
+description=Relay the public WebSearch MCP service with the user-provided Bearer.
 category=QCopilots
-version=0.1.0
+version=0.3.0
 qgisMinimumVersion=4.0
 author=Ethan.Yang
 email=

@@ -35,8 +35,6 @@ from qcopilots_common.constants import (
     DEFAULT_CORS_ORIGINS,
     DEFAULT_HOST,
     DEFAULT_MCP_PATH,
-    HTTP_ERROR_BODY_DRAIN_TIMEOUT_SECONDS,
-    MAX_HTTP_ERROR_BODY_DRAIN_BYTES,
     MAX_HTTP_REQUEST_BODY_BYTES,
     MCP_AUTH_TOKEN_ENV,
     MCP_PROTOCOL_VERSION,
@@ -46,6 +44,19 @@ from qcopilots_common.constants import (
     decode_cors_origins,
 )
 from qcopilots_common.logging import configure_logger
+from qcopilots_common.mcp_http_transport import (
+    CORS_ALLOWED_HEADERS,
+    CORS_ALLOWED_METHODS,
+    CORS_EXPOSED_HEADERS,
+    CORS_PREFLIGHT_MAX_AGE_SECONDS,
+    HttpTransportError,
+    cors_response_headers,
+    discard_request_body,
+    request_body_length,
+    validate_preflight,
+    validate_request_host,
+    validate_request_origin,
+)
 
 
 class ToolError(Exception):
@@ -137,24 +148,9 @@ MAX_MCP_SESSION_ID_LENGTH = 128
 DEFAULT_MCP_LIST_PAGE_SIZE = 0
 DEFAULT_MAX_SESSION_CONTEXTS = 256
 DEFAULT_SESSION_TTL_SECONDS = 3600.0
-CORS_ALLOWED_METHODS = ("GET", "POST", "DELETE")
-CORS_ALLOWED_HEADERS = (
-    "Authorization",
-    "Content-Type",
-    "Accept",
-    "Mcp-Session-Id",
-    "MCP-Protocol-Version",
-    "Last-Event-ID",
-)
-CORS_EXPOSED_HEADERS = ("Mcp-Session-Id", "WWW-Authenticate")
-CORS_PREFLIGHT_MAX_AGE_SECONDS = 600
 STREAMABLE_HTTP_REQUIRED_ACCEPT_TYPES = frozenset(
     {"application/json", "text/event-stream"}
 )
-_CORS_ALLOWED_HEADER_NAMES = frozenset(
-    name.casefold() for name in CORS_ALLOWED_HEADERS
-)
-_HTTP_FIELD_NAME_PATTERN = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 
 class McpJsonRpcServer:
@@ -731,30 +727,15 @@ class McpHttpServer:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
                     return
 
-                requested_methods = (
-                    self.headers.get_all("Access-Control-Request-Method") or []
-                )
-                if len(requested_methods) != 1:
+                try:
+                    validate_preflight(self.headers)
+                except HttpTransportError as error:
                     self.close_connection = True
                     self._send_json(
-                        HTTPStatus.BAD_REQUEST,
-                        {"error": "cors_method_required"},
-                    )
-                    return
-                if requested_methods[0].strip() not in CORS_ALLOWED_METHODS:
-                    self.close_connection = True
-                    self._send_json(
-                        HTTPStatus.METHOD_NOT_ALLOWED,
-                        {"error": "cors_method_not_allowed"},
-                        {"Allow": ", ".join(CORS_ALLOWED_METHODS)},
-                    )
-                    return
-
-                if not self._cors_request_headers_allowed():
-                    self.close_connection = True
-                    self._send_json(
-                        HTTPStatus.FORBIDDEN,
-                        {"error": "cors_headers_not_allowed"},
+                        error.status,
+                        {"error": error.code},
+                        {"Allow": ", ".join(CORS_ALLOWED_METHODS)}
+                        if error.status == HTTPStatus.METHOD_NOT_ALLOWED else None,
                     )
                     return
                 self._send_empty(
@@ -931,65 +912,34 @@ class McpHttpServer:
                 return False
 
             def _request_host_allowed(self) -> bool:
-                host_headers = self.headers.get_all("Host") or []
-                expected_host = (
-                    f"{controller.host}:{int(self.server.server_address[1])}"
-                )
-                if len(host_headers) != 1 or not hmac.compare_digest(
-                    host_headers[0], expected_host
-                ):
+                try:
+                    validate_request_host(
+                        self.headers, controller.host, self.server.server_address[1]
+                    )
+                except HttpTransportError as error:
                     self.close_connection = True
                     self._discard_request_body()
                     self._send_json(
-                        HTTPStatus.FORBIDDEN,
-                        {"error": "host_not_allowed"},
+                        error.status,
+                        {"error": error.code},
                     )
                     return False
                 return True
 
             def _request_origin_allowed(self, require_origin: bool = False) -> bool:
-                origin_headers = self.headers.get_all("Origin") or []
-                if not origin_headers:
-                    if not require_origin:
-                        return True
+                try:
+                    self._cors_origin = validate_request_origin(
+                        self.headers, controller.cors_origins, require_origin
+                    )
+                except HttpTransportError as error:
                     self.close_connection = True
                     self._discard_request_body()
                     self._send_json(
-                        HTTPStatus.FORBIDDEN,
-                        {"error": "origin_required"},
+                        error.status,
+                        {"error": error.code},
                     )
                     return False
-
-                origin = origin_headers[0] if len(origin_headers) == 1 else ""
-                if origin != "null" and any(
-                    origin == configured for configured in controller.cors_origins
-                ):
-                    self._cors_origin = origin
-                    return True
-
-                self.close_connection = True
-                self._discard_request_body()
-                self._send_json(
-                    HTTPStatus.FORBIDDEN,
-                    {"error": "origin_not_allowed"},
-                )
-                return False
-
-            def _cors_request_headers_allowed(self) -> bool:
-                requested_header_lines = (
-                    self.headers.get_all("Access-Control-Request-Headers") or []
-                )
-                requested_headers: list[str] = []
-                for line in requested_header_lines:
-                    for value in line.split(","):
-                        name = value.strip()
-                        if not name or not _HTTP_FIELD_NAME_PATTERN.fullmatch(name):
-                            return False
-                        requested_headers.append(name)
-                return all(
-                    name.casefold() in _CORS_ALLOWED_HEADER_NAMES
-                    for name in requested_headers
-                )
+                return True
 
             def _request_accepts_streamable_http(self) -> bool:
                 accepted: set[str] = set()
@@ -1081,25 +1031,7 @@ class McpHttpServer:
                 cors_preflight: bool = False,
             ) -> dict[str, str]:
                 headers = dict(extra_headers or {})
-                if self._cors_origin is None:
-                    return headers
-
-                headers["Access-Control-Allow-Origin"] = self._cors_origin
-                headers["Vary"] = "Origin"
-                if cors_preflight:
-                    headers["Access-Control-Allow-Methods"] = ", ".join(
-                        CORS_ALLOWED_METHODS
-                    )
-                    headers["Access-Control-Allow-Headers"] = ", ".join(
-                        CORS_ALLOWED_HEADERS
-                    )
-                    headers["Access-Control-Max-Age"] = str(
-                        CORS_PREFLIGHT_MAX_AGE_SECONDS
-                    )
-                else:
-                    headers["Access-Control-Expose-Headers"] = ", ".join(
-                        CORS_EXPOSED_HEADERS
-                    )
+                headers.update(cors_response_headers(self._cors_origin, cors_preflight))
                 return headers
 
             def _request_session_id(self, payload: Any) -> str | None:
@@ -1163,43 +1095,14 @@ class McpHttpServer:
                 )
 
             def _discard_request_body(self) -> None:
-                length = self._request_body_length()
-                if length <= 0:
-                    return
-                if length > MAX_HTTP_ERROR_BODY_DRAIN_BYTES:
-                    self.close_connection = True
-                    return
-                old_timeout = self.connection.gettimeout()
-                try:
-                    self.connection.settimeout(HTTP_ERROR_BODY_DRAIN_TIMEOUT_SECONDS)
-                    remaining = length
-                    while remaining > 0:
-                        chunk = self.rfile.read(min(remaining, 8192))
-                        if not chunk:
-                            self.close_connection = True
-                            break
-                        remaining -= len(chunk)
-                except OSError:
-                    self.close_connection = True
-                finally:
-                    try:
-                        self.connection.settimeout(old_timeout)
-                    except OSError:
-                        self.close_connection = True
+                discard_request_body(self)
 
             def _request_body_length(self) -> int:
-                transfer_encodings = self.headers.get_all("Transfer-Encoding") or []
-                content_lengths = self.headers.get_all("Content-Length") or []
-                if transfer_encodings or len(content_lengths) > 1:
+                try:
+                    return request_body_length(self.headers)
+                except HttpTransportError:
                     self.close_connection = True
                     return -1
-                if not content_lengths:
-                    return 0
-                value = content_lengths[0]
-                if not re.fullmatch(r"0|[1-9][0-9]*", value):
-                    self.close_connection = True
-                    return -1
-                return int(value)
 
         return ThreadingHTTPServer((self.host, self.port), Handler)
 

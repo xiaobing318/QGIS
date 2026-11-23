@@ -22,6 +22,7 @@ import threading
 import types
 import unittest
 from contextlib import redirect_stderr
+from email.message import Message
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -31,6 +32,81 @@ from urllib.request import Request, urlopen
 
 class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
     HTTP_AUTH_TOKEN = "qcopilots-unit-test-service-token"
+
+    def test_shared_transport_helpers_reject_ambiguous_headers(self):
+        from qcopilots_common.mcp_http_transport import (
+            HttpTransportError,
+            request_body_length,
+            validate_preflight,
+            validate_request_host,
+            validate_request_origin,
+        )
+
+        def headers(*pairs):
+            result = Message()
+            for key, value in pairs:
+                result[key] = value
+            return result
+
+        cases = [
+            (lambda value: validate_request_host(value, "127.0.0.1", 48218),
+             headers(("Host", "127.0.0.1:48218"), ("Host", "127.0.0.1:48218")),
+             403, "host_not_allowed"),
+            (lambda value: validate_request_host(value, "127.0.0.1", 48218),
+             headers(("Host", "é:48218")), 403, "host_not_allowed"),
+            (lambda value: validate_request_origin(value, ["https://example.com"]),
+             headers(("Origin", "https://example.com"), ("Origin", "https://example.com")),
+             403, "origin_not_allowed"),
+            (lambda value: validate_request_origin(value, ["https://example.com"], True),
+             headers(), 403, "origin_required"),
+            (request_body_length,
+             headers(("Content-Length", "4"), ("Content-Length", "4")),
+             400, "bad_content_length"),
+            (request_body_length,
+             headers(("Content-Length", "4"), ("Transfer-Encoding", "chunked")),
+             400, "bad_content_length"),
+            (request_body_length, headers(("Content-Length", "04")),
+             400, "bad_content_length"),
+            (validate_preflight,
+             headers(("Access-Control-Request-Method", "POST"),
+                     ("Access-Control-Request-Method", "POST")),
+             400, "cors_method_required"),
+            (validate_preflight, headers(("Access-Control-Request-Method", "PUT")),
+             405, "cors_method_not_allowed"),
+            (validate_preflight,
+             headers(("Access-Control-Request-Method", "POST"),
+                     ("Access-Control-Request-Headers", "Authorization, X-Forwarded-Host")),
+             403, "cors_headers_not_allowed"),
+        ]
+        for check, value, status, code in cases:
+            with self.subTest(code=code, headers=list(value.items())):
+                with self.assertRaises(HttpTransportError) as caught:
+                    check(value)
+                self.assertEqual((caught.exception.status, caught.exception.code), (status, code))
+
+        self.assertIsNone(validate_request_origin(headers(), ["https://example.com"]))
+        self.assertEqual(request_body_length(headers(("Content-Length", "4"))), 4)
+        validate_preflight(headers(("Access-Control-Request-Method", "POST"),
+                                   ("Access-Control-Request-Headers", "authorization, MCP-Protocol-Version")))
+
+    def test_shared_transport_drain_has_one_deadline_and_restores_timeout(self):
+        from qcopilots_common import mcp_http_transport as transport
+
+        headers = Message()
+        headers["Content-Length"] = "6"
+        handler = types.SimpleNamespace(
+            headers=headers,
+            connection=mock.Mock(),
+            rfile=mock.Mock(),
+            close_connection=False,
+        )
+        handler.connection.gettimeout.return_value = 12
+        handler.rfile.read.return_value = b"abc"
+        with mock.patch.object(transport.time, "monotonic", side_effect=[10, 10.1, 11]):
+            transport.discard_request_body(handler)
+        self.assertTrue(handler.close_connection)
+        handler.rfile.read.assert_called_once_with(6)
+        self.assertEqual(handler.connection.settimeout.call_args_list[-1], mock.call(12))
 
     def _http_headers(self, headers=None):
         return {
@@ -3062,7 +3138,7 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                             "Access-Control-Expose-Headers"
                         ].split(",")
                     },
-                    {"mcp-session-id", "www-authenticate"},
+                    {"mcp-session-id", "www-authenticate", "allow", "retry-after"},
                 )
                 self.assertNotIn(
                     "Access-Control-Allow-Credentials",

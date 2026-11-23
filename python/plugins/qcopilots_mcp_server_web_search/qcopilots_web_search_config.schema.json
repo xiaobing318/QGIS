@@ -4,8 +4,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "backend_url",
-    "auth"
+    "backend_url"
   ],
   "properties": {
     "$schema": {
@@ -14,7 +13,7 @@
     },
     "backend_url": {
       "type": "string",
-      "description": "独立后端地址。候选值为无路径的HTTP本机回环地址或HTTPS远程地址。formal_restricted模式仍须通过已有网络白名单检查，插件不会放宽限制。",
+      "description": "固定的 WebSearch MCP endpoint。远端使用 HTTPS 和 /mcp 路径，本机测试允许 HTTP 回环地址。旧源地址配置会在内存中补 /mcp。工具参数不能修改目的地。",
       "minLength": 1,
       "maxLength": 4096
     },
@@ -46,44 +45,12 @@
       "maxLength": 4096
     },
     "auth": {
-      "type": "object",
-      "description": "后端认证配置。候选为token_env或token_file其中一项。其令牌必须与本地MCP服务令牌分离。",
-      "additionalProperties": false,
-      "properties": {
-        "token_env": {
-          "type": "string",
-          "description": "存放后端令牌的环境变量名。候选为合法变量名，不可使用QCOPILOTS_MCP_AUTH_TOKEN。变量值只在调用时读取，不写入日志。",
-          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-        },
-        "token_file": {
-          "type": "string",
-          "description": "后端令牌文件。候选为绝对路径或相对配置文件的路径。文件需限制访问，POSIX要求仅所有者可读。",
-          "minLength": 1,
-          "maxLength": 4096
-        }
-      },
-      "oneOf": [
-        {
-          "required": [
-            "token_env"
-          ],
-          "not": {
-            "required": [
-              "token_file"
-            ]
-          }
-        },
-        {
-          "required": [
-            "token_file"
-          ],
-          "not": {
-            "required": [
-              "token_env"
-            ]
-          }
-        }
-      ]
+      "description": "旧适配器兼容字段。已废弃且完全忽略，不读取环境变量或凭据文件。",
+      "deprecated": true
+    },
+    "settings": {
+      "description": "旧管理页兼容字段。已废弃且完全忽略，普通 QGIS 用户不使用管理凭据。",
+      "deprecated": true
     }
   }
 }

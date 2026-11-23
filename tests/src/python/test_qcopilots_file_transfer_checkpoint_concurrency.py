@@ -35,6 +35,17 @@ from qcopilots_mcp_server_processing_general.file_transfer_storage import DiskTr
 from test_qcopilots_mcp_server_file_transfer_jobs import FakeBackend, MemoryConfigStore
 
 
+def exception_diagnostic(error):
+    """Keep concurrent failures useful without printing paths or error prose."""
+    causes = []
+    cause = error.__cause__
+    while cause is not None:
+        causes.append((type(cause).__name__, getattr(cause, "errno", None),
+                       getattr(cause, "winerror", None)))
+        cause = cause.__cause__
+    return type(error).__name__, getattr(error, "code", None), causes
+
+
 class TestFileTransferCheckpointReplacement(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="qcopilots-checkpoint-sharing-")
@@ -191,8 +202,9 @@ class TestFileTransferCheckpointReplacement(unittest.TestCase):
 
 
 @unittest.skipUnless(os.name == "nt", "Windows concurrent checkpoint acceptance")
-class TestFileTransferConcurrentManagers(unittest.TestCase):
+class _FileTransferManagerFixture(unittest.TestCase):
     TRANSFER_TIMEOUT = 45
+    SOURCE_FILE_COUNT = 128
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="qcopilots-manager-sharing-")
@@ -200,7 +212,7 @@ class TestFileTransferConcurrentManagers(unittest.TestCase):
         self.root = Path(temporary.name)
         self.source = self.root / "source"
         self.source.mkdir()
-        for index in range(128):
+        for index in range(self.SOURCE_FILE_COUNT):
             (self.source / f"{index:04d}.bin").write_bytes(bytes(range(256)) * 96)
         self.backend = FakeBackend(self.root / "remote")
         self.backend.local("/uploads").mkdir()
@@ -238,6 +250,8 @@ class TestFileTransferConcurrentManagers(unittest.TestCase):
                 self.fail(f"Writer did not finish within the transfer timeout: {result}")
             time.sleep(min(0.01, remaining))
 
+
+class TestFileTransferConcurrentManagers(_FileTransferManagerFixture):
     def test_second_manager_list_and_get_during_checkpoint_writes(self):
         initial = self.start_writer()
         observer = FileTransferJobManager(self.config, object(), FilesystemPolicy())
@@ -249,7 +263,7 @@ class TestFileTransferConcurrentManagers(unittest.TestCase):
                     observer.list_jobs()
                     results.append(observer.get_job(initial["job_id"], files_limit=10)["state"])
                 except Exception as error:
-                    errors.append((type(error).__name__, getattr(error, "code", None)))
+                    errors.append(exception_diagnostic(error))
         thread = threading.Thread(target=query)
         thread.start()
         try:
@@ -284,7 +298,12 @@ try:
             manager.get_job(sys.argv[3], files_limit=10)
             count += 1
         except Exception as error:
-            errors.append([type(error).__name__, getattr(error, 'code', None)])
+            causes, cause = [], error.__cause__
+            while cause is not None:
+                causes.append([type(cause).__name__, getattr(cause, 'errno', None),
+                               getattr(cause, 'winerror', None)])
+                cause = cause.__cause__
+            errors.append([type(error).__name__, getattr(error, 'code', None), causes])
 finally:
     manager.shutdown()
 print(json.dumps({'count': count, 'errors': errors}), flush=True)
@@ -313,6 +332,91 @@ print(json.dumps({'count': count, 'errors': errors}), flush=True)
         result = json.loads(stdout)
         self.assertGreater(result["count"], 5)
         self.assertEqual(result["errors"], [])
+
+
+class TestFileTransferArchiveReads(_FileTransferManagerFixture):
+    SOURCE_FILE_COUNT = 2
+
+    def archive_during_manifest_read(self, *, corrupt_receipt=False):
+        initial = self.start_writer()
+        observer = FileTransferJobManager(self.config, object(), FilesystemPolicy())
+        self.addCleanup(observer.shutdown)
+        read_manifest = observer._disk.read_manifest_page
+
+        def archive_then_read(record, offset, limit):
+            self.assertTrue(record["manifest_ready"])
+            self.assertFalse(record.get("archived"))
+            self.finish_writer(initial)
+            self.assertFalse((self.writer.root / initial["transfer_id"]).exists())
+            if corrupt_receipt:
+                receipt = self.writer.history_root / (initial["job_id"] + ".files.jsonl")
+                receipt.write_bytes(b"corrupt receipt\n")
+            return read_manifest(record, offset, limit)
+
+        with mock.patch.object(observer._disk, "read_manifest_page", side_effect=archive_then_read) as manifest, \
+                mock.patch.object(observer._disk, "read_receipt_page", wraps=observer._disk.read_receipt_page) as receipt:
+            if corrupt_receipt:
+                with self.assertRaises(FileTransferError) as raised:
+                    observer.get_job(initial["job_id"], files_limit=10)
+                self.assertEqual(raised.exception.code, "invalid_receipt")
+            else:
+                result = observer.get_job(initial["job_id"], files_limit=10)
+                expected = self.writer.get_job(initial["job_id"], files_limit=10)
+                self.assertEqual(result["state"], "succeeded")
+                self.assertEqual(result["files"], expected["files"])
+                self.assertEqual(result["files_total"], expected["files_total"])
+            manifest.assert_called_once()
+            receipt.assert_called_once_with(initial["job_id"], 0, 10)
+
+    def test_retired_manifest_reads_new_committed_receipt_once(self):
+        self.archive_during_manifest_read()
+
+    def test_retired_manifest_does_not_hide_corrupt_receipt(self):
+        self.archive_during_manifest_read(corrupt_receipt=True)
+
+    def test_missing_active_manifest_without_archive_remains_an_error(self):
+        initial = self.start_writer()
+        observer = FileTransferJobManager(self.config, object(), FilesystemPolicy())
+        self.addCleanup(observer.shutdown)
+        offsets = self.writer.root / initial["transfer_id"] / "offsets.json"
+        original = offsets.read_bytes()
+        offsets.unlink()
+        try:
+            with mock.patch.object(observer._disk, "read_receipt_page") as receipt:
+                with self.assertRaises(FileTransferError) as raised:
+                    observer.get_job(initial["job_id"], files_limit=10)
+                self.assertEqual(raised.exception.code, "invalid_checkpoint")
+                self.assertIsInstance(raised.exception.__cause__, FileNotFoundError)
+                receipt.assert_not_called()
+        finally:
+            offsets.write_bytes(original)
+        self.finish_writer(initial)
+
+    def test_corrupt_active_manifest_is_not_hidden_by_later_archive(self):
+        initial = self.start_writer()
+        observer = FileTransferJobManager(self.config, object(), FilesystemPolicy())
+        self.addCleanup(observer.shutdown)
+        read_manifest = observer._disk.read_manifest_page
+        observed = []
+
+        def corrupt_then_archive(record, offset, limit):
+            offsets = self.writer.root / initial["transfer_id"] / "offsets.json"
+            offsets.write_bytes(b"invalid json")
+            try:
+                return read_manifest(record, offset, limit)
+            except FileTransferError as error:
+                observed.append(error)
+                self.finish_writer(initial)
+                raise
+
+        with mock.patch.object(observer._disk, "read_manifest_page", side_effect=corrupt_then_archive), \
+                mock.patch.object(observer._disk, "read_receipt_page") as receipt:
+            with self.assertRaises(FileTransferError) as raised:
+                observer.get_job(initial["job_id"], files_limit=10)
+            self.assertIs(raised.exception, observed[0])
+            self.assertEqual(raised.exception.code, "invalid_checkpoint")
+            self.assertIsInstance(raised.exception.__cause__, ValueError)
+            receipt.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -22,6 +22,8 @@ from qcopilots_common.constants import (
 )
 from qcopilots_common.service_id import is_safe_service_id
 
+AUTHORIZATION_MODES = ("manager", "request")
+
 
 class ManifestValidationError(ValueError):
     """Raised when a service manifest is not usable by the manager."""
@@ -60,6 +62,7 @@ class ServiceManifest:
     enabled: bool = True
     cors_origins: list[str] = field(default_factory=lambda: list(DEFAULT_CORS_ORIGINS))
     icon: str = ""
+    authorization_mode: str = "manager"
 
     @property
     def host(self) -> str:
@@ -171,6 +174,9 @@ def load_service_manifest(path: str | Path) -> ServiceManifest:
     display_name = _required_string(data, "display_name", manifest_path)
     description = _required_string(data, "description", manifest_path)
     transport = _transport_from_data(data, service_id, manifest_path)
+    authorization_mode = data.get("authorization_mode", "manager")
+    if not isinstance(authorization_mode, str) or authorization_mode not in AUTHORIZATION_MODES:
+        raise ManifestValidationError(f"Manifest {manifest_path} has an invalid authorization_mode")
 
     return ServiceManifest(
         service_id=service_id,
@@ -187,6 +193,7 @@ def load_service_manifest(path: str | Path) -> ServiceManifest:
         enabled=bool(data.get("enabled", True)),
         cors_origins=list(data.get("cors_origins", DEFAULT_CORS_ORIGINS)),
         icon=data.get("icon") or _metadata_value(plugin_dir, "icon") or "",
+        authorization_mode=authorization_mode,
     )
 
 
@@ -206,6 +213,7 @@ def manifest_to_dict(manifest: ServiceManifest, port: int | None = None) -> dict
         "url": manifest.url(port),
         "category": manifest.category,
         "capabilities": manifest.capabilities,
+        "authorization_mode": manifest.authorization_mode,
         "enabled": manifest.enabled,
         "cors_origins": list(manifest.cors_origins),
         "icon": manifest.icon,

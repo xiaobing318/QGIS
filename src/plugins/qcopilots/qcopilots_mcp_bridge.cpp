@@ -86,11 +86,13 @@ namespace
   const QSet<QByteArray> &allowedResponseHeaders()
   {
     static const QSet<QByteArray> sHeaders = {
+      QByteArrayLiteral( "allow" ),
       QByteArrayLiteral( "cache-control" ),
       QByteArrayLiteral( "content-type" ),
       QByteArrayLiteral( "mcp-protocol-version" ),
       QByteArrayLiteral( "mcp-session-id" ),
       QByteArrayLiteral( "retry-after" ),
+      QByteArrayLiteral( "www-authenticate" ),
     };
     return sHeaders;
   }
@@ -98,6 +100,8 @@ namespace
   QString canonicalResponseHeaderName( const QByteArray &name )
   {
     const QByteArray lower = name.toLower();
+    if ( lower == QByteArrayLiteral( "allow" ) )
+      return QStringLiteral( "Allow" );
     if ( lower == QByteArrayLiteral( "content-type" ) )
       return QStringLiteral( "Content-Type" );
     if ( lower == QByteArrayLiteral( "cache-control" ) )
@@ -110,6 +114,8 @@ namespace
       return QStringLiteral( "MCP-Session-Id" );
     if ( lower == QByteArrayLiteral( "retry-after" ) )
       return QStringLiteral( "Retry-After" );
+    if ( lower == QByteArrayLiteral( "www-authenticate" ) )
+      return QStringLiteral( "WWW-Authenticate" );
     return QString::fromLatin1( name );
   }
 
@@ -119,6 +125,21 @@ namespace
            && !value.contains( '\r' )
            && !value.contains( '\n' )
            && !value.contains( '\0' );
+  }
+
+  bool bearerHeaderIsSafe( const QString &value )
+  {
+    if ( value.size() < 8 || value.size() > 8192 + 7
+         || value.left( 7 ).compare( QLatin1String( "Bearer " ), Qt::CaseInsensitive ) != 0 )
+      return false;
+
+    for ( qsizetype index = 7; index < value.size(); ++index )
+    {
+      const auto character = value.at( index ).unicode();
+      if ( character < 0x21 || character > 0x7e )
+        return false;
+    }
+    return true;
   }
 
   bool isRedirectStatus( int status )
@@ -252,31 +273,35 @@ void QgsQCopilotsMcpBridge::request( const QString &requestId, const QString &me
   networkRequest.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork );
   networkRequest.setTransferTimeout( timeoutMs );
 
+  const bool useManagerAuthorization = service.authorizationMode == QLatin1String( "manager" );
   QSet<QByteArray> seenHeaders;
   for ( auto iterator = headers.constBegin(); iterator != headers.constEnd(); ++iterator )
   {
     const QByteArray headerName = iterator.key().toLatin1().toLower();
-    if ( headerName == QByteArrayLiteral( "authorization" ) )
-      continue;
-
+    const bool isAuthorization = headerName == QByteArrayLiteral( "authorization" );
     if ( iterator.value().metaType().id() != QMetaType::QString )
     {
       reject( QStringLiteral( "invalid_header" ), tr( "Local MCP request header values must be strings." ) );
       return;
     }
 
-    const QByteArray headerValue = iterator.value().toString().toLatin1();
-    if ( !allowedRequestHeaders().contains( headerName ) || seenHeaders.contains( headerName ) || !headerValueIsSafe( headerValue ) )
+    const QString stringValue = iterator.value().toString();
+    const QByteArray headerValue = stringValue.toLatin1();
+    const bool permitted = isAuthorization
+                             ? bearerHeaderIsSafe( stringValue ) && ( useManagerAuthorization || headerValue.mid( 7 ) != service.authToken )
+                             : allowedRequestHeaders().contains( headerName ) && headerValueIsSafe( headerValue );
+    if ( !permitted || seenHeaders.contains( headerName ) )
     {
       reject( QStringLiteral( "invalid_header" ), tr( "The local MCP request contains an unsupported or invalid header." ) );
       return;
     }
 
     seenHeaders.insert( headerName );
-    networkRequest.setRawHeader( headerName, headerValue );
+    networkRequest.setRawHeader( headerName, isAuthorization ? QByteArrayLiteral( "Bearer " ) + headerValue.mid( 7 ) : headerValue );
   }
 
-  networkRequest.setRawHeader( QByteArrayLiteral( "authorization" ), QByteArrayLiteral( "Bearer " ) + service.authToken );
+  if ( useManagerAuthorization && !seenHeaders.contains( QByteArrayLiteral( "authorization" ) ) )
+    networkRequest.setRawHeader( QByteArrayLiteral( "authorization" ), QByteArrayLiteral( "Bearer " ) + service.authToken );
 
   QNetworkReply *reply = nullptr;
   if ( normalizedMethod == QLatin1String( "GET" ) )
@@ -346,6 +371,7 @@ void QgsQCopilotsMcpBridge::updatePublicCatalog()
       publicService.insert( QStringLiteral( "displayName" ), service.displayName );
       publicService.insert( QStringLiteral( "state" ), service.state );
       publicService.insert( QStringLiteral( "virtualUrl" ), service.virtualUrl.toString( QUrl::FullyEncoded ) );
+      publicService.insert( QStringLiteral( "authorizationMode" ), service.authorizationMode );
       services.append( publicService );
     }
   }

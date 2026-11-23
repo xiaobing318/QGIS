@@ -223,6 +223,34 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(manifest.endpoint_url, "http://127.0.0.1:18711/mcp")
             self.assertEqual(manifest.capabilities, ["tools"])
             self.assertEqual(manifest.source_path, manifest_path)
+            self.assertEqual(manifest.authorization_mode, "manager")
+
+    def test_manifest_authorization_mode_is_explicit_and_independent_of_service_id(self):
+        from qcopilots_common.manifest import load_service_manifest, manifest_to_dict
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest_path = _write_manifest(Path(tmp) / "remote_tools", "vendor.remote_tools", 18711)
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for mode in ("manager", "request"):
+                with self.subTest(mode=mode):
+                    data["authorization_mode"] = mode
+                    manifest_path.write_text(json.dumps(data), encoding="utf-8")
+                    manifest = load_service_manifest(manifest_path)
+                    self.assertEqual(manifest.authorization_mode, mode)
+                    self.assertEqual(manifest_to_dict(manifest)["authorization_mode"], mode)
+
+    def test_manifest_rejects_invalid_authorization_modes_and_types(self):
+        from qcopilots_common.manifest import ManifestValidationError, load_service_manifest
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest_path = _write_manifest(Path(tmp) / "remote_tools", "vendor.remote_tools", 18711)
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for mode in ("", "other", "Request", " request ", None, True, 1, 1.5, [], {}):
+                with self.subTest(mode=mode):
+                    data["authorization_mode"] = mode
+                    manifest_path.write_text(json.dumps(data), encoding="utf-8")
+                    with self.assertRaises(ManifestValidationError):
+                        load_service_manifest(manifest_path)
 
     def test_manifest_loader_keeps_bind_and_advertised_hosts_separate(self):
         from qcopilots_common.manifest import load_service_manifest, manifest_to_dict
@@ -262,12 +290,49 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                     "category": "qcopilots",
                     "capabilities": ["tools"],
                     "enabled": True,
+                    "authorization_mode": "manager",
                     "cors_origins": [],
                     "icon": "",
                     "icon_path": "",
                     "icons": [],
                 },
             )
+
+    def test_process_state_preserves_authorization_mode_and_detects_changes(self):
+        from dataclasses import replace
+        from qcopilots_common.manifest import manifest_to_dict
+        from qcopilots_common.process_controller import (
+            _manifest_from_state,
+            _service_configuration_matches_state,
+            _validate_service_manifest_security,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = _manifest(tmp, "vendor.remote_tools", ["tools"])
+            base = replace(base, transport=replace(base.transport, advertised_host="127.0.0.1"))
+            state_path = Path(tmp) / "runtime.json"
+            for mode in ("manager", "request"):
+                with self.subTest(mode=mode):
+                    manifest = replace(base, authorization_mode=mode)
+                    stored = manifest_to_dict(manifest)
+                    restored = _manifest_from_state(state_path, stored)
+                    self.assertIsNotNone(restored)
+                    self.assertEqual(restored.authorization_mode, mode)
+                    self.assertTrue(_service_configuration_matches_state(manifest, {"manifest": stored}))
+                    changed = replace(manifest, authorization_mode="request" if mode == "manager" else "manager")
+                    self.assertFalse(_service_configuration_matches_state(changed, {"manifest": stored}))
+                    _validate_service_manifest_security(manifest, [])
+            legacy = manifest_to_dict(base)
+            legacy.pop("authorization_mode")
+            self.assertEqual(_manifest_from_state(state_path, legacy).authorization_mode, "manager")
+            self.assertTrue(_service_configuration_matches_state(base, {"manifest": legacy}))
+            self.assertFalse(_service_configuration_matches_state(
+                replace(base, authorization_mode="request"), {"manifest": legacy}))
+            for invalid in ("other", None, True, [], {}):
+                with self.subTest(invalid=invalid):
+                    self.assertIsNone(_manifest_from_state(state_path, dict(legacy, authorization_mode=invalid)))
+                    with self.assertRaises(ValueError):
+                        _validate_service_manifest_security(replace(base, authorization_mode=invalid), [])
 
     def test_discovery_returns_enabled_services_in_stable_order(self):
         from qcopilots_common.discovery import discover_service_manifests
@@ -329,6 +394,11 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             ],
         )
         self.assertTrue(all(manifest.enabled for manifest in discovered))
+        self.assertEqual(
+            {manifest.service_id: manifest.authorization_mode for manifest in discovered},
+            {manifest.service_id: ("request" if manifest.service_id == "qcopilots.mcp_server_web_search" else "manager")
+             for manifest in discovered},
+        )
         self.assertEqual([manifest.mcp_path for manifest in discovered], ["/mcp"] * len(SERVICE_PLUGIN_DIR_NAMES))
         self.assertEqual(
             [manifest.default_port for manifest in discovered],
@@ -2462,6 +2532,28 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertEqual(clamped.url(), "http://127.0.0.1:48211/mcp")
                 self.assertEqual(clamped.cors_origins, [])
 
+    def test_network_overrides_preserve_manifest_authorization_mode(self):
+        _install_manager_import_stubs()
+
+        from dataclasses import replace
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = _manifest(tmp, "vendor.remote_tools", ["tools"], host="0.0.0.0")
+            self.assertEqual(manifest.authorization_mode, "manager")
+            for mode in ("manager", "request"):
+                for enabled in (True, False):
+                    with self.subTest(mode=mode, enabled=enabled):
+                        original = replace(manifest, authorization_mode=mode)
+                        clamped = manager_plugin._network_overrides_manifest(
+                            original, {"enabled": enabled, "host": "0.0.0.0", "cors_origins": ["*"]},
+                            cors_origins=["http://127.0.0.1:8282"],
+                        )
+                        self.assertEqual(clamped.authorization_mode, mode)
+                        self.assertEqual(clamped.host, "127.0.0.1")
+                        self.assertEqual(clamped.cors_origins, ["http://127.0.0.1:8282"])
+                        self.assertEqual(original.host, "0.0.0.0")
+
     def test_manager_runtime_validation_rejects_wide_network_values(self):
         _install_manager_import_stubs()
 
@@ -3076,8 +3168,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 )
                 self.assertEqual(
                     set(starting_catalog["services"][0]),
-                    {"id", "displayName", "state", "virtualUrl", "targetUrl", "authToken"},
+                    {"id", "displayName", "state", "virtualUrl", "targetUrl", "authToken", "authorizationMode"},
                 )
+                self.assertEqual(starting_catalog["services"][0]["authorizationMode"], "manager")
 
                 plugin.start_service(manifest, first_token)
                 running_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
@@ -3086,6 +3179,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertEqual(running_item["state"], "running")
                 self.assertEqual(running_item["targetUrl"], "http://127.0.0.1:59321/mcp")
                 self.assertEqual(running_item["authToken"], first_token)
+                self.assertEqual(running_item["authorizationMode"], "manager")
                 self.assertNotIn(first_token, running_item["virtualUrl"])
 
                 plugin.stop_service(manifest)
@@ -3094,6 +3188,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertEqual(stopped_item["state"], "stopped")
                 self.assertEqual(stopped_item["targetUrl"], "")
                 self.assertEqual(stopped_item["authToken"], "")
+                self.assertEqual(stopped_item["authorizationMode"], "manager")
 
                 second_token = plugin.prepare_service_start(manifest)
                 self.assertEqual(second_token, first_token)
@@ -3110,7 +3205,16 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 shutdown_catalog = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)
                 self.assertGreater(shutdown_catalog["generation"], generation_before_shutdown)
                 self.assertTrue(shutdown_catalog["startupComplete"])
-                self.assertEqual(shutdown_catalog["services"], [])
+                self.assertEqual(len(shutdown_catalog["services"]), 1)
+                shutdown_item = shutdown_catalog["services"][0]
+                self.assertEqual(shutdown_item["id"], manifest.service_id)
+                self.assertEqual(shutdown_item["state"], "stopped")
+                self.assertEqual(shutdown_item["virtualUrl"], running_item["virtualUrl"])
+                self.assertEqual(shutdown_item["authorizationMode"], "manager")
+                self.assertEqual(shutdown_item["targetUrl"], "")
+                self.assertEqual(shutdown_item["authToken"], "")
+                self.assertEqual(plugin._service_auth_tokens, {})
+                self.assertEqual(plugin._catalog_statuses, {})
                 self.assertEqual(plugin._bridge_auth_token, "")
 
                 reloaded = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
@@ -3165,6 +3269,72 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 )
         finally:
             manager_plugin.QCoreApplication = old_core_application
+
+    def test_manager_runtime_catalog_publishes_declared_authorization_for_every_state(self):
+        _install_manager_import_stubs()
+
+        from dataclasses import replace
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        class LegacyManifest:
+            def __init__(self, manifest):
+                self.manifest = manifest
+
+            def __getattr__(self, name):
+                if name == "authorization_mode":
+                    raise AttributeError(name)
+                return getattr(self.manifest, name)
+
+        app = _FakeCatalogApplication()
+        with mock.patch.object(manager_plugin, "QCoreApplication", types.SimpleNamespace(instance=lambda: app)):
+            with tempfile.TemporaryDirectory() as tmp:
+                manifests = [
+                    _manifest(tmp, "vendor.local_tools", ["tools"]),
+                    replace(_manifest(tmp, "vendor.remote_tools", ["tools"]), authorization_mode="request"),
+                    _manifest(tmp, "qcopilots.mcp_server_web_search", ["tools"]),
+                    LegacyManifest(_manifest(tmp, "vendor.legacy_tools", ["tools"])),
+                ]
+                plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                _prime_manager_runtime(plugin, manifests)
+                for state in ("starting", "running", "stopped", "failed"):
+                    with self.subTest(state=state):
+                        for manifest in manifests:
+                            plugin._catalog_states[manifest.service_id] = state
+                            plugin._catalog_statuses[manifest.service_id] = _status(
+                                running=state == "running", health="ok", port=59321,
+                                url="http://127.0.0.1:59321/mcp",
+                            )
+                            plugin._service_auth_tokens[manifest.service_id] = "manager-session-token"
+                        plugin._publish_runtime_catalog()
+                        items = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)["services"]
+                        self.assertEqual({item["id"]: item["authorizationMode"] for item in items}, {
+                            "vendor.local_tools": "manager",
+                            "vendor.remote_tools": "request",
+                            "qcopilots.mcp_server_web_search": "manager",
+                            "vendor.legacy_tools": "manager",
+                        })
+                        self.assertEqual([item["state"] for item in items], [state] * len(manifests))
+
+    def test_manager_runtime_catalog_filters_invalid_authorization_modes(self):
+        _install_manager_import_stubs()
+
+        from dataclasses import replace
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        app = _FakeCatalogApplication()
+        with mock.patch.object(manager_plugin, "QCoreApplication", types.SimpleNamespace(instance=lambda: app)):
+            with tempfile.TemporaryDirectory() as tmp:
+                valid = _manifest(tmp, "vendor.valid", ["tools"])
+                for mode in ("other", "", None, True, 1, [], {}):
+                    with self.subTest(mode=mode):
+                        invalid = replace(valid, service_id="vendor.invalid", authorization_mode=mode)
+                        plugin = object.__new__(manager_plugin.QCopilotsMCPServersManagerPlugin)
+                        _prime_manager_runtime(plugin, [valid, invalid])
+                        plugin._publish_runtime_catalog()
+                        items = app.catalog(manager_plugin.RUNTIME_CATALOG_PROPERTY)["services"]
+                        self.assertEqual([item["id"] for item in items], [valid.service_id])
+                        self.assertEqual(manager_plugin._runtime_catalog_compatible_manifests(
+                            [valid, invalid], plugin.logger), [valid])
 
     def test_manager_runtime_catalog_filters_entries_that_violate_native_contract(self):
         _install_manager_import_stubs()
@@ -3810,7 +3980,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(panel.token_edit.text(), "a" * 43)
             self.assertTrue(panel.copy_button.enabled)
             self.assertIn("Authorization: Bearer <Token>", panel.status_label.text())
-            self.assertIn("seven", panel.status_label.text())
+            self.assertIn("services authenticated by Manager", panel.status_label.text())
+            self.assertIn("services authenticated externally", panel.status_label.text())
             self.assertIn("Use llama-server proxy turned off", panel.status_label.text())
             panel.copy_token()
             self.assertEqual(_FakeApplication.clipboard_text, "a" * 43)
@@ -4704,7 +4875,8 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertTrue(plugin._shutdown_event.is_set())
         self.assertTrue(plugin._shutdown_completed)
         self.assertEqual(plugin._owned_manifests, {})
-        self.assertEqual(plugin._catalog_manifests, {})
+        self.assertEqual(plugin._catalog_manifests, {manifest.service_id: manifest})
+        self.assertEqual(plugin._catalog_states, {manifest.service_id: "stopped"})
         self.assertEqual(plugin._bridge_auth_token, "")
 
     def test_manager_cleanup_toggle_thread_waits_only_on_unload_path(self):

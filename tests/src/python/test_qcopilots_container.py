@@ -463,6 +463,9 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assertIn('url.path( QUrl::FullyEncoded ) == QLatin1String( "/mcp" )', catalog_cpp)
         self.assertIn("targetUrlText.isEmpty()", catalog_cpp)
         self.assertIn("authToken.isEmpty()", catalog_cpp)
+        self.assertIn('authorizationMode.toString( QStringLiteral( "manager" ) )', catalog_cpp)
+        self.assertIn('service.authorizationMode != QLatin1String( "request" )', catalog_cpp)
+        self.assertIn("!authorizationMode.isUndefined() && !authorizationMode.isString()", catalog_cpp)
         self.assertIn("serviceIds.contains", catalog_cpp)
         self.assertIn("virtualUrls.contains", catalog_cpp)
         self.assertIn("generation < mHighestGeneration", catalog_cpp)
@@ -614,6 +617,14 @@ class TestQCopilotsContainer(unittest.TestCase):
         self.assertIn("allowedResponseHeaders()", bridge_cpp)
         self.assertIn('headerName == QByteArrayLiteral( "authorization" )', bridge_cpp)
         self.assertIn('QByteArrayLiteral( "Bearer " ) + service.authToken', bridge_cpp)
+        self.assertIn('service.authorizationMode == QLatin1String( "manager" )', bridge_cpp)
+        self.assertIn('if ( useManagerAuthorization && !seenHeaders.contains( QByteArrayLiteral( "authorization" ) ) )', bridge_cpp)
+        self.assertNotIn("qcopilots.mcp_server_web_search", bridge_cpp)
+        self.assertNotIn("qcopilots.mcp_server_web_search", bootstrap)
+        self.assertIn("bearerHeaderIsSafe( stringValue )", bridge_cpp)
+        self.assertIn("useManagerAuthorization || headerValue.mid( 7 ) != service.authToken", bridge_cpp)
+        self.assertIn('QByteArrayLiteral( "allow" )', bridge_cpp)
+        self.assertIn('QByteArrayLiteral( "www-authenticate" )', bridge_cpp)
         self.assertIn("reply->error() != QNetworkReply::NoError && status <= 0", bridge_cpp)
         self.assertIn("mLastPublicGeneration = snapshot.generation", bridge_cpp)
         self.assertIn("!snapshot.valid && !mPublicCatalogJson.isEmpty()", bridge_cpp)
@@ -623,6 +634,7 @@ class TestQCopilotsContainer(unittest.TestCase):
         )
         self.assertNotIn("service.targetUrl", public_catalog_block)
         self.assertNotIn("service.authToken", public_catalog_block)
+        self.assertIn('publicService.insert( QStringLiteral( "authorizationMode" ), service.authorizationMode )', public_catalog_block)
         self.assertIn("pending->reply->abort()", bridge_cpp)
         self.assertIn("QTimer::timeout", bridge_cpp)
         self.assertIn("constexpr int sMaximumTimeoutMs = 300000", bridge_cpp)
@@ -897,11 +909,172 @@ class TestQCopilotsContainer(unittest.TestCase):
               const nativeRequest = environment.requests[0];
               assert.strictEqual(nativeRequest.method, 'POST');
               assert.strictEqual(nativeRequest.url, virtualUrl);
-              assert.strictEqual(nativeRequest.headers.authorization, undefined);
+              assert.strictEqual(nativeRequest.headers.authorization, 'Bearer page-secret');
               assert.strictEqual(nativeRequest.headers['content-type'], 'application/json');
               assert.strictEqual(nativeRequest.headers['mcp-session-id'], 'browser-session');
               assert.strictEqual(nativeRequest.body, '{"jsonrpc":"2.0"}');
               assert.ok(nativeRequest.timeoutMs > 0 && nativeRequest.timeoutMs <= 300000);
+
+              // Every managed service uses the same page credential format.
+              const webSearchId = 'qcopilots.mcp_server_web_search';
+              const webSearchUrl = 'https://qcopilots.localmachine/mcp/' + webSearchId;
+              const webSearchCatalog = {
+                ...catalog,
+                services: [...catalog.services, {
+                  id: webSearchId,
+                  displayName: 'QCopilots Web Search',
+                  state: 'running',
+                  authorizationMode: 'request',
+                  virtualUrl: webSearchUrl
+                }]
+              };
+              function webSearchConfig(headers) {
+                return JSON.stringify({mcpServers: JSON.stringify([{
+                  id: webSearchId, url: webSearchUrl, enabled: true,
+                  headers: JSON.stringify(headers)
+                }])});
+              }
+              const webSearch = makeEnvironment(webSearchConfig({
+                authorization: 'bearer xbyang/qcopilots-websearch',
+                'X-Unrelated': 'must-not-survive'
+              }), webSearchCatalog);
+              const webSearchEntry = () => storedServers(webSearch).servers.find((entry) => entry.id === webSearchId);
+              assert.deepStrictEqual(JSON.parse(webSearchEntry().headers), {
+                Authorization: 'Bearer xbyang/qcopilots-websearch'
+              });
+              await webSearch.window.fetch(webSearchUrl, {
+                method: 'POST', headers: JSON.parse(webSearchEntry().headers), body: '{}'
+              });
+              assert.strictEqual(webSearch.requests[0].headers.authorization, 'Bearer xbyang/qcopilots-websearch');
+              await webSearch.window.fetch(webSearchUrl, {method: 'POST', body: '{}'});
+              assert.strictEqual(webSearch.requests[1].headers.authorization, undefined);
+              const maximumBearer = 'Bearer ' + 'x'.repeat(8192);
+              await webSearch.window.fetch(webSearchUrl, {
+                method: 'POST', headers: {Authorization: maximumBearer}, body: '{}'
+              });
+              assert.strictEqual(webSearch.requests[2].headers.authorization, maximumBearer);
+              const requestsBeforeBadBearer = webSearch.requests.length;
+              for (const authorization of ['Basic abc', 'Bearer x y', 'Bearer ' + 'x'.repeat(8193)]) {
+                await assert.rejects(webSearch.window.fetch(webSearchUrl, {
+                  method: 'POST', headers: {Authorization: authorization}, body: '{}'
+                }), /valid Bearer credential/);
+              }
+              assert.strictEqual(webSearch.requests.length, requestsBeforeBadBearer);
+              await assert.rejects(webSearch.window.fetch(webSearchUrl, {
+                method: 'POST', headers: {
+                  Authorization: 'Bearer first', authorization: 'Bearer second'
+                }, body: '{}'
+              }), /valid Bearer credential/);
+              await assert.rejects(webSearch.window.fetch(webSearchUrl, {
+                method: 'POST', headers: {'X-Unrelated': 'forbidden'}, body: '{}'
+              }), /Unsupported local MCP request header/);
+
+              const stoppedWebSearchCatalog = {
+                ...webSearchCatalog, generation: 2,
+                services: webSearchCatalog.services.map((entry) => ({...entry, state: 'stopped'}))
+              };
+              webSearch.bridge.catalogChanged.emit(JSON.stringify(stoppedWebSearchCatalog));
+              assert.strictEqual(JSON.parse(webSearchEntry().headers).Authorization, 'Bearer xbyang/qcopilots-websearch');
+              assert.strictEqual(webSearchEntry().enabled, false);
+              const requestsBeforeManagerRestart = webSearch.requests.length;
+              await assert.rejects(webSearch.window.fetch(webSearchUrl, {
+                method: 'POST', headers: JSON.parse(webSearchEntry().headers), body: '{}'
+              }), /not present in the current running catalog/);
+              assert.strictEqual(webSearch.requests.length, requestsBeforeManagerRestart);
+              const reloadedWhileManagerStopped = makeEnvironment(
+                webSearch.localStorage.getItem('LlamaUi.config'), stoppedWebSearchCatalog
+              );
+              const stoppedReloadEntry = storedServers(reloadedWhileManagerStopped).servers.find(
+                (entry) => entry.id === webSearchId
+              );
+              assert.strictEqual(stoppedReloadEntry.enabled, false);
+              assert.strictEqual(JSON.parse(stoppedReloadEntry.headers).Authorization, 'Bearer xbyang/qcopilots-websearch');
+              await assert.rejects(reloadedWhileManagerStopped.window.fetch(webSearchUrl, {
+                method: 'POST', headers: JSON.parse(stoppedReloadEntry.headers), body: '{}'
+              }), /not present in the current running catalog/);
+              assert.strictEqual(reloadedWhileManagerStopped.requests.length, 0);
+              // Manager unload retains stopped entries with no native credentials.
+              // An incomplete catalog from the next Manager instance must not erase them.
+              const restartingManagerCatalog = {
+                ...webSearchCatalog, generation: 3, startupComplete: false, services: []
+              };
+              webSearch.bridge.catalogChanged.emit(JSON.stringify(restartingManagerCatalog));
+              reloadedWhileManagerStopped.bridge.catalogChanged.emit(JSON.stringify(restartingManagerCatalog));
+              assert.strictEqual(JSON.parse(webSearchEntry().headers).Authorization, 'Bearer xbyang/qcopilots-websearch');
+              const restartedManagerCatalog = {...webSearchCatalog, generation: 4};
+              webSearch.bridge.catalogChanged.emit(JSON.stringify(restartedManagerCatalog));
+              reloadedWhileManagerStopped.bridge.catalogChanged.emit(JSON.stringify(restartedManagerCatalog));
+              assert.strictEqual(JSON.parse(webSearchEntry().headers).Authorization, 'Bearer xbyang/qcopilots-websearch');
+              const restartedEntry = storedServers(reloadedWhileManagerStopped).servers.find(
+                (entry) => entry.id === webSearchId
+              );
+              assert.strictEqual(restartedEntry.enabled, true);
+              await reloadedWhileManagerStopped.window.fetch(webSearchUrl, {
+                method: 'POST', headers: JSON.parse(restartedEntry.headers), body: '{}'
+              });
+              assert.strictEqual(reloadedWhileManagerStopped.requests[0].headers.authorization,
+                'Bearer xbyang/qcopilots-websearch');
+              const reloadedWebSearch = makeEnvironment(
+                webSearch.localStorage.getItem('LlamaUi.config'),
+                restartedManagerCatalog
+              );
+              assert.strictEqual(JSON.parse(storedServers(reloadedWebSearch).servers.find(
+                (entry) => entry.id === webSearchId
+              ).headers).Authorization, 'Bearer xbyang/qcopilots-websearch');
+              webSearch.localStorage.setItem('LlamaUi.config', webSearchConfig({}));
+              assert.strictEqual(Object.hasOwn(webSearchEntry(), 'headers'), false);
+              await webSearch.window.fetch(webSearchUrl, {method: 'POST', body: '{}'});
+              assert.strictEqual(webSearch.requests.at(-1).headers.authorization, undefined);
+
+              for (const value of ['Bearer ', 'Bearer x\n', 'Bearer x\r', 'Bearer x y', 'Bearer \u007f', 'Bearer \u00e9', 'Bearer ' + 'x'.repeat(8193)]) {
+                const invalid = makeEnvironment(webSearchConfig({Authorization: value}), webSearchCatalog);
+                assert.strictEqual(Object.hasOwn(storedServers(invalid).servers.find(
+                  (entry) => entry.id === webSearchId
+                ), 'headers'), false);
+              }
+              const duplicateAuthorization = makeEnvironment(webSearchConfig({
+                Authorization: 'Bearer first', authorization: 'Bearer second'
+              }), webSearchCatalog);
+              assert.strictEqual(Object.hasOwn(storedServers(duplicateAuthorization).servers.find(
+                (entry) => entry.id === webSearchId
+              ), 'headers'), false);
+
+              const similarlyNamedId = 'example.remote_mcp';
+              const similarlyNamedUrl = 'https://qcopilots.localmachine/mcp/' + similarlyNamedId;
+              const similarlyNamed = makeEnvironment(JSON.stringify({mcpServers: JSON.stringify([{
+                id: similarlyNamedId, url: similarlyNamedUrl, headers: JSON.stringify({Authorization: 'Bearer secret'})
+              }])}), {...catalog, services: [{
+                id: similarlyNamedId, displayName: 'Another MCP service', state: 'running',
+                virtualUrl: similarlyNamedUrl, authorizationMode: 'request'
+              }]});
+              assert.strictEqual(JSON.parse(storedServers(similarlyNamed).servers[0].headers).Authorization, 'Bearer secret');
+              await similarlyNamed.window.fetch(similarlyNamedUrl, {
+                method: 'POST', headers: {Authorization: 'Bearer secret'}, body: '{}'
+              });
+              assert.strictEqual(similarlyNamed.requests[0].headers.authorization, 'Bearer secret');
+              await similarlyNamed.window.fetch(similarlyNamedUrl, {method: 'POST', body: '{}'});
+              assert.strictEqual(similarlyNamed.requests[1].headers.authorization, undefined);
+
+              const managerCredentials = makeEnvironment(JSON.stringify({mcpServers: JSON.stringify([{
+                id: serviceId, url: virtualUrl,
+                headers: JSON.stringify({authorization: 'bearer separate-manager-service-token'})
+              }])}), {...catalog, services: [{...catalog.services[0], authorizationMode: 'manager'}]});
+              assert.strictEqual(JSON.parse(storedServers(managerCredentials).servers[0].headers).Authorization,
+                'Bearer separate-manager-service-token');
+              await managerCredentials.window.fetch(virtualUrl, {
+                method: 'POST', headers: JSON.parse(storedServers(managerCredentials).servers[0].headers), body: '{}'
+              });
+              assert.strictEqual(managerCredentials.requests[0].headers.authorization, 'Bearer separate-manager-service-token');
+              await managerCredentials.window.fetch(virtualUrl, {method: 'POST', body: '{}'});
+              assert.strictEqual(managerCredentials.requests[1].headers.authorization, undefined);
+
+              for (const authorizationMode of ['unsupported', null, true, 1]) {
+                const invalidMode = makeEnvironment(initialConfig, {
+                  ...catalog, services: [{...catalog.services[0], authorizationMode}]
+                });
+                await assert.rejects(invalidMode.window.fetch(virtualUrl), /not present in the current running catalog/);
+                assert.strictEqual(invalidMode.requests.length, 0);
+              }
 
               const bridgeRequestsBeforeInvalidUrls = environment.requests.length;
               const originalFetchesBeforeInvalidUrls = environment.originalFetchCalls.length;

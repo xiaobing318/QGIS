@@ -1,11 +1,8 @@
 {
   "$schema": "./qcopilots_web_search_config.schema.json",
-  "backend_url": "http://127.0.0.1:8088",
+  "backend_url": "https://web-search.vastarmorai.com/mcp",
   "timeout_seconds": 25,
   "max_response_bytes": 1048576,
   "max_concurrency": 5,
-  "ca_file": "",
-  "auth": {
-    "token_env": "QCOPILOTS_WEBSEARCH_BACKEND_TOKEN"
-  }
+  "ca_file": ""
 }

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Bounded REST client with explicit deadlines, no proxies and no redirects."""
+"""Bounded HTTP transport for the WebSearch JSON Streamable HTTP endpoint."""
 from __future__ import annotations
 import http.client
 import json
@@ -8,40 +8,40 @@ import ssl
 import threading
 import time
 from concurrent.futures import Future, TimeoutError as WaitTimeout
+from dataclasses import dataclass
 from urllib.parse import urlsplit
 from .config_store import ConfigError, load_config
 
-_ROUTES = {"search": ("POST", "/v1/search"), "open": ("POST", "/v1/open"),
-           "find": ("POST", "/v1/find"), "status": ("GET", "/v1/status")}
+REQUEST_HEADERS = frozenset({"authorization", "accept", "content-type", "mcp-session-id",
+                             "mcp-protocol-version", "last-event-id"})
+RESPONSE_HEADERS = frozenset({"content-type", "mcp-session-id", "mcp-protocol-version",
+                              "retry-after", "www-authenticate", "allow", "cache-control"})
 _MESSAGES = {
-    "invalid_argument": "The backend rejected the tool arguments.",
-    "unauthorized": "Backend authentication failed.",
-    "forbidden": "The request is forbidden by the active policy.",
-    "destination_blocked": "The requested destination is not public.",
-    "busy": "The backend request capacity is currently exhausted.",
-    "rate_limited": "The search provider is rate limited.",
-    "timeout": "The backend request exceeded its deadline.",
-    "cancelled": "The backend request was cancelled.",
-    "provider_unavailable": "The configured search provider is unavailable.",
-    "upstream_http_error": "The webpage returned an unsuccessful HTTP status.",
-    "backend_unavailable": "The WebSearch backend is unavailable.",
-    "cache_unavailable": "The WebSearch cache is unavailable.",
-    "page_unavailable": "The requested page is unknown or has expired.",
-    "unsupported_content": "The requested content type or encoding is unsupported.",
-    "response_too_large": "The upstream response exceeds its size limit.",
-    "request_too_large": "The backend request exceeds its size limit.",
-    "invalid_configuration": "The WebSearch backend configuration is invalid.",
-    "internal_error": "The WebSearch backend reported an internal error.",
+    "invalid_configuration": "The WebSearch MCP endpoint configuration is invalid.",
+    "backend_unavailable": "The WebSearch MCP endpoint is unavailable.",
+    "busy": "The WebSearch relay capacity is currently exhausted.",
+    "timeout": "The WebSearch MCP request exceeded its deadline.",
+    "cancelled": "The WebSearch MCP request was cancelled.",
+    "response_too_large": "The WebSearch MCP response exceeds its size limit.",
+    "unsupported_response": "This WebSearch relay requires JSON Streamable HTTP responses. SSE and other content types are not supported.",
+    "invalid_response": "The WebSearch MCP endpoint returned an invalid response.",
+    "redirect_not_allowed": "The WebSearch MCP endpoint returned a redirect.",
 }
-_RETRYABLE = {"busy", "rate_limited", "timeout", "provider_unavailable", "backend_unavailable", "cache_unavailable"}
 
 
 class BackendError(Exception):
-    def __init__(self, code, retryable=None):
+    def __init__(self, code, status=None):
         self.code = code if code in _MESSAGES else "backend_unavailable"
+        self.status = status or {"busy": 429, "timeout": 504, "cancelled": 499}.get(self.code, 502)
         self.safe_message = _MESSAGES[self.code]
-        self.retryable = retryable if code in _MESSAGES and type(retryable) is bool else self.code in _RETRYABLE
         super().__init__(self.safe_message)
+
+
+@dataclass(frozen=True)
+class RelayResponse:
+    status: int
+    headers: dict[str, str]
+    body: bytes
 
 
 class _Request:
@@ -90,25 +90,17 @@ class BackendClient:
         self._lock = threading.Lock()
         self._business_gate = None
         self._capacity = None
-        self._status_gate = threading.BoundedSemaphore(1)
+        self._maintenance_gate = threading.BoundedSemaphore(2)
         self._active = set()
         self._closed = False
 
-    def call(self, operation, arguments):
-        if operation not in _ROUTES or not isinstance(arguments, dict) or (operation == "status" and arguments):
-            raise BackendError("invalid_argument")
+    def exchange(self, method, headers, body=b"", *, disconnected=None, maintenance=False):
         try:
             config = self._config_loader()
-        except PermissionError:
-            raise BackendError("forbidden") from None
         except (ConfigError, OSError, ValueError):
             raise BackendError("invalid_configuration") from None
-        try:
-            body = json.dumps(arguments, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8") if operation != "status" else b""
-        except (TypeError, ValueError, UnicodeError):
-            raise BackendError("invalid_argument") from None
-        if len(body) > 1024 * 1024:
-            raise BackendError("request_too_large")
+        if method not in {"GET", "POST", "DELETE"} or not isinstance(body, bytes) or len(body) > 1024 * 1024:
+            raise BackendError("invalid_configuration")
         with self._lock:
             if self._closed:
                 raise BackendError("backend_unavailable")
@@ -117,14 +109,14 @@ class BackendClient:
                 self._business_gate = threading.BoundedSemaphore(self._capacity)
             elif self._capacity != config.max_concurrency:
                 raise BackendError("invalid_configuration")
-            gate = self._status_gate if operation == "status" else self._business_gate
+            gate = self._maintenance_gate if maintenance else self._business_gate
             if not gate.acquire(blocking=False):
                 raise BackendError("busy")
-            job = _Request(config.timeout_seconds)
-            future = Future()
+            job, future = _Request(config.timeout_seconds), Future()
             self._active.add(job)
-            job.thread = threading.Thread(target=self._worker, args=(job, future, gate, config, operation, body),
-                                          name="qcopilots-websearch-rest", daemon=True)
+            job.thread = threading.Thread(target=self._worker,
+                args=(job, future, gate, config, method, dict(headers), body),
+                name="qcopilots-websearch-mcp", daemon=True)
             try:
                 job.thread.start()
             except RuntimeError:
@@ -132,20 +124,24 @@ class BackendClient:
                 gate.release()
                 raise BackendError("backend_unavailable") from None
         try:
-            # The worker closes its socket before publishing the result. That
-            # cleanup sets cancelled, so only the deadline controls this wait.
-            return future.result(timeout=max(0.0, job.deadline - time.monotonic()))
-        except WaitTimeout:
-            job.cancel()
-            raise BackendError("timeout") from None
-        except BackendError:
+            while True:
+                if disconnected is not None and disconnected():
+                    raise BackendError("cancelled")
+                remaining = job.deadline - time.monotonic()
+                if remaining <= 0:
+                    raise BackendError("timeout")
+                try:
+                    return future.result(timeout=min(0.05, remaining))
+                except WaitTimeout:
+                    continue
+        except BaseException:
             job.cancel()
             raise
 
-    def _worker(self, job, future, gate, config, operation, body):
+    def _worker(self, job, future, gate, config, method, headers, body):
         result = failure = None
         try:
-            result = self._exchange(job, config, operation, body)
+            result = self._exchange(job, config, method, headers, body)
         except BackendError as error:
             failure = error
         except (TimeoutError, socket.timeout):
@@ -162,11 +158,11 @@ class BackendClient:
         else:
             future.set_result(result)
 
-    def _exchange(self, job, config, operation, body):
+    def _exchange(self, job, config, method, headers, body):
         parsed = urlsplit(config.backend_url)
         host = parsed.hostname.encode("idna").decode("ascii")
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
-        # A stalled OS DNS lookup retains its bounded worker until it actually exits.
+        # Stalled OS DNS retains this bounded worker until the lookup exits.
         sock = socket.create_connection((host, port), timeout=job.remaining())
         job.attach(sock)
         if parsed.scheme == "https":
@@ -175,30 +171,50 @@ class BackendClient:
             job.attach(sock)
             sock.settimeout(job.remaining())
             sock.do_handshake()
-        method, route = _ROUTES[operation]
         authority = f"[{host}]" if ":" in host else host
         if parsed.port is not None:
             authority += f":{parsed.port}"
-        headers = (f"{method} {route} HTTP/1.1\r\nHost: {authority}\r\nAuthorization: Bearer {config.token}\r\n"
-            "Accept: application/json\r\nAccept-Encoding: identity\r\nContent-Type: application/json\r\n"
-            f"Connection: close\r\nContent-Length: {len(body)}\r\n\r\n").encode("ascii")
+        outgoing = {}
+        for name, value in headers.items():
+            lower = name.lower()
+            if (lower not in REQUEST_HEADERS or lower in outgoing or not isinstance(value, str)
+                    or len(value) > (8199 if lower == "authorization" else 8192)
+                    or any(ord(ch) < 32 or ord(ch) > 126 for ch in value)):
+                raise BackendError("invalid_configuration")
+            outgoing[lower] = value
+        request = (f"{method} {parsed.path or '/mcp'} HTTP/1.1\r\nHost: {authority}\r\n"
+                   + "".join(f"{name}: {value}\r\n" for name, value in outgoing.items())
+                   + f"User-Agent: QCopilots-WebSearch-Relay/0.3.0\r\nAccept-Encoding: identity\r\nConnection: close\r\nContent-Length: {len(body)}\r\n\r\n")
         sock.settimeout(job.remaining())
-        sock.sendall(headers + body)
+        sock.sendall(request.encode("ascii") + body)
         response = http.client.HTTPResponse(sock, method=method)
         try:
             sock.settimeout(job.remaining())
             response.begin()
             if 300 <= response.status < 400:
-                raise BackendError("backend_unavailable")
+                raise BackendError("redirect_not_allowed")
             if response.getheader("Content-Encoding", "identity").lower() not in {"", "identity"}:
-                raise BackendError("backend_unavailable")
+                raise BackendError("unsupported_response")
             lengths = response.headers.get_all("Content-Length", [])
-            if lengths and response.getheader("Transfer-Encoding"):
-                raise BackendError("backend_unavailable")
-            if len(lengths) > 1 or (lengths and not lengths[0].isdigit()):
-                raise BackendError("backend_unavailable")
+            transfers = response.headers.get_all("Transfer-Encoding", [])
+            if (len(lengths) > 1 or (lengths and (not lengths[0].isdigit() or transfers))
+                    or len(transfers) > 1 or (transfers and transfers[0].lower() != "chunked")):
+                raise BackendError("invalid_response")
             if lengths and int(lengths[0]) > config.max_response_bytes:
                 raise BackendError("response_too_large")
+            content_type = response.getheader("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type and content_type != "application/json":
+                raise BackendError("unsupported_response")
+            selected = {}
+            for name in RESPONSE_HEADERS:
+                values = response.headers.get_all(name, [])
+                if len(values) > 1:
+                    raise BackendError("invalid_response")
+                if values:
+                    value = values[0]
+                    if len(value) > 8192 or any(ord(ch) < 32 or ord(ch) > 126 for ch in value):
+                        raise BackendError("invalid_response")
+                    selected[name] = value
             payload = bytearray()
             while True:
                 sock.settimeout(job.remaining())
@@ -210,23 +226,18 @@ class BackendClient:
                 if len(payload) > config.max_response_bytes:
                     raise BackendError("response_too_large")
             if lengths and len(payload) != int(lengths[0]):
-                raise BackendError("backend_unavailable")
-            if response.getheader("Content-Type", "").split(";")[0].strip().lower() != "application/json":
-                raise BackendError("backend_unavailable")
-            value = json.loads(bytes(payload).decode("utf-8"), parse_constant=_reject_constant)
-            if not isinstance(value, dict):
-                raise BackendError("backend_unavailable")
-            if response.status >= 400 or "error" in value:
-                error = value.get("error")
-                code = error.get("code") if isinstance(error, dict) else None
-                retryable = error.get("retryable") if isinstance(error, dict) else None
-                if not isinstance(code, str) or code not in _MESSAGES:
-                    retryable = None
-                    code = {401: "unauthorized", 403: "forbidden", 429: "busy", 408: "timeout", 504: "timeout"}.get(response.status, "backend_unavailable")
-                raise BackendError(code, retryable)
-            if response.status != 200 or type(value.get("contract_version")) is not int or value["contract_version"] != 1:
-                raise BackendError("backend_unavailable")
-            return value
+                raise BackendError("invalid_response")
+            data = bytes(payload)
+            if data:
+                if content_type != "application/json":
+                    raise BackendError("unsupported_response")
+                try:
+                    json.loads(data.decode("utf-8"), parse_constant=_reject_constant)
+                except (ValueError, UnicodeError, RecursionError):
+                    raise BackendError("invalid_response") from None
+            elif response.status < 400 and response.status not in {202, 204}:
+                raise BackendError("invalid_response")
+            return RelayResponse(response.status, selected, data)
         finally:
             response.close()
 

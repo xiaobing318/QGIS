@@ -1063,37 +1063,106 @@ class TestQCopilotsMcpServerBuiltinTools(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows Job Object regression")
     def test_shell_normal_parent_exit_terminates_pipe_holding_descendant(self):
+        import ctypes
+        from ctypes import wintypes
+
         from qcopilots_common.builtin_tools import BuiltinTools
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel32.WaitForSingleObject.restype = wintypes.DWORD
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            marker = root / "descendant-survived.txt"
+            pid_path = root / "descendant.pid"
+            observed = root / "descendant-observed"
+            stop = root / "stop-descendant"
             child_code = (
-                "import time; from pathlib import Path; time.sleep(0.8); "
-                f"Path({str(marker)!r}).write_text('survived', encoding='utf-8')"
+                "import time\nfrom pathlib import Path\n"
+                f"stop = Path({str(stop)!r})\n"
+                "deadline = time.monotonic() + 30\n"
+                "while not stop.exists() and time.monotonic() < deadline:\n"
+                "    time.sleep(0.01)\n"
             )
             parent_code = (
-                "import subprocess, sys; "
-                f"subprocess.Popen([sys.executable, '-c', {child_code!r}]); "
-                "print('parent-exited')"
+                "import subprocess, sys, time\nfrom pathlib import Path\n"
+                f"child = subprocess.Popen([sys.executable, '-c', {child_code!r}])\n"
+                f"pid_path = Path({str(pid_path)!r})\n"
+                "temporary = pid_path.with_suffix('.tmp')\n"
+                "temporary.write_text(str(child.pid), encoding='ascii')\n"
+                "temporary.replace(pid_path)\n"
+                f"observed = Path({str(observed)!r})\n"
+                "while not observed.exists():\n"
+                "    time.sleep(0.01)\n"
+                "print('parent-exited')\n"
             )
-            started = time.monotonic()
-            result = BuiltinTools(
-                root_path=root,
-                command_timeout_seconds=3,
-            ).exec_shell_command(
-                {
-                    "command": [sys.executable, "-c", parent_code],
-                    "cwd": ".",
-                }
-            )
-            elapsed = time.monotonic() - started
+            outcome = {}
 
-            self.assertEqual(result["exit_code"], 0, result)
-            self.assertLess(elapsed, 0.75, result)
-            self.assertIsNone(result["capture_error"], result)
-            time.sleep(1)
-            self.assertFalse(marker.exists(), result)
+            def execute():
+                try:
+                    outcome["result"] = BuiltinTools(
+                        root_path=root,
+                        command_timeout_seconds=3,
+                    ).exec_shell_command(
+                        {
+                            "command": [sys.executable, "-c", parent_code],
+                            "cwd": ".",
+                        }
+                    )
+                except BaseException as error:
+                    outcome["error"] = error
+
+            worker = threading.Thread(
+                target=execute, name="builtin-normal-exit-test", daemon=True
+            )
+            child_handle = None
+            worker.start()
+            try:
+                deadline = time.monotonic() + 5
+                while not pid_path.exists() and worker.is_alive():
+                    if time.monotonic() >= deadline:
+                        self.fail("The descendant was not created within the fixture deadline")
+                    time.sleep(0.01)
+                if "error" in outcome:
+                    raise outcome["error"]
+                self.assertTrue(pid_path.exists(), outcome)
+                child_handle = kernel32.OpenProcess(
+                    0x00100000, False, int(pid_path.read_text(encoding="ascii"))
+                )  # SYNCHRONIZE only, never terminate a process by PID.
+                if not child_handle:
+                    raise ctypes.WinError(ctypes.get_last_error())
+                self.assertEqual(kernel32.WaitForSingleObject(child_handle, 0), 258)
+
+                # Observe the live descendant before allowing its parent to exit.
+                # Its own stop file stays unset until cleanup, so natural exit
+                # cannot be mistaken for successful Job Object cleanup.
+                observed.touch()
+                worker.join(5)
+                self.assertFalse(worker.is_alive(), "Shell capture did not finish after parent exit")
+                if "error" in outcome:
+                    raise outcome["error"]
+                result = outcome["result"]
+                self.assertEqual(result["exit_code"], 0, result)
+                self.assertFalse(result["timed_out"], result)
+                self.assertIn("parent-exited", result["stdout"])
+                self.assertIsNone(result["capture_error"], result)
+                self.assertEqual(kernel32.WaitForSingleObject(child_handle, 3000), 0)
+            finally:
+                # Release only this fixture's processes even if an assertion or
+                # the implementation under test fails before Job Object cleanup.
+                observed.touch()
+                stop.touch()
+                worker.join(5)
+                if child_handle:
+                    try:
+                        self.assertEqual(kernel32.WaitForSingleObject(child_handle, 5000), 0)
+                    finally:
+                        kernel32.CloseHandle(child_handle)
+                self.assertFalse(worker.is_alive(), "Shell fixture worker did not stop")
 
     def test_grep_search_reports_scan_limits_and_large_files(self):
         from qcopilots_common.builtin_tools import BuiltinTools

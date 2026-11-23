@@ -33,6 +33,7 @@ struct QgsQCopilotsMcpService
   QUrl virtualUrl;
   QUrl targetUrl;
   QByteArray authToken;
+  QString authorizationMode = QStringLiteral( "manager" );
 };
 
 struct QgsQCopilotsMcpCatalogSnapshot

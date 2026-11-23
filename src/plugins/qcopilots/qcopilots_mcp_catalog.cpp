@@ -257,7 +257,10 @@ void QgsQCopilotsMcpCatalog::refresh()
     }
 
     const QJsonObject object = value.toObject();
-    if ( !hasExactKeys( object, { QStringLiteral( "id" ), QStringLiteral( "displayName" ), QStringLiteral( "state" ), QStringLiteral( "virtualUrl" ), QStringLiteral( "targetUrl" ), QStringLiteral( "authToken" ) } ) )
+    QStringList serviceKeys = { QStringLiteral( "id" ), QStringLiteral( "displayName" ), QStringLiteral( "state" ), QStringLiteral( "virtualUrl" ), QStringLiteral( "targetUrl" ), QStringLiteral( "authToken" ) };
+    if ( object.contains( QStringLiteral( "authorizationMode" ) ) )
+      serviceKeys.append( QStringLiteral( "authorizationMode" ) );
+    if ( !hasExactKeys( object, serviceKeys ) )
     {
       clearCatalog( tr( "QCopilots MCP runtime catalog contains a service with an unexpected shape." ) );
       return;
@@ -283,6 +286,18 @@ void QgsQCopilotsMcpCatalog::refresh()
     service.virtualUrl = QUrl::fromEncoded( virtualUrlText.toUtf8(), QUrl::StrictMode );
     service.targetUrl = QUrl::fromEncoded( targetUrlText.toUtf8(), QUrl::StrictMode );
     service.authToken = authToken.toUtf8();
+    const QJsonValue authorizationMode = object.value( QStringLiteral( "authorizationMode" ) );
+    if ( !authorizationMode.isUndefined() && !authorizationMode.isString() )
+    {
+      clearCatalog( tr( "QCopilots MCP runtime catalog has an invalid authorization mode." ) );
+      return;
+    }
+    service.authorizationMode = authorizationMode.toString( QStringLiteral( "manager" ) );
+    if ( service.authorizationMode != QLatin1String( "manager" ) && service.authorizationMode != QLatin1String( "request" ) )
+    {
+      clearCatalog( tr( "QCopilots MCP runtime catalog has an unsupported authorization mode." ) );
+      return;
+    }
 
     const bool runningServiceCredentialsValid = service.state == QLatin1String( "running" )
                                                 && isLoopbackMcpTarget( service.targetUrl )
