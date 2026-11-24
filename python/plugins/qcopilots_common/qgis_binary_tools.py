@@ -272,14 +272,17 @@ def _start_binary_schema() -> dict[str, Any]:
             },
             "arguments": {
                 "type": "array",
-                "items": {"type": "string", "maxLength": 32768},
+                # Reject strings longer than 32768 without making older
+                # llama.cpp samplers expand maxLength into a repetition rule.
+                "items": {"type": "string", "not": {"minLength": 32768 + 1}},
                 "maxItems": 256,
                 "default": [],
                 "description": (
                     "Exact argv entries passed to the configured executable without "
                     "a command shell or argument rewriting. Each array item is one "
-                    "argv entry, so do not add shell quoting or combine a switch and "
-                    "its separate value into one item. Relative input and output paths "
+                    "argv entry of up to 32768 characters. Do not add shell quoting "
+                    "or combine a switch and its separate value into one item. "
+                    "Relative input and output paths "
                     "are interpreted by the executable from the effective working "
                     "directory, not from the MCP plugin directory. Prefer absolute "
                     "paths for deterministic file locations and create output parent "

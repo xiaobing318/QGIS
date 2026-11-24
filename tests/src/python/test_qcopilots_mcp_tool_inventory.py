@@ -658,6 +658,29 @@ class TestQCopilotsMcpToolInventory(unittest.TestCase):
 
             self.assertEqual(normalized_names, NORMALIZED_SCHEMA_TOOLS)
 
+    def test_binary_argv_length_limit_avoids_a_large_grammar_repetition(self):
+        from qcopilots_common.mcp_http import ToolError, _validate_tool_arguments
+        from qcopilots_common.qgis_binary_tools import build_qgis_binary_tools
+
+        tool = next(
+            tool for tool in build_qgis_binary_tools() if tool.name == "start_qgis_binary"
+        )
+        published = tool.descriptor()["inputSchema"]
+        # Legacy llama.cpp compiles arguments.items.maxLength into a bounded
+        # repetition for each argv string. Its sampler rejects that grammar.
+        items = published["properties"]["arguments"]["items"]
+        self.assertEqual(items["type"], "string")
+        self.assertNotIn("maxLength", items)
+        for schema in (tool.input_schema, published):
+            _validate_tool_arguments(
+                {"binary_id": "test", "arguments": ["x" * 32768]}, schema
+            )
+            for invalid in (["x" * 32769], [4], ["x"] * 257):
+                with self.assertRaises(ToolError):
+                    _validate_tool_arguments(
+                        {"binary_id": "test", "arguments": invalid}, schema
+                    )
+
     def test_all_tool_contracts_complete_http_lifecycle_list_and_call(self):
         """Exercise every public wrapper over HTTP with a recording QGIS bridge.
 

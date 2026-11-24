@@ -654,14 +654,19 @@ def _feature_selector_properties() -> dict[str, Any]:
     return {
         "feature_ids": {
             "type": "array",
-            "items": {"type": ["integer", "string"]},
+            # Older llama.cpp Gemma templates call the unsupported map('upper')
+            # filter on a list-valued items.type. anyOf accepts the same IDs.
+            "items": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
             "minItems": 1,
-            "maxItems": 10000,
+            # Keep the actual limit without generating a 9,999-repeat grammar
+            # rule in llama.cpp versions with a 2,000-repetition ceiling.
+            "allOf": [{"maxItems": 10000}],
             "uniqueItems": True,
             "description": (
-                "Exact QGIS feature ids, such as feature_id values returned by "
-                "query_vector_features. With filter_expression, only listed "
-                "features that also match the expression are used. Ids that do "
+                "Exact QGIS feature ids as integers or integer strings, such as "
+                "feature_id values returned by query_vector_features. Supply up "
+                "to 10000 ids. With filter_expression, only listed features "
+                "that also match the expression are used. Ids that do "
                 "not exist are skipped by query_vector_features and are an error "
                 "for set_vector_selection and delete_vector_features unless "
                 "filter_expression is also given."

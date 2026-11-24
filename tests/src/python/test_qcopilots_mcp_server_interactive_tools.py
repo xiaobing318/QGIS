@@ -121,6 +121,49 @@ def _run_fake_map_export(tools, arguments, image=b"image", world=b"world"):
 
 
 class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
+    def test_listed_feature_selectors_preserve_id_types_and_limits_for_llama(self):
+        from qcopilots_common.mcp_http import (
+            McpJsonRpcServer,
+            ToolError,
+            _validate_tool_arguments,
+        )
+        from qcopilots_common.processing_tools import build_interactive_tools
+
+        server = McpJsonRpcServer("interactive", "1", build_interactive_tools())
+        listed = server.handle_json_rpc(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+        )
+        schemas = {
+            tool["name"]: tool["inputSchema"] for tool in listed["result"]["tools"]
+        }
+        for name in (
+            "query_vector_features",
+            "set_vector_selection",
+            "delete_vector_features",
+        ):
+            with self.subTest(tool=name):
+                schema = schemas[name]
+                selector = schema["properties"]["feature_ids"]
+                self.assertNotIsInstance(selector["items"].get("type"), list)
+                self.assertNotIn("maxItems", selector)
+                self.assertEqual(selector["allOf"], [{"maxItems": 10000}])
+                _validate_tool_arguments(
+                    {"layer_id": "roads", "feature_ids": [1, "9007199254740993"]},
+                    schema,
+                )
+                for invalid_ids in ([], [True], [1.5], [1, 1]):
+                    with self.subTest(feature_ids=invalid_ids), self.assertRaises(ToolError):
+                        _validate_tool_arguments(
+                            {"layer_id": "roads", "feature_ids": invalid_ids}, schema
+                        )
+        ids = list(range(10000))
+        query_schema = schemas["query_vector_features"]
+        _validate_tool_arguments({"layer_id": "roads", "feature_ids": ids}, query_schema)
+        with self.assertRaises(ToolError):
+            _validate_tool_arguments(
+                {"layer_id": "roads", "feature_ids": [*ids, 10000]}, query_schema
+            )
+
     def test_build_interactive_tools_includes_layer_and_editing_tools(self):
         import qcopilots_common.interactive_layer_tools as interactive_layer_tools
         import qcopilots_common.processing_tools as processing_tools
@@ -248,10 +291,6 @@ class TestQCopilotsMcpServerInteractiveTools(unittest.TestCase):
             )
             self.assertEqual(
                 tools_by_name["query_vector_features"].input_schema["properties"]["offset"]["maximum"],
-                10000,
-            )
-            self.assertEqual(
-                tools_by_name["delete_vector_features"].input_schema["properties"]["feature_ids"]["maxItems"],
                 10000,
             )
             self.assertEqual(
