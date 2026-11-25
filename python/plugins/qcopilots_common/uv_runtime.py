@@ -1,4 +1,4 @@
-"""uv-managed runtime helpers for QCopilots service processes.
+"""Bundled Python and uv runtime helpers for QCopilots service processes.
 
 .. note:: This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -20,6 +20,10 @@ from qcopilots_common.manifest import ServiceManifest
 from qcopilots_common.subprocess_utils import hidden_subprocess_kwargs
 
 
+def bundled_python_command(manifest: ServiceManifest, python_executable: str | Path) -> list[str]:
+    return [str(python_executable), "-I", "-u", "-X", "utf8", str(manifest.entry_path)]
+
+
 class UvRuntime:
     def __init__(self, root: str | Path | None = None):
         self.root = Path(root) if root else runtime_root()
@@ -35,6 +39,8 @@ class UvRuntime:
                 "QCopilots isolated runtimes require the Python interpreter bundled with the active QGIS package."
             )
         python_path = Path(python_executable)
+        if manifest.uses_bundled_python:
+            return python_path
         uv_command = self._uv_command(python_path)
         if not uv_command:
             raise RuntimeError(
@@ -64,6 +70,8 @@ class UvRuntime:
 
     def service_command(self, manifest: ServiceManifest, python_executable: str | Path) -> list[str]:
         python_path = Path(python_executable)
+        if manifest.uses_bundled_python:
+            return bundled_python_command(manifest, python_path)
         uv_command = self._uv_command(python_path)
         if not uv_command:
             raise RuntimeError(

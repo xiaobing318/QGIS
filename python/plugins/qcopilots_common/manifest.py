@@ -93,6 +93,10 @@ class ServiceManifest:
         return self.plugin_dir / self.entry_point
 
     @property
+    def uses_bundled_python(self) -> bool:
+        return self.runtime.get("type") == "bundled-python"
+
+    @property
     def requirements_path(self) -> Path:
         requirements = self.runtime.get("requirements", "requirements.lock")
         return self.plugin_dir / requirements

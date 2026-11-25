@@ -1410,6 +1410,50 @@ class TestQCopilotsMcpServerProcessController(unittest.TestCase):
             self.assertIn(str(requirements_path), command)
             self.assertEqual(command[-1], str(entry_path))
 
+    def test_general_launches_with_bundled_python_through_both_runtime_interfaces(self):
+        from unittest.mock import Mock, patch
+
+        import qcopilots_common.process_controller as process_controller
+        from qcopilots_common.constants import QCOPILOTS_HOME_ENV
+        from qcopilots_common.manifest import load_service_manifest
+        from qcopilots_common.uv_runtime import UvRuntime
+
+        plugins = Path(__file__).resolve().parents[3] / "python" / "plugins"
+        manifest = load_service_manifest(plugins / "qcopilots_mcp_server_processing_general" / "qcopilots_service.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "离线 QGIS"
+            python = package / "apps" / "Python312" / ("python.exe" if os.name == "nt" else "python")
+            python.parent.mkdir(parents=True)
+            python.touch()
+            runtime = UvRuntime(root / "runtime")
+            legacy = Mock(spec=["ensure_runtime"])
+            process = types.SimpleNamespace(pid=501, poll=lambda: None)
+            with (
+                patch.dict(os.environ, {QCOPILOTS_HOME_ENV: str(root), process_controller.QGIS_PACKAGE_ROOT_ENV: str(package)}),
+                patch.object(runtime, "_uv_command", side_effect=AssertionError("General must not look up uv")),
+                patch.object(process_controller, "find_available_port", return_value=manifest.default_port),
+                patch.object(process_controller, "process_identity", return_value={}),
+                patch.object(process_controller, "process_tree_pids", return_value=[process.pid]),
+                patch.object(process_controller.subprocess, "Popen", return_value=process) as launch,
+            ):
+                self.assertEqual(runtime.ensure_runtime(manifest, str(python)), python)
+                for name, implementation in (("current", runtime), ("legacy", legacy)):
+                    with self.subTest(runtime=name):
+                        launch.reset_mock()
+                        controller = process_controller.ProcessController(root / name, runtime=implementation)
+                        with patch.object(controller, "_health_ok", return_value=True):
+                            status = controller.start(manifest)
+                        self.assertEqual(status.health, "ok")
+                        self.assertEqual(launch.call_count, 1)
+                        self.assertEqual(
+                            launch.call_args.args[0],
+                            [str(python), "-I", "-u", "-X", "utf8", str(manifest.entry_path)],
+                        )
+                        self.assertEqual(launch.call_args.kwargs["cwd"], str(manifest.plugin_dir))
+                legacy.ensure_runtime.assert_not_called()
+                self.assertFalse(runtime.root.exists())
+
     def test_process_controller_captures_exit_status_and_log_output(self):
         from qcopilots_common.process_controller import ProcessCommand, ProcessController
 

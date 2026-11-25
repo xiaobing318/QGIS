@@ -104,7 +104,9 @@ TCP 连接、SSH 握手、认证及 SFTP 读写支持取消。数字 IP 无需 D
 
 ## 运行依赖和测试
 
-SSH 后端使用 Paramiko 包，完整依赖版本在本插件的 `requirements.lock` 中锁定。服务管理器沿用现有 `uv run --with-requirements` 启动机制。活动 QGIS 随包 Python 已完整安装锁文件中的精确版本且依赖可正常导入时，服务可直接使用这些包，首次启动也可离线完成，依赖未满足时，工具 uv 可能准备隔离依赖环境并使用缓存或下载依赖。若包元数据满足版本要求但模块文件损坏，也可能直接复用后在导入模块时失败。Windows 发布应通过 QGIS-Materials 构建方案的 `pipeline.extraPythonPackages` 预装全部锁定依赖，并验证无缓存离线启动。依赖缺失、损坏或版本不符时，应修复发布包，保留主机指纹确认、认证和文件完整性校验。
+服务清单的 `bundled-python` 模式让管理器直接用当前 QGIS 随包 Python 以 `-I -u -X utf8` 启动 `server.py` 脚本。首次启动和重启都使用本地文件。本插件的 `requirements.lock` 记录七项 SSH 依赖的精确版本。Windows 构建方案在各 QCopilots 配置的 `pipeline.extraPythonPackages` 中独立声明预装版本，调整依赖时应同步更新两处。验收 Release ZIP 时，可用解压目录中的 Python 将实际版本与锁文件逐项对照，并导入 SSH 后端及其原生模块。安装包损坏时，文件传输调用会报告相应的依赖错误，请修复或更换发布包。
+
+验收首次启动时，将 Release ZIP 解压到新目录，使用全新的 QGIS 用户配置并在断开公网、保留回环连接的条件下运行包内 `bin\qgis-qt6.bat` 脚本。在 MCP 管理器中确认 General 自动启动，停止后重新启动，并通过 QCopilots 核对 6 个 Processing 工具和 11 个文件传输工具。可用本地数据运行 `native:package` 并打开生成的 GeoPackage，然后对已核实主机指纹的回环或内网 SSH 测试服务器执行上传、下载和 SHA-256 校验。
 
 传输适配层在单个工作线程中批量发送有界请求，每批最多 32 个读取请求或 8 个写入请求。写入必须收到全部成功响应后才能推进断点，读取保持顺序和完整校验，不创建预读线程。该实现依赖已审查的 Paramiko 5.0.0 请求分发接口，升级依赖时必须同步审查适配层并运行协议和真实回环测试。不匹配的版本会明确拒绝传输，避免静默使用未经验证的接口。
 
@@ -113,13 +115,12 @@ SSH 后端使用 Paramiko 包，完整依赖版本在本插件的 `requirements.
 独立真实服务器脚本位于 `tests/src/python/qcopilots_file_transfer_live_acceptance.py`。它直接使用同一套传输管理器和真实 SSH 后端，不修改用户的文件传输配置。密码只从环境变量 `QCOPILOTS_FILE_TRANSFER_TEST_PASSWORD` 读取，既不接受密码命令行参数，也不在结果中回显密码。以下 PowerShell 示例中的解释器、服务器、账户和测试根目录需要替换为实际值，两个测试根目录必须事先存在：
 
 ```powershell
-$fileTransferPython = "C:\Path\To\python.exe"
+$fileTransferPython = "C:\Path\To\QGIS40200-Release\apps\Python312\python.exe"
 $fileTransferRepository = "C:\Dev\github-repos\QGIS"
 $fileTransferTestCredential = Get-Credential -UserName "upload-user" -Message "输入独立 SSH 测试账户的密码"
 $env:QCOPILOTS_FILE_TRANSFER_TEST_PASSWORD = $fileTransferTestCredential.GetNetworkCredential().Password
 try {
-    & $fileTransferPython -m uv run --python "$fileTransferPython" --with-requirements `
-        "$fileTransferRepository\python\plugins\qcopilots_mcp_server_processing_general\requirements.lock" `
+    & $fileTransferPython -I -u -X utf8 `
         "$fileTransferRepository\tests\src\python\qcopilots_file_transfer_live_acceptance.py" `
         --host "192.0.2.10" --port 22 --username "upload-user" `
         --remote-base "C:/RemoteData/TestData/" `

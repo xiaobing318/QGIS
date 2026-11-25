@@ -17,7 +17,7 @@
     "general"
   ],
   "runtime": {
-    "type": "uv",
+    "type": "bundled-python",
     "requirements": "requirements.lock"
   },
   "cors_origins": []

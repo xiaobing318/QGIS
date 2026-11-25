@@ -43,7 +43,7 @@ from qcopilots_common.logging import rotate_log_file, service_log_file
 from qcopilots_common.manifest import AUTHORIZATION_MODES, ServiceManifest, ServiceTransport, manifest_to_dict
 from qcopilots_common.service_id import is_safe_service_id, safe_service_state_name
 from qcopilots_common.subprocess_utils import hidden_subprocess_kwargs, service_creationflags
-from qcopilots_common.uv_runtime import UvRuntime
+from qcopilots_common.uv_runtime import UvRuntime, bundled_python_command
 
 
 QGIS_PACKAGE_ROOT_ENV = "QCOPILOTS_QGIS_PACKAGE_ROOT"
@@ -404,6 +404,9 @@ class ProcessController:
                 elif hasattr(self.runtime, "service_command"):
                     command = self.runtime.service_command(manifest, service_python)
                     runtime_python = service_python
+                elif manifest.uses_bundled_python:
+                    runtime_python = service_python
+                    command = bundled_python_command(manifest, service_python)
                 else:
                     state["startup_phase"] = "dependency-preparation"
                     self._write_state(manifest, state)

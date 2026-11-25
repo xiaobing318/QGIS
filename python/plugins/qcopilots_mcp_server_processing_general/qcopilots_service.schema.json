@@ -56,14 +56,18 @@
     "host": {
       "type": "string",
       "const": "127.0.0.1",
-      "enum": ["127.0.0.1"],
+      "enum": [
+        "127.0.0.1"
+      ],
       "default": "127.0.0.1",
       "description": "字段作用是限定 HTTP 绑定主机。候选值只有 127.0.0.1，不同值会被拒绝以保持本机边界。"
     },
     "advertised_host": {
       "type": "string",
       "const": "127.0.0.1",
-      "enum": ["127.0.0.1"],
+      "enum": [
+        "127.0.0.1"
+      ],
       "default": "127.0.0.1",
       "description": "字段作用是限定管理器发布主机。候选值只有 127.0.0.1，不同值会被拒绝以保持本机边界。"
     },
@@ -86,21 +90,27 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["http"],
+          "enum": [
+            "http"
+          ],
           "default": "http",
           "description": "字段作用是声明传输类型。候选值只有 http，不同值会被拒绝。"
         },
         "host": {
           "type": "string",
           "const": "127.0.0.1",
-          "enum": ["127.0.0.1"],
+          "enum": [
+            "127.0.0.1"
+          ],
           "default": "127.0.0.1",
           "description": "字段作用是声明嵌套绑定主机。候选值只有 127.0.0.1，不同值会被拒绝。"
         },
         "advertised_host": {
           "type": "string",
           "const": "127.0.0.1",
-          "enum": ["127.0.0.1"],
+          "enum": [
+            "127.0.0.1"
+          ],
           "default": "127.0.0.1",
           "description": "字段作用是声明嵌套发布主机。候选值只有 127.0.0.1，不同值会被拒绝。"
         },
@@ -120,13 +130,18 @@
     },
     "category": {
       "type": "string",
-      "enum": ["qcopilots"],
+      "enum": [
+        "qcopilots"
+      ],
       "default": "qcopilots",
       "description": "字段作用是声明管理器逻辑分组。候选值只有 qcopilots，不同值会被 schema 拒绝。"
     },
     "authorization_mode": {
       "type": "string",
-      "enum": ["manager", "request"],
+      "enum": [
+        "manager",
+        "request"
+      ],
       "default": "manager",
       "description": "字段作用是声明所有服务统一使用的 Authorization 传输策略。候选值 manager 在未配置页面 Bearer 时使用 Manager 内部令牌，候选值 request 仅使用请求携带的 Bearer，不回退到内部令牌。修改取值会改变缺少页面凭据时的行为，不保存授权码，健康检查仍使用 Manager 凭据。"
     },
@@ -137,31 +152,49 @@
       "description": "字段作用是声明 tools、qgis-bridge、processing 和领域能力。候选值包括 general，不同标签会影响客户端理解服务。",
       "items": {
         "type": "string",
-        "enum": ["tools", "prompts", "skills", "qgis-bridge", "processing", "vector", "raster", "general", "qgis-binary"],
+        "enum": [
+          "tools",
+          "prompts",
+          "skills",
+          "qgis-bridge",
+          "processing",
+          "vector",
+          "raster",
+          "general",
+          "qgis-binary"
+        ],
         "description": "字段作用是声明单个能力标签。候选值包括 tools、qgis-bridge、processing 和 general，不同标签会影响能力展示。"
       }
     },
     "runtime": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "requirements"],
-      "description": "字段作用是声明 uv 运行时和 requirements lock file。候选配置使用锁文件，不同配置会影响依赖准备。",
+      "required": [
+        "type",
+        "requirements"
+      ],
+      "description": "字段作用是声明 General 服务的 Python 运行时和 requirements.lock 依赖清单。候选运行时 bundled-python 会直接使用当前 QGIS 随包 Python 解释器，锁文件记录 SSH 依赖的精确版本。",
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["uv"],
-          "description": "字段作用是声明运行时启动器。候选值只有 uv，不同值会导致服务无法准备。"
+          "enum": [
+            "bundled-python"
+          ],
+          "description": "字段作用是选择启动 General 服务的解释器。候选值为 bundled-python，服务会直接使用当前 QGIS 随包 Python。"
         },
         "requirements": {
           "type": "string",
+          "const": "requirements.lock",
           "default": "requirements.lock",
-          "description": "字段作用是声明依赖锁文件。候选值通常是 requirements.lock，不同文件会影响依赖集合。"
+          "description": "字段作用是指定包内验收可对照的依赖版本清单。候选值为 requirements.lock，版本变更会影响验收的预期值。Windows 构建方案通过 pipeline.extraPythonPackages 独立声明预装版本，两处应同步更新。"
         }
       }
     },
     "cors_origins": {
       "type": "array",
-      "enum": [[]],
+      "enum": [
+        []
+      ],
       "maxItems": 0,
       "default": [],
       "description": "字段作用是声明浏览器 CORS origins。候选值只有空数组 []，不同值会被拒绝且浏览器访问必须通过 QGIS 原生桥。"

@@ -511,6 +511,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             schema = _read_json(schema_path)
             _assert_json_schema_header(self, schema, schema_path)
             _assert_json_matches_schema(self, manifest, schema, f"{plugin_dir_name}:manifest")
+            if plugin_dir_name == "qcopilots_mcp_server_processing_general":
+                alternate_lock = dict(manifest, runtime=dict(manifest["runtime"], requirements="alternate.lock"))
+                self.assertTrue(_json_schema_errors(alternate_lock, schema, f"{plugin_dir_name}:alternate lock"))
             future_manifest = dict(manifest)
             future_manifest["service_id"] = "qcopilots.future_service"
             _assert_json_matches_schema(
@@ -603,7 +606,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 properties,
                 "runtime",
                 plugin_dir_name,
-                required_terms=("uv", ("requirements", "lock file")),
+                required_terms=(manifest["runtime"]["type"], ("requirements", "lock file")),
             )
             _assert_described_property(
                 self,
@@ -5234,7 +5237,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 self.assertIn("name=QCopilots MCP Servers Manager", metadata)
                 self.assertIn("add_subdirectory(qcopilots_mcp_servers_manager)", plugins_cmake)
 
-    def test_service_plugins_use_manifest_uv_entry_points(self):
+    def test_service_plugins_use_manifest_entry_points(self):
         plugins_root = Path(__file__).resolve().parents[3] / "python" / "plugins"
         common_root = plugins_root / "qcopilots_common"
         common_cmake = (common_root / "CMakeLists.txt").read_text(encoding="utf-8")
@@ -5287,7 +5290,6 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             )
             self.assertEqual(manifest["entry_point"], "server.py", plugin_dir_name)
             self.assertTrue((plugin_dir / manifest["entry_point"]).is_file(), plugin_dir_name)
-            self.assertEqual(manifest["runtime"]["type"], "uv", plugin_dir_name)
             self.assertEqual(manifest["runtime"]["requirements"], "requirements.lock", plugin_dir_name)
             self.assertEqual(str(manifest["default_port"]), port, plugin_dir_name)
             self.assertNotIn("command", manifest, plugin_dir_name)
@@ -5297,6 +5299,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                 if line.strip() and not line.lstrip().startswith("#")
             ]
             if plugin_dir_name == "qcopilots_mcp_server_processing_general":
+                self.assertEqual(manifest["runtime"]["type"], "bundled-python", plugin_dir_name)
                 self.assertTrue(dependencies, plugin_dir_name)
                 self.assertTrue(
                     any(line.startswith("paramiko==") for line in dependencies),
@@ -5309,6 +5312,7 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
                         plugin_dir_name,
                     )
             else:
+                self.assertEqual(manifest["runtime"]["type"], "uv", plugin_dir_name)
                 self.assertFalse(dependencies, plugin_dir_name)
 
     def test_skills_uses_qgis_python_without_uv_dependency_overlay(self):
